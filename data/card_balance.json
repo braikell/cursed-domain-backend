@@ -1,0 +1,973 @@
+{
+  "schemaVersion": 3,
+  "pmFormula": {
+    "hpWeight": 0.1,
+    "velWeight": 80,
+    "supportMultiplier": 1.1
+  },
+  "definitions": [
+    {
+      "characterKey": "yuji",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 185,
+        "ap": 0,
+        "hp": 3250,
+        "vel": 1,
+        "pm": 590
+      },
+      "ultimate": {
+        "key": "yuji_base_ultimate",
+        "name": "Ultimate Base de Yuji Itadori",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "nobara",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "DPS_DEBUFFER",
+      "damageType": "TRUE",
+      "scaling": "HYBRID",
+      "stats": {
+        "ad": 130,
+        "ap": 130,
+        "hp": 2150,
+        "vel": 1,
+        "pm": 575
+      },
+      "ultimate": {
+        "key": "nobara_base_ultimate",
+        "name": "Ultimate Base de Nobara Kugisaki",
+        "type": "DEBUFF",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SAME_LANE",
+        "area_lanes": 0,
+        "power": 2.0,
+        "energy_cost": 50,
+        "vfx_key": "debuff_ultimate_curse"
+      }
+    },
+    {
+      "characterKey": "megumi",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "INVOCADOR",
+      "damageType": "MAGICAL",
+      "scaling": "HYBRID",
+      "stats": {
+        "ad": 140,
+        "ap": 140,
+        "hp": 2500,
+        "vel": 0.8,
+        "pm": 574
+      },
+      "ultimate": {
+        "key": "megumi_base_ultimate",
+        "name": "Ultimate Base de Megumi Fushiguro",
+        "type": "SUMMON",
+        "target_rule": "SELF",
+        "area_rule": "SELF",
+        "area_lanes": 0,
+        "power": 2.0,
+        "energy_cost": 50,
+        "vfx_key": "summoner_ultimate_ritual"
+      }
+    },
+    {
+      "characterKey": "gojo",
+      "cardType": "BASE",
+      "rarity": "legendary",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 0,
+        "ap": 360,
+        "hp": 2250,
+        "vel": 0.88,
+        "pm": 655
+      },
+      "ultimate": {
+        "key": "gojo_base_ultimate",
+        "name": "Ultimate Base de Satoru Gojo",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 1,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "sukuna",
+      "cardType": "BASE",
+      "rarity": "legendary",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 0,
+        "ap": 360,
+        "hp": 2250,
+        "vel": 0.85,
+        "pm": 653
+      },
+      "ultimate": {
+        "key": "sukuna_base_ultimate",
+        "name": "Ultimate Base de Ryomen Sukuna",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 1,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "nanami",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 185,
+        "ap": 0,
+        "hp": 3200,
+        "vel": 0.94,
+        "pm": 580
+      },
+      "ultimate": {
+        "key": "nanami_base_ultimate",
+        "name": "Ultimate Base de Kento Nanami",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "yuta",
+      "cardType": "BASE",
+      "rarity": "legendary",
+      "role": "INVOCADOR",
+      "damageType": "MAGICAL",
+      "scaling": "HYBRID",
+      "stats": {
+        "ad": 155,
+        "ap": 155,
+        "hp": 2450,
+        "vel": 0.91,
+        "pm": 628
+      },
+      "ultimate": {
+        "key": "yuta_base_ultimate",
+        "name": "Ultimate Base de Yuta Okkotsu",
+        "type": "SUMMON",
+        "target_rule": "SELF",
+        "area_rule": "SELF",
+        "area_lanes": 0,
+        "power": 2.0,
+        "energy_cost": 50,
+        "vfx_key": "summoner_ultimate_ritual"
+      }
+    },
+    {
+      "characterKey": "toji",
+      "cardType": "BASE",
+      "rarity": "legendary",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 235,
+        "ap": 0,
+        "hp": 3200,
+        "vel": 0.95,
+        "pm": 631
+      },
+      "ultimate": {
+        "key": "toji_base_ultimate",
+        "name": "Ultimate Base de Toji Fushiguro",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "maki",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 180,
+        "ap": 0,
+        "hp": 3150,
+        "vel": 1,
+        "pm": 575
+      },
+      "ultimate": {
+        "key": "maki_base_ultimate",
+        "name": "Ultimate Base de Maki Zenin",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "panda",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 165,
+        "ap": 0,
+        "hp": 3500,
+        "vel": 0.75,
+        "pm": 575
+      },
+      "ultimate": {
+        "key": "panda_base_ultimate",
+        "name": "Ultimate Base de Panda",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "mahito",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 205,
+        "ap": 0,
+        "hp": 3150,
+        "vel": 1,
+        "pm": 600
+      },
+      "ultimate": {
+        "key": "mahito_base_ultimate",
+        "name": "Ultimate Base de Mahito",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "geto",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "INVOCADOR",
+      "damageType": "MAGICAL",
+      "scaling": "HYBRID",
+      "stats": {
+        "ad": 150,
+        "ap": 150,
+        "hp": 2400,
+        "vel": 0.95,
+        "pm": 616
+      },
+      "ultimate": {
+        "key": "geto_base_ultimate",
+        "name": "Ultimate Base de Suguru Geto",
+        "type": "SUMMON",
+        "target_rule": "SELF",
+        "area_rule": "SELF",
+        "area_lanes": 0,
+        "power": 2.0,
+        "energy_cost": 50,
+        "vfx_key": "summoner_ultimate_ritual"
+      }
+    },
+    {
+      "characterKey": "todo",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 200,
+        "ap": 0,
+        "hp": 3200,
+        "vel": 1,
+        "pm": 600
+      },
+      "ultimate": {
+        "key": "todo_base_ultimate",
+        "name": "Ultimate Base de Aoi Todo",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "jogo",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 0,
+        "ap": 300,
+        "hp": 2350,
+        "vel": 1,
+        "pm": 615
+      },
+      "ultimate": {
+        "key": "jogo_base_ultimate",
+        "name": "Ultimate Base de Jogo",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 1,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "hanami",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 0,
+        "ap": 295,
+        "hp": 2450,
+        "vel": 0.85,
+        "pm": 608
+      },
+      "ultimate": {
+        "key": "hanami_base_ultimate",
+        "name": "Ultimate Base de Hanami",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 1,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "higuruma",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 210,
+        "ap": 0,
+        "hp": 3050,
+        "vel": 1,
+        "pm": 595
+      },
+      "ultimate": {
+        "key": "higuruma_base_ultimate",
+        "name": "Ultimate Base de Hiromi Higuruma",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "kashimo",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 240,
+        "ap": 0,
+        "hp": 3150,
+        "vel": 1,
+        "pm": 635
+      },
+      "ultimate": {
+        "key": "kashimo_base_ultimate",
+        "name": "Ultimate Base de Hajime Kashimo",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "choso",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 0,
+        "ap": 295,
+        "hp": 2350,
+        "vel": 0.9,
+        "pm": 602
+      },
+      "ultimate": {
+        "key": "choso_base_ultimate",
+        "name": "Ultimate Base de Choso",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 1,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "mahoraga",
+      "cardType": "BASE",
+      "rarity": "mythic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 240,
+        "ap": 0,
+        "hp": 3600,
+        "vel": 0.72,
+        "pm": 658
+      },
+      "ultimate": {
+        "key": "mahoraga_base_ultimate",
+        "name": "Ultimate Base de Mahoraga",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "toge",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 0,
+        "ap": 270,
+        "hp": 2200,
+        "vel": 0.9,
+        "pm": 562
+      },
+      "ultimate": {
+        "key": "toge_base_ultimate",
+        "name": "Ultimate Base de Toge Inumaki",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 1,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "naoya",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 210,
+        "ap": 0,
+        "hp": 3000,
+        "vel": 1,
+        "pm": 590
+      },
+      "ultimate": {
+        "key": "naoya_base_ultimate",
+        "name": "Ultimate Base de Naoya Zenin",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "hakari",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 205,
+        "ap": 0,
+        "hp": 3450,
+        "vel": 0.9,
+        "pm": 622
+      },
+      "ultimate": {
+        "key": "hakari_base_ultimate",
+        "name": "Ultimate Base de Kinji Hakari",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "meimei",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 215,
+        "ap": 0,
+        "hp": 3000,
+        "vel": 0.9,
+        "pm": 587
+      },
+      "ultimate": {
+        "key": "meimei_base_ultimate",
+        "name": "Ultimate Base de Mei Mei",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "utahime",
+      "cardType": "BASE",
+      "rarity": "basic",
+      "role": "SOPORTE",
+      "damageType": "HYBRID",
+      "scaling": "SUPPORT",
+      "stats": {
+        "ad": 90,
+        "ap": 120,
+        "hp": 2200,
+        "vel": 0.85,
+        "pm": 548
+      },
+      "ultimate": {
+        "key": "utahime_base_ultimate",
+        "name": "Ultimate Base de Utahime Iori",
+        "type": "HEAL",
+        "target_rule": "ALL_ALLIES",
+        "area_rule": "ALL_ALLIES",
+        "area_lanes": 2,
+        "power": 2,
+        "energy_cost": 50,
+        "vfx_key": "support_ultimate_heal"
+      }
+    },
+    {
+      "characterKey": "shoko",
+      "cardType": "BASE",
+      "rarity": "epic",
+      "role": "SOPORTE",
+      "damageType": "HYBRID",
+      "scaling": "SUPPORT",
+      "stats": {
+        "ad": 95,
+        "ap": 130,
+        "hp": 2400,
+        "vel": 0.8,
+        "pm": 582
+      },
+      "ultimate": {
+        "key": "shoko_base_ultimate",
+        "name": "Ultimate Base de Shoko Ieiri",
+        "type": "HEAL",
+        "target_rule": "ALL_ALLIES",
+        "area_rule": "ALL_ALLIES",
+        "area_lanes": 2,
+        "power": 2,
+        "energy_cost": 50,
+        "vfx_key": "support_ultimate_heal"
+      }
+    },
+    {
+      "characterKey": "yuji",
+      "cardType": "DEFINITIVA",
+      "rarity": "legendary",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 189,
+        "ap": 4,
+        "hp": 3254,
+        "vel": 1,
+        "pm": 598
+      },
+      "ultimate": {
+        "key": "yuji_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Yuji Itadori",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "megumi",
+      "cardType": "DEFINITIVA",
+      "rarity": "legendary",
+      "role": "INVOCADOR",
+      "damageType": "MAGICAL",
+      "scaling": "HYBRID",
+      "stats": {
+        "ad": 144,
+        "ap": 144,
+        "hp": 2504,
+        "vel": 0.8,
+        "pm": 602
+      },
+      "ultimate": {
+        "key": "megumi_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Megumi Fushiguro",
+        "type": "SUMMON",
+        "target_rule": "SELF",
+        "area_rule": "SELF",
+        "area_lanes": 0,
+        "power": 2.0,
+        "energy_cost": 50,
+        "vfx_key": "summoner_ultimate_ritual"
+      }
+    },
+    {
+      "characterKey": "gojo",
+      "cardType": "DEFINITIVA",
+      "rarity": "mythic",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 5,
+        "ap": 365,
+        "hp": 2255,
+        "vel": 0.88,
+        "pm": 666
+      },
+      "ultimate": {
+        "key": "gojo_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Satoru Gojo",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 2,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "sukuna",
+      "cardType": "DEFINITIVA",
+      "rarity": "mythic",
+      "role": "DPS_MAGICO",
+      "damageType": "MAGICAL",
+      "scaling": "MAGICAL",
+      "stats": {
+        "ad": 5,
+        "ap": 365,
+        "hp": 2255,
+        "vel": 0.85,
+        "pm": 664
+      },
+      "ultimate": {
+        "key": "sukuna_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Ryomen Sukuna",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "LANES_AROUND_TARGET",
+        "area_lanes": 2,
+        "power": 2.6,
+        "energy_cost": 50,
+        "vfx_key": "magic_ultimate_area"
+      }
+    },
+    {
+      "characterKey": "nanami",
+      "cardType": "DEFINITIVA",
+      "rarity": "legendary",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 189,
+        "ap": 4,
+        "hp": 3204,
+        "vel": 0.94,
+        "pm": 589
+      },
+      "ultimate": {
+        "key": "nanami_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Kento Nanami",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "yuta",
+      "cardType": "DEFINITIVA",
+      "rarity": "mythic",
+      "role": "INVOCADOR",
+      "damageType": "MAGICAL",
+      "scaling": "HYBRID",
+      "stats": {
+        "ad": 160,
+        "ap": 160,
+        "hp": 2455,
+        "vel": 0.91,
+        "pm": 638
+      },
+      "ultimate": {
+        "key": "yuta_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Yuta Okkotsu",
+        "type": "SUMMON",
+        "target_rule": "SELF",
+        "area_rule": "SELF",
+        "area_lanes": 0,
+        "power": 2.0,
+        "energy_cost": 50,
+        "vfx_key": "summoner_ultimate_ritual"
+      }
+    },
+    {
+      "characterKey": "toji",
+      "cardType": "DEFINITIVA",
+      "rarity": "mythic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 240,
+        "ap": 5,
+        "hp": 3205,
+        "vel": 0.95,
+        "pm": 642
+      },
+      "ultimate": {
+        "key": "toji_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Toji Fushiguro",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "panda",
+      "cardType": "DEFINITIVA",
+      "rarity": "epic",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 168,
+        "ap": 3,
+        "hp": 3503,
+        "vel": 0.75,
+        "pm": 581
+      },
+      "ultimate": {
+        "key": "panda_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Panda",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "higuruma",
+      "cardType": "DEFINITIVA",
+      "rarity": "legendary",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 214,
+        "ap": 4,
+        "hp": 3054,
+        "vel": 1,
+        "pm": 603
+      },
+      "ultimate": {
+        "key": "higuruma_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Hiromi Higuruma",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "kashimo",
+      "cardType": "DEFINITIVA",
+      "rarity": "legendary",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 244,
+        "ap": 4,
+        "hp": 3154,
+        "vel": 1,
+        "pm": 643
+      },
+      "ultimate": {
+        "key": "kashimo_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Hajime Kashimo",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "naoya",
+      "cardType": "DEFINITIVA",
+      "rarity": "legendary",
+      "role": "DPS_FISICO",
+      "damageType": "PHYSICAL",
+      "scaling": "PHYSICAL",
+      "stats": {
+        "ad": 214,
+        "ap": 4,
+        "hp": 3004,
+        "vel": 1,
+        "pm": 598
+      },
+      "ultimate": {
+        "key": "naoya_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Naoya Zenin",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 4.2,
+        "energy_cost": 50,
+        "vfx_key": "physical_ultimate_burst"
+      }
+    },
+    {
+      "characterKey": "utahime",
+      "cardType": "DEFINITIVA",
+      "rarity": "basic",
+      "role": "SOPORTE",
+      "damageType": "HYBRID",
+      "scaling": "SUPPORT",
+      "stats": {
+        "ad": 92,
+        "ap": 122,
+        "hp": 2202,
+        "vel": 0.85,
+        "pm": 552
+      },
+      "ultimate": {
+        "key": "utahime_definitiva_ultimate",
+        "name": "Ultimate Definitiva de Utahime Iori",
+        "type": "HEAL",
+        "target_rule": "ALL_ALLIES",
+        "area_rule": "ALL_ALLIES",
+        "area_lanes": 2,
+        "power": 3,
+        "energy_cost": 50,
+        "vfx_key": "support_ultimate_heal"
+      }
+    }
+  ]
+}
+
