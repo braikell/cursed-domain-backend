@@ -12,7 +12,7 @@ import {
 } from "../bootstrap/monetization-foundation.js";
 import { normalizeGameSave, type GameSaveSnapshot, type OwnedDefinitiveCard, type OwnedCharacter } from "../bootstrap/game-save.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { getBalancedCardsByRarityAndType, getCardUnlockElementsRequired } from "../cards/balance.js";
+import { getBalancedCardsByRarityAndType, getCardBalance, getCardUnlockElementsRequired } from "../cards/balance.js";
 
 type Rarity = "basic" | "epic" | "legendary" | "mythic";
 type CardVariant = "base" | "definitive";
@@ -122,8 +122,12 @@ interface PersistableUserCardRow {
   user_id: string;
   card_definition_id: string;
   character_id: string;
+  character_key: string;
+  card_key: string;
+  card_type: "BASE" | "DEFINITIVA";
   variant: CardVariant;
   rarity: Rarity;
+  definition_rarity: Rarity;
   level: number;
   xp: number;
   stars: number;
@@ -723,12 +727,20 @@ function buildPackCollectionPersistenceRows(
     const baseCharacter: OwnedCharacter | undefined = save.characters[result.characterId];
     const definitiveCharacter: OwnedDefinitiveCard | undefined = save.definitiveCards[result.characterId];
     if (result.cardOwnedAfter && ((result.variant === "base" && baseCharacter) || (result.variant === "definitive" && definitiveCharacter))) {
+      const cardType = result.variant === "base" ? "BASE" : "DEFINITIVA";
+      const balance = getCardBalance(result.characterId, cardType);
+      const cardKey = balance?.card_key ?? result.cardDefinitionId;
+      const rarity = balance?.rarity ?? result.rarity;
       cardRows.set(result.cardDefinitionId, {
         user_id: userId,
         card_definition_id: result.cardDefinitionId,
         character_id: result.characterId,
+        character_key: result.characterId,
+        card_key: cardKey,
+        card_type: cardType,
         variant: result.variant,
-        rarity: result.rarity,
+        rarity,
+        definition_rarity: rarity,
         level: result.variant === "base" ? (baseCharacter?.level ?? 1) : (definitiveCharacter?.level ?? 1),
         xp: result.variant === "base" ? (baseCharacter?.xp ?? 0) : (definitiveCharacter?.xp ?? 0),
         stars: result.variant === "base" ? (baseCharacter?.stars ?? 1) : (definitiveCharacter?.stars ?? 1),

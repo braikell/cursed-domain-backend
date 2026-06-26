@@ -20,6 +20,9 @@ import {
   EQUIPMENT_ITEMS,
   EQUIPMENT_MAX_TIER_BY_RARITY,
   getUpgradeCostForTier,
+  normalizeEquipmentRarity,
+  normalizeEquipmentRarityForDatabase,
+  normalizeEquipmentSlotForDatabase,
   type EquipmentDefinition,
   type EquipmentRarity,
   type EquipmentSlot,
@@ -368,48 +371,6 @@ function requireEquipmentDefinition(equipmentKey?: string) {
   return definition;
 }
 
-function normalizeEquipmentRarity(raw: string): EquipmentRarity {
-  const value = raw.trim().toLowerCase();
-  switch (value) {
-    case "basic":
-    case "basico":
-      return "basic";
-    case "epic":
-    case "epico":
-      return "epic";
-    case "legendary":
-    case "legendario":
-      return "legendary";
-    case "mythic":
-    case "mitico":
-      return "mythic";
-    default:
-      return "basic";
-  }
-}
-
-function normalizeEquipmentRarityForDatabase(raw: string): string {
-  const value = raw.trim().toLowerCase();
-  switch (value) {
-    case "basic":
-    case "basico":
-    case "comun":
-      return "basico";
-    case "epic":
-    case "epico":
-    case "raro":
-      return "epico";
-    case "legendary":
-    case "legendario":
-      return "legendario";
-    case "mythic":
-    case "mitico":
-      return "mitico";
-    default:
-      return "basico";
-  }
-}
-
 async function persistEquipmentState(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {
   const now = new Date().toISOString();
   await upsertPlayerSave(supabase, userId, save, now);
@@ -458,7 +419,7 @@ async function syncUserInventoryMirror(supabase: SupabaseClient, userId: string,
   const rows = save.inventory.map((item) => ({
     user_id: userId,
     id: item.id,
-    slot: item.slot,
+    slot: normalizeEquipmentSlotForDatabase(item.slot),
     rarity: normalizeEquipmentRarityForDatabase(item.rarity),
     name: item.name,
     atk: item.ad,

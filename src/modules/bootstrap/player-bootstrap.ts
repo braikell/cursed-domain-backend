@@ -19,6 +19,7 @@ import {
   updateLoginMissionProgress,
 } from "./monetization-foundation.js";
 import { getCardBalance } from "../cards/balance.js";
+import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -441,14 +442,17 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
   const baseCardRows = Object.values(save.characters).map((character) => {
     const balance = getCardBalance(character.id, "BASE");
     const rarity = balance?.rarity ?? "basic";
+    const cardKey = balance?.card_key ?? `${character.id}_base_${rarity}`;
     return {
       user_id: userId,
-      card_definition_id: `${character.id}_base_${rarity}`,
+      card_definition_id: cardKey,
       character_id: character.id,
       character_key: character.id,
       variant: "base",
       card_type: "BASE",
       rarity,
+      definition_rarity: rarity,
+      card_key: cardKey,
       level: character.level,
       xp: character.xp,
       stars: character.stars,
@@ -463,17 +467,46 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     };
   });
 
-  console.log("[bootstrap] ensureServerGameFoundation:user_cards_payload", {
-    userId,
-    rows: baseCardRows.length,
-    cardDefinitionIds: baseCardRows.map((row) => row.card_definition_id),
+  const definitiveCardRows = Object.values(save.definitiveCards ?? {}).map((card) => {
+    const balance = getCardBalance(card.characterId, "DEFINITIVA");
+    const rarity = balance?.rarity ?? "legendary";
+    const cardKey = balance?.card_key ?? card.cardDefinitionId ?? `${card.characterId}_definitiva_${rarity}`;
+    return {
+      user_id: userId,
+      card_definition_id: card.cardDefinitionId || cardKey,
+      character_id: card.characterId,
+      character_key: card.characterId,
+      variant: "definitive",
+      card_type: "DEFINITIVA",
+      rarity,
+      definition_rarity: rarity,
+      card_key: cardKey,
+      level: card.level,
+      xp: card.xp,
+      stars: card.stars,
+      ascension: card.ascension,
+      awakening: card.awakening,
+      fragments: card.fragments,
+      energy: 0,
+      max_energy: balance?.max_energy ?? 100,
+      is_starter: false,
+      acquired_at: new Date(card.acquiredAt || Date.now()).toISOString(),
+      updated_at: now,
+    };
   });
 
-  if (baseCardRows.length > 0) {
-    await upsertOrThrow(service, "user_cards", baseCardRows, "user_id,card_definition_id");
+  console.log("[bootstrap] ensureServerGameFoundation:user_cards_payload", {
+    userId,
+    rows: baseCardRows.length + definitiveCardRows.length,
+    cardDefinitionIds: [...baseCardRows, ...definitiveCardRows].map((row) => row.card_definition_id),
+  });
+
+  const cardRows = [...baseCardRows, ...definitiveCardRows];
+  if (cardRows.length > 0) {
+    await upsertOrThrow(service, "user_cards", cardRows, "user_id,card_definition_id");
     console.log("[bootstrap] ensureServerGameFoundation:user_cards_upsert_ok", {
       userId,
-      rows: baseCardRows.length,
+      rows: cardRows.length,
     });
   }
 
@@ -489,7 +522,7 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     const inventoryRows = save.inventory.map((item) => ({
       user_id: userId,
       id: item.id,
-      slot: item.slot,
+      slot: normalizeEquipmentSlotForDatabase(item.slot),
       rarity: normalizeEquipmentRarityForDatabase(item.rarity),
       name: item.name,
       atk: item.ad,
@@ -780,26 +813,4 @@ function compareBaseCardPriority(left: UserCardRow, right: UserCardRow) {
     return leftTime - rightTime;
   }
   return left.id.localeCompare(right.id);
-}
-
-function normalizeEquipmentRarityForDatabase(raw: string): string {
-  const value = String(raw ?? "").trim().toLowerCase();
-  switch (value) {
-    case "basic":
-    case "basico":
-    case "comun":
-      return "basico";
-    case "epic":
-    case "epico":
-    case "raro":
-      return "epico";
-    case "legendary":
-    case "legendario":
-      return "legendario";
-    case "mythic":
-    case "mitico":
-      return "mitico";
-    default:
-      return "basico";
-  }
 }
