@@ -388,6 +388,28 @@ function normalizeEquipmentRarity(raw: string): EquipmentRarity {
   }
 }
 
+function normalizeEquipmentRarityForDatabase(raw: string): string {
+  const value = raw.trim().toLowerCase();
+  switch (value) {
+    case "basic":
+    case "basico":
+    case "comun":
+      return "basico";
+    case "epic":
+    case "epico":
+    case "raro":
+      return "epico";
+    case "legendary":
+    case "legendario":
+      return "legendario";
+    case "mythic":
+    case "mitico":
+      return "mitico";
+    default:
+      return "basico";
+  }
+}
+
 async function persistEquipmentState(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {
   const now = new Date().toISOString();
   await upsertPlayerSave(supabase, userId, save, now);
