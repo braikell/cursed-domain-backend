@@ -54,23 +54,6 @@ interface IdempotencyRow {
 }
 
 const EQUIPMENT_DEFINITIONS_BY_KEY = new Map(EQUIPMENT_ITEMS.map((item) => [item.key, item]));
-const STARTER_EQUIPMENT_LOADOUT = [
-  { key: "weapon_hoja_maldita", rarity: "basic", tier: 1 },
-  { key: "helmet_capucha_maldita", rarity: "basic", tier: 1 },
-  { key: "armor_tunica_maldita", rarity: "basic", tier: 1 },
-  { key: "boots_botas_malditas", rarity: "basic", tier: 1 },
-  { key: "accessory_anillo_maldito", rarity: "basic", tier: 1 },
-  { key: "weapon_daga_vacio", rarity: "epic", tier: 2 },
-  { key: "helmet_casco_vacio", rarity: "epic", tier: 2 },
-  { key: "armor_coraza_vacio", rarity: "epic", tier: 2 },
-  { key: "boots_zapatos_vacio", rarity: "epic", tier: 2 },
-  { key: "accessory_collar_vacio", rarity: "epic", tier: 2 },
-  { key: "weapon_katana_espectral", rarity: "mythic", tier: 4 },
-  { key: "helmet_mascara_espectral", rarity: "legendary", tier: 3 },
-  { key: "armor_manto_espectral", rarity: "legendary", tier: 3 },
-  { key: "boots_botas_espectral", rarity: "legendary", tier: 3 },
-  { key: "accessory_talisman_espectral", rarity: "legendary", tier: 3 },
-] as const satisfies ReadonlyArray<{ key: string; rarity: EquipmentRarity; tier: number }>;
 
 export async function getEquipmentDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
@@ -351,22 +334,11 @@ async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: strin
   const save = await loadPlayerSave(supabase, userId);
   let changed = false;
 
-  if (!hasNewEquipmentItems(save.inventory)) {
-    save.inventory = buildStarterEquipmentInventory();
-    changed = true;
-  } else {
-    const normalizedInventory = save.inventory
-      .filter((item) => typeof item.equipmentKey === "string" && item.equipmentKey.trim().length > 0)
-      .map((item) => normalizeEquipmentInventoryItem(item));
-    if (normalizedInventory.length !== save.inventory.length || JSON.stringify(normalizedInventory) !== JSON.stringify(save.inventory)) {
-      save.inventory = normalizedInventory;
-      changed = true;
-    }
-  }
-
-  const completedInventory = ensureStarterLoadoutCoverage(save.inventory);
-  if (completedInventory.length !== save.inventory.length) {
-    save.inventory = completedInventory;
+  const normalizedInventory = save.inventory
+    .filter((item) => typeof item.equipmentKey === "string" && item.equipmentKey.trim().length > 0)
+    .map((item) => normalizeEquipmentInventoryItem(item));
+  if (normalizedInventory.length !== save.inventory.length || JSON.stringify(normalizedInventory) !== JSON.stringify(save.inventory)) {
+    save.inventory = normalizedInventory;
     changed = true;
   }
 
@@ -375,32 +347,6 @@ async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: strin
     await persistEquipmentState(supabase, userId, save);
   }
   return save;
-}
-
-function hasNewEquipmentItems(items: EquipmentItem[]) {
-  return items.some((item) => typeof item.equipmentKey === "string" && item.equipmentKey.trim().length > 0);
-}
-
-function buildStarterEquipmentInventory(): EquipmentItem[] {
-  return STARTER_EQUIPMENT_LOADOUT.map((entry) =>
-    buildInventoryItem(requireEquipmentDefinition(entry.key), entry.rarity, entry.tier),
-  );
-}
-
-function ensureStarterLoadoutCoverage(items: EquipmentItem[]): EquipmentItem[] {
-  const output = [...items];
-  const ownedKeys = new Set(
-    items
-      .map((item) => String(item.equipmentKey ?? "").trim())
-      .filter((key) => key.length > 0),
-  );
-
-  for (const entry of STARTER_EQUIPMENT_LOADOUT) {
-    if (ownedKeys.has(entry.key)) continue;
-    output.push(buildInventoryItem(requireEquipmentDefinition(entry.key), entry.rarity, entry.tier));
-  }
-
-  return output;
 }
 
 function normalizeEquipmentInventoryItem(item: EquipmentItem): EquipmentItem {
