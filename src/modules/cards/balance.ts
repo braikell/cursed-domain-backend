@@ -17,6 +17,28 @@ export const CARD_MAX_LEVEL_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<C
     mythic: 110,
   },
 };
+export const CARD_STAT_GROWTH_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, { atkGrowth: number; hpGrowth: number }>> = {
+  BASE: {
+    basic: { atkGrowth: 0.0070, hpGrowth: 0.0100 },
+    epic: { atkGrowth: 0.0075, hpGrowth: 0.0105 },
+    legendary: { atkGrowth: 0.0080, hpGrowth: 0.0110 },
+    mythic: { atkGrowth: 0.0085, hpGrowth: 0.0115 },
+  },
+  DEFINITIVA: {
+    basic: { atkGrowth: 0.0090, hpGrowth: 0.0120 },
+    epic: { atkGrowth: 0.0095, hpGrowth: 0.0125 },
+    legendary: { atkGrowth: 0.0100, hpGrowth: 0.0130 },
+    mythic: { atkGrowth: 0.0105, hpGrowth: 0.0135 },
+  },
+};
+export const CARD_ASCENSION_STAT_MULTIPLIER: Record<number, number> = {
+  0: 1.00,
+  1: 1.03,
+  2: 1.06,
+  3: 1.09,
+  4: 1.12,
+  5: 1.14,
+};
 export const CARD_MAX_ASCENSION_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, number>> = {
   BASE: {
     basic: 3,
@@ -121,6 +143,11 @@ export interface CardCombatStats {
   hp: number;
   vel: number;
   pm: number;
+}
+
+export interface CardFinalStats extends CardCombatStats {
+  atk: number;
+  speed: number;
 }
 
 interface CardDefinitionSkillPayload {
@@ -280,11 +307,56 @@ export function getCardLevelCapForAscension(cardType: string, rarity: string, as
 
 export function getCardAscensionStatBonus(ascension: number) {
   const normalizedAscension = Math.max(0, Math.floor(Number(ascension) || 0));
-  let total = 0;
-  for (let index = 1; index <= normalizedAscension; index += 1) {
-    total += CARD_ASCENSION_STAT_BONUS[index] ?? 0;
+  return getCardAscensionMultiplier(normalizedAscension) - 1;
+}
+
+export function getCardAscensionMultiplier(ascension: number) {
+  const normalizedAscension = Math.max(0, Math.min(5, Math.floor(Number(ascension) || 0)));
+  return CARD_ASCENSION_STAT_MULTIPLIER[normalizedAscension] ?? 1;
+}
+
+export function calculateCardFinalStats(
+  definition: Pick<CardBalanceDefinition, "stats" | "scaling" | "cardType" | "rarity">,
+  level: number,
+  ascension: number,
+): CardFinalStats {
+  const cardType = normalizeCardType(definition.cardType);
+  const rarity = normalizeCardRarity(definition.rarity);
+  const growth = CARD_STAT_GROWTH_BY_TYPE_AND_RARITY[cardType][rarity];
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const ascMult = getCardAscensionMultiplier(ascension);
+  const baseAd = Math.max(0, Math.floor(Number(definition.stats?.ad ?? 0) || 0));
+  const baseAp = Math.max(0, Math.floor(Number(definition.stats?.ap ?? 0) || 0));
+  const baseHp = Math.max(0, Math.floor(Number(definition.stats?.hp ?? 0) || 0));
+  const baseVel = Number(definition.stats?.vel ?? 0) || 0;
+  const levelIndex = normalizedLevel - 1;
+  const ad = Math.floor(baseAd * (1 + growth.atkGrowth * levelIndex) * ascMult);
+  const ap = Math.floor(baseAp * (1 + growth.atkGrowth * levelIndex) * ascMult);
+  const hp = Math.floor(baseHp * (1 + growth.hpGrowth * levelIndex) * ascMult);
+  const vel = baseVel;
+  const pm = Math.round(ad + ap + hp * 0.10 + vel * 80);
+  return {
+    ad,
+    ap,
+    hp,
+    vel,
+    pm,
+    atk: calculateAttackValue(ad, ap, pm, String(definition.scaling ?? "")),
+    speed: vel,
+  };
+}
+
+export function getCardFinalStats(
+  characterKey: string,
+  cardType: string,
+  level: number,
+  ascension: number,
+): CardFinalStats {
+  const definition = getCardBalance(characterKey, cardType);
+  if (definition == null) {
+    return { ad: 0, ap: 0, hp: 0, vel: 0, pm: 0, atk: 1, speed: 0 };
   }
-  return total;
+  return calculateCardFinalStats(definition, level, ascension);
 }
 
 export function canCardLevelUp(cardType: string, rarity: string, level: number, ascension: number) {

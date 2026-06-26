@@ -16,6 +16,7 @@ import {
   getCardStarsForLevel,
   getCardImproveCostForLevel,
   getCardBalance,
+  getCardFinalStats,
   type CardBalanceRarity,
   type CardCatalogType,
 } from "./balance.js";
@@ -144,6 +145,7 @@ export async function upgradeCardDedicated(
     toLevel: nextLevel,
     currentLevelCap,
     cost,
+    finalStats: getCardFinalStats(identity.characterKey, identity.cardType, nextLevel, currentAscension),
     save,
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
@@ -228,6 +230,7 @@ export async function ascendCardDedicated(
     toAscension: targetAscension,
     newLevelCap: getCardLevelCapForAscension(identity.cardType, identity.rarity, targetAscension),
     cost,
+    finalStats: getCardFinalStats(identity.characterKey, identity.cardType, currentLevel, targetAscension),
     save,
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);

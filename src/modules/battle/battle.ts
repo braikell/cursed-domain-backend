@@ -21,6 +21,7 @@ import { createServiceSupabaseClient } from "../../supabase.js";
 import {
   canCardGainXp,
   getCardLevelCapForAscension,
+  getCardFinalStats,
   getCardMaxLevel,
   getCardStarsForLevel,
   getCardXpForNextLevel,
@@ -328,7 +329,7 @@ async function applyHeroBattleXp(
   if (teamCharacterIds.length === 0) {
     return {
       grantedXpPerHero: 0,
-      leveledCards: [] as Array<{ characterId: string; fromLevel: number; toLevel: number; finalXp: number }>,
+      leveledCards: [] as Array<{ characterId: string; fromLevel: number; toLevel: number; finalXp: number; finalStats: ReturnType<typeof getCardFinalStats> }>,
     };
   }
 
@@ -353,7 +354,7 @@ async function applyHeroBattleXp(
     }
   }
 
-  const leveledCards: Array<{ characterId: string; fromLevel: number; toLevel: number; finalXp: number }> = [];
+  const leveledCards: Array<{ characterId: string; fromLevel: number; toLevel: number; finalXp: number; finalStats: ReturnType<typeof getCardFinalStats> }> = [];
   const updates: Array<Promise<unknown>> = [];
 
   for (const characterId of teamCharacterIds) {
@@ -414,7 +415,13 @@ async function applyHeroBattleXp(
         .eq("id", row.id),
     );
 
-    leveledCards.push({ characterId, fromLevel, toLevel: level, finalXp: xp });
+    leveledCards.push({
+      characterId,
+      fromLevel,
+      toLevel: level,
+      finalXp: xp,
+      finalStats: getCardFinalStats(characterId, cardType, level, ascension),
+    });
   }
 
   if (updates.length > 0) {
