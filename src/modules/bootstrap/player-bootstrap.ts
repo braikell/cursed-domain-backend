@@ -451,7 +451,7 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
       variant: "base",
       card_type: "BASE",
       rarity,
-      definition_rarity: rarity,
+      definition_rarity: mapCardRarityToDefinitionRarity(rarity),
       card_key: cardKey,
       level: character.level,
       xp: character.xp,
@@ -479,7 +479,7 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
       variant: "definitive",
       card_type: "DEFINITIVA",
       rarity,
-      definition_rarity: rarity,
+      definition_rarity: mapCardRarityToDefinitionRarity(rarity),
       card_key: cardKey,
       level: card.level,
       xp: card.xp,
@@ -813,4 +813,18 @@ function compareBaseCardPriority(left: UserCardRow, right: UserCardRow) {
     return leftTime - rightTime;
   }
   return left.id.localeCompare(right.id);
+}
+
+function mapCardRarityToDefinitionRarity(rarity: string) {
+  switch (String(rarity).trim().toLowerCase()) {
+    case "epic":
+      return "EPIC";
+    case "legendary":
+      return "LEGENDARY";
+    case "mythic":
+      return "MYTHIC";
+    case "basic":
+    default:
+      return "COMMON";
+  }
 }

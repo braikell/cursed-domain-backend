@@ -127,7 +127,7 @@ interface PersistableUserCardRow {
   card_type: "BASE" | "DEFINITIVA";
   variant: CardVariant;
   rarity: Rarity;
-  definition_rarity: Rarity;
+  definition_rarity: "COMMON" | "EPIC" | "LEGENDARY" | "MYTHIC";
   level: number;
   xp: number;
   stars: number;
@@ -740,7 +740,7 @@ function buildPackCollectionPersistenceRows(
         card_type: cardType,
         variant: result.variant,
         rarity,
-        definition_rarity: rarity,
+        definition_rarity: mapRarityToCatalog(rarity),
         level: result.variant === "base" ? (baseCharacter?.level ?? 1) : (definitiveCharacter?.level ?? 1),
         xp: result.variant === "base" ? (baseCharacter?.xp ?? 0) : (definitiveCharacter?.xp ?? 0),
         stars: result.variant === "base" ? (baseCharacter?.stars ?? 1) : (definitiveCharacter?.stars ?? 1),
