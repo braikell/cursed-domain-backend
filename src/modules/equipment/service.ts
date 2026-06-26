@@ -6,6 +6,7 @@ import type {
   DismantleItemInput,
   EquipItemInput,
   GodotAuthedRequestContext,
+  UnequipItemInput,
   UpgradeItemInput,
 } from "../../contracts.js";
 import { HttpModuleError } from "../../errors.js";
@@ -53,13 +54,23 @@ interface IdempotencyRow {
 }
 
 const EQUIPMENT_DEFINITIONS_BY_KEY = new Map(EQUIPMENT_ITEMS.map((item) => [item.key, item]));
-const STARTER_EQUIPMENT_KEYS = [
-  "weapon_hoja_maldita",
-  "helmet_capucha_maldita",
-  "armor_tunica_maldita",
-  "boots_botas_malditas",
-  "accessory_anillo_maldito",
-] as const;
+const STARTER_EQUIPMENT_LOADOUT = [
+  { key: "weapon_hoja_maldita", rarity: "basic", tier: 1 },
+  { key: "helmet_capucha_maldita", rarity: "basic", tier: 1 },
+  { key: "armor_tunica_maldita", rarity: "basic", tier: 1 },
+  { key: "boots_botas_malditas", rarity: "basic", tier: 1 },
+  { key: "accessory_anillo_maldito", rarity: "basic", tier: 1 },
+  { key: "weapon_daga_vacio", rarity: "epic", tier: 2 },
+  { key: "helmet_casco_vacio", rarity: "epic", tier: 2 },
+  { key: "armor_coraza_vacio", rarity: "epic", tier: 2 },
+  { key: "boots_zapatos_vacio", rarity: "epic", tier: 2 },
+  { key: "accessory_collar_vacio", rarity: "epic", tier: 2 },
+  { key: "weapon_katana_espectral", rarity: "mythic", tier: 4 },
+  { key: "helmet_mascara_espectral", rarity: "legendary", tier: 3 },
+  { key: "armor_manto_espectral", rarity: "legendary", tier: 3 },
+  { key: "boots_botas_espectral", rarity: "legendary", tier: 3 },
+  { key: "accessory_talisman_espectral", rarity: "legendary", tier: 3 },
+] as const satisfies ReadonlyArray<{ key: string; rarity: EquipmentRarity; tier: number }>;
 
 export async function getEquipmentDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
@@ -91,6 +102,9 @@ export async function equipItemDedicated(
 
   const targetCharacterId = resolveTargetCharacterId(save, input.targetCharacterId);
   const item = save.inventory[itemIndex];
+  if (item.equippedToCharacterId && item.equippedToCharacterId !== targetCharacterId) {
+    throw new HttpModuleError(409, "equipment_already_equipped", "equipment_equip", "Este item ya esta equipado en otro heroe. Quitalo antes de usarlo en otra carta.");
+  }
 
   for (const candidate of save.inventory) {
     if (candidate.slot === item.slot && candidate.equippedToCharacterId === targetCharacterId) {
@@ -112,6 +126,64 @@ export async function equipItemDedicated(
     snapshot: await buildEquipmentResponse(supabase, context.userId, save),
   };
   await updateDailyMissionProgress(supabase, context.userId, await getBootstrapMonetizationConfig(supabase), "item_equipped_or_upgraded", 1);
+  await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
+  return response;
+}
+
+export async function unequipItemDedicated(
+  context: GodotAuthedRequestContext,
+  input: UnequipItemInput,
+): Promise<unknown> {
+  const supabase = createServiceSupabaseClient();
+  const operation = `unequip_item_v1:${input.itemId ?? "slot"}:${input.targetCharacterId ?? "any"}:${input.slot ?? "any"}:${input.clearAll ? "all" : "one"}`;
+  const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId, "equipment_unequip");
+  if (replay.status === "replayed") {
+    if (replay.response == null) {
+      throw new HttpModuleError(409, "operation_in_progress", "equipment_unequip", "El desequipado todavia esta procesandose. Intenta otra vez en unos segundos.");
+    }
+    return replay.response;
+  }
+
+  const save = await ensureEquipmentFoundation(supabase, context.userId);
+  const targetCharacterId = input.targetCharacterId?.trim();
+  const slot = input.slot?.trim();
+  let changed = 0;
+
+  for (const item of save.inventory) {
+    if (input.clearAll) {
+      if (targetCharacterId && item.equippedToCharacterId !== targetCharacterId) continue;
+      if (item.equippedToCharacterId) {
+        item.equippedToCharacterId = null;
+        changed += 1;
+      }
+      continue;
+    }
+
+    if (input.itemId && item.id !== input.itemId) continue;
+    if (!input.itemId && targetCharacterId && item.equippedToCharacterId !== targetCharacterId) continue;
+    if (!input.itemId && slot && item.slot !== slot) continue;
+    if (item.equippedToCharacterId) {
+      item.equippedToCharacterId = null;
+      changed += 1;
+    }
+    if (input.itemId) break;
+  }
+
+  if (!input.clearAll && changed === 0) {
+    throw new HttpModuleError(404, "equipment_not_equipped", "equipment_unequip", "Item equipado no encontrado.");
+  }
+
+  syncCharacterEquipmentMaps(save);
+  await persistEquipmentState(supabase, context.userId, save);
+  const response = {
+    ok: true,
+    action: input.clearAll ? "unequip_all" : "unequip",
+    itemId: input.itemId ?? null,
+    targetCharacterId: targetCharacterId ?? null,
+    slot: slot ?? null,
+    changed,
+    snapshot: await buildEquipmentResponse(supabase, context.userId, save),
+  };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
   return response;
 }
@@ -272,7 +344,7 @@ async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: strin
   let changed = false;
 
   if (!hasNewEquipmentItems(save.inventory)) {
-    save.inventory = STARTER_EQUIPMENT_KEYS.map((key) => buildInventoryItem(requireEquipmentDefinition(key), "basic", 1));
+    save.inventory = buildStarterEquipmentInventory();
     changed = true;
   } else {
     const normalizedInventory = save.inventory
@@ -284,6 +356,12 @@ async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: strin
     }
   }
 
+  const completedInventory = ensureStarterLoadoutCoverage(save.inventory);
+  if (completedInventory.length !== save.inventory.length) {
+    save.inventory = completedInventory;
+    changed = true;
+  }
+
   syncCharacterEquipmentMaps(save);
   if (changed) {
     await persistEquipmentState(supabase, userId, save);
@@ -293,6 +371,28 @@ async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: strin
 
 function hasNewEquipmentItems(items: EquipmentItem[]) {
   return items.some((item) => typeof item.equipmentKey === "string" && item.equipmentKey.trim().length > 0);
+}
+
+function buildStarterEquipmentInventory(): EquipmentItem[] {
+  return STARTER_EQUIPMENT_LOADOUT.map((entry) =>
+    buildInventoryItem(requireEquipmentDefinition(entry.key), entry.rarity, entry.tier),
+  );
+}
+
+function ensureStarterLoadoutCoverage(items: EquipmentItem[]): EquipmentItem[] {
+  const output = [...items];
+  const ownedKeys = new Set(
+    items
+      .map((item) => String(item.equipmentKey ?? "").trim())
+      .filter((key) => key.length > 0),
+  );
+
+  for (const entry of STARTER_EQUIPMENT_LOADOUT) {
+    if (ownedKeys.has(entry.key)) continue;
+    output.push(buildInventoryItem(requireEquipmentDefinition(entry.key), entry.rarity, entry.tier));
+  }
+
+  return output;
 }
 
 function normalizeEquipmentInventoryItem(item: EquipmentItem): EquipmentItem {
@@ -549,7 +649,7 @@ async function beginIdempotentOperation(
   userId: string,
   operation: string,
   requestId: string,
-  module: "equipment_equip" | "equipment_upgrade" | "equipment_dismantle",
+  module: "equipment_equip" | "equipment_unequip" | "equipment_upgrade" | "equipment_dismantle",
 ) {
   assertRequestId(requestId, module);
   const { error: insertError } = await supabase.from("idempotency_keys").insert({
@@ -590,7 +690,7 @@ async function completeIdempotentOperation(
 
 function assertRequestId(
   requestId: string,
-  module: "equipment_equip" | "equipment_upgrade" | "equipment_dismantle",
+  module: "equipment_equip" | "equipment_unequip" | "equipment_upgrade" | "equipment_dismantle",
 ) {
   const value = requestId.trim();
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(value)) {

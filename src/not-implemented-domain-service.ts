@@ -8,6 +8,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PurchasePackInput,
+  UnequipItemInput,
   UpgradeCardInput,
   UpgradeItemInput,
 } from "./contracts.js";
@@ -27,6 +28,7 @@ function notImplemented(
     | "cards_ascend"
     | "equipment_status"
     | "equipment_equip"
+    | "equipment_unequip"
     | "equipment_upgrade"
     | "equipment_dismantle",
   message: string,
@@ -77,6 +79,10 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async equipItem(_context: GodotAuthedRequestContext, _input: EquipItemInput): Promise<unknown> {
     return notImplemented("equipment_equip", "Equip item extraction not implemented yet.");
+  }
+
+  async unequipItem(_context: GodotAuthedRequestContext, _input: UnequipItemInput): Promise<unknown> {
+    return notImplemented("equipment_unequip", "Unequip item extraction not implemented yet.");
   }
 
   async upgradeItem(_context: GodotAuthedRequestContext, _input: UpgradeItemInput): Promise<unknown> {

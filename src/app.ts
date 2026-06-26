@@ -46,6 +46,14 @@ const equipItemInputSchema = z.object({
   targetCharacterId: z.string().min(1).max(120).optional(),
 });
 
+const unequipItemInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  itemId: z.string().min(1).max(120).optional(),
+  targetCharacterId: z.string().min(1).max(120).optional(),
+  slot: z.string().min(1).max(40).optional(),
+  clearAll: z.boolean().optional(),
+});
+
 const upgradeItemInputSchema = z.object({
   itemId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -185,6 +193,19 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "equipment_equip", "Invalid request payload.");
       }
       const response = await domainService.equipItem(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/equipment/unequip", async (context) =>
+    withModule(context, "equipment_unequip", async () => {
+      const authed = await requireAuthedGodotUser(context, "equipment_unequip");
+      const body = await context.req.json().catch(() => null);
+      const parsed = unequipItemInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "equipment_unequip", "Invalid request payload.");
+      }
+      const response = await domainService.unequipItem(authed, parsed.data);
       return context.json(response);
     }),
   );

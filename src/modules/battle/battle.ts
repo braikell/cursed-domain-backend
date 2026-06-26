@@ -420,7 +420,7 @@ async function applyHeroBattleXp(
       fromLevel,
       toLevel: level,
       finalXp: xp,
-      finalStats: getCardFinalStats(characterId, cardType, level, ascension),
+      finalStats: getCardFinalStats(characterId, cardType, level, ascension, getEquipmentBonusForCharacter(save, characterId)),
     });
   }
 
@@ -436,6 +436,18 @@ async function applyHeroBattleXp(
     grantedXpPerHero,
     leveledCards,
   };
+}
+
+function getEquipmentBonusForCharacter(save: GameSaveSnapshot, characterId: string) {
+  const equipment = save.characters[characterId]?.equipment ?? {};
+  return Object.values(equipment).reduce(
+    (bonus, item) => ({
+      ad: bonus.ad + Math.max(0, Math.floor(Number(item?.ad ?? item?.atk ?? 0) || 0)),
+      ap: bonus.ap + Math.max(0, Math.floor(Number(item?.ap ?? item?.def ?? 0) || 0)),
+      hp: bonus.hp + Math.max(0, Math.floor(Number(item?.hp ?? 0) || 0)),
+    }),
+    { ad: 0, ap: 0, hp: 0 },
+  );
 }
 
 function resolveStageFlow(

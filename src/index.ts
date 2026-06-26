@@ -13,6 +13,7 @@ import {
   dismantleItemDedicated,
   equipItemDedicated,
   getEquipmentDedicated,
+  unequipItemDedicated,
   upgradeItemDedicated,
 } from "./modules/equipment/service.js";
 import type {
@@ -25,6 +26,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PurchasePackInput,
+  UnequipItemInput,
   UpgradeCardInput,
   UpgradeItemInput,
 } from "./contracts.js";
@@ -72,6 +74,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async equipItem(_context: GodotAuthedRequestContext, _input: EquipItemInput): Promise<unknown> {
     return await equipItemDedicated(_context, _input);
+  }
+
+  override async unequipItem(_context: GodotAuthedRequestContext, _input: UnequipItemInput): Promise<unknown> {
+    return await unequipItemDedicated(_context, _input);
   }
 
   override async upgradeItem(_context: GodotAuthedRequestContext, _input: UpgradeItemInput): Promise<unknown> {

@@ -8,10 +8,11 @@ export type BackendModuleName =
   | "battle_resolve"
   | "cards_upgrade"
   | "cards_ascend"
-  | "equipment_status"
-  | "equipment_equip"
-  | "equipment_upgrade"
-  | "equipment_dismantle";
+    | "equipment_status"
+    | "equipment_equip"
+    | "equipment_unequip"
+    | "equipment_upgrade"
+    | "equipment_dismantle";
 
 export interface ErrorEnvelope {
   ok: false;
@@ -69,6 +70,14 @@ export interface EquipItemInput {
   itemId: string;
   requestId: string;
   targetCharacterId?: string;
+}
+
+export interface UnequipItemInput {
+  requestId: string;
+  itemId?: string;
+  targetCharacterId?: string;
+  slot?: string;
+  clearAll?: boolean;
 }
 
 export interface UpgradeCardInput {

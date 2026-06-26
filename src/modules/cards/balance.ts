@@ -319,6 +319,7 @@ export function calculateCardFinalStats(
   definition: Pick<CardBalanceDefinition, "stats" | "scaling" | "cardType" | "rarity">,
   level: number,
   ascension: number,
+  equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> = {},
 ): CardFinalStats {
   const cardType = normalizeCardType(definition.cardType);
   const rarity = normalizeCardRarity(definition.rarity);
@@ -330,9 +331,9 @@ export function calculateCardFinalStats(
   const baseHp = Math.max(0, Math.floor(Number(definition.stats?.hp ?? 0) || 0));
   const baseVel = Number(definition.stats?.vel ?? 0) || 0;
   const levelIndex = normalizedLevel - 1;
-  const ad = Math.floor(baseAd * (1 + growth.atkGrowth * levelIndex) * ascMult);
-  const ap = Math.floor(baseAp * (1 + growth.atkGrowth * levelIndex) * ascMult);
-  const hp = Math.floor(baseHp * (1 + growth.hpGrowth * levelIndex) * ascMult);
+  const ad = Math.floor(baseAd * (1 + growth.atkGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.ad ?? 0) || 0));
+  const ap = Math.floor(baseAp * (1 + growth.atkGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.ap ?? 0) || 0));
+  const hp = Math.floor(baseHp * (1 + growth.hpGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.hp ?? 0) || 0));
   const vel = baseVel;
   const pm = Math.round(ad + ap + hp * 0.10 + vel * 80);
   return {
@@ -351,12 +352,13 @@ export function getCardFinalStats(
   cardType: string,
   level: number,
   ascension: number,
+  equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> = {},
 ): CardFinalStats {
   const definition = getCardBalance(characterKey, cardType);
   if (definition == null) {
     return { ad: 0, ap: 0, hp: 0, vel: 0, pm: 0, atk: 1, speed: 0 };
   }
-  return calculateCardFinalStats(definition, level, ascension);
+  return calculateCardFinalStats(definition, level, ascension, equipmentBonus);
 }
 
 export function canCardLevelUp(cardType: string, rarity: string, level: number, ascension: number) {

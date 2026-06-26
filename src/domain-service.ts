@@ -8,6 +8,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PurchasePackInput,
+  UnequipItemInput,
   UpgradeCardInput,
   UpgradeItemInput,
 } from "./contracts.js";
@@ -24,6 +25,7 @@ export interface GodotDomainService {
   ascendCard(context: GodotAuthedRequestContext, input: AscendCardInput): Promise<unknown>;
   getEquipment(context: GodotAuthedRequestContext): Promise<unknown>;
   equipItem(context: GodotAuthedRequestContext, input: EquipItemInput): Promise<unknown>;
+  unequipItem(context: GodotAuthedRequestContext, input: UnequipItemInput): Promise<unknown>;
   upgradeItem(context: GodotAuthedRequestContext, input: UpgradeItemInput): Promise<unknown>;
   dismantleItem(context: GodotAuthedRequestContext, input: DismantleItemInput): Promise<unknown>;
 }
