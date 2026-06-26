@@ -183,6 +183,7 @@ async function ensurePlayerSave(
     await tryEnsureBootstrapMonetizationFoundation(service, userId);
     const canonicalSave = await hydrateCanonicalRuntimeState(service, userId, hydratedCardsSave);
     const save = await hydrateSaveFormationFromServer(service, userId, canonicalSave);
+    await tryEnsureServerGameFoundation(service, userId, save);
     await persistCanonicalPlayerSave(service, userId, save);
     return {
       save,
@@ -215,6 +216,8 @@ async function ensurePlayerSave(
     await tryEnsureBootstrapMonetizationFoundation(service, userId);
     const canonicalRetrySave = await hydrateCanonicalRuntimeState(service, userId, hydratedRetrySave);
     const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalRetrySave);
+    await tryEnsureServerGameFoundation(service, userId, hydratedFormationSave);
+    await persistCanonicalPlayerSave(service, userId, hydratedFormationSave);
     return {
       save: hydratedFormationSave,
       updatedAt: retry.updated_at,
@@ -410,6 +413,12 @@ async function tryEnsureServerGameFoundation(service: SupabaseClient, userId: st
 async function ensureServerGameFoundation(service: SupabaseClient, userId: string, save: GameSaveSnapshot) {
   const now = new Date().toISOString();
 
+  console.log("[bootstrap] ensureServerGameFoundation:start", {
+    userId,
+    characterCount: Object.keys(save.characters ?? {}).length,
+    definitiveCount: Object.keys(save.definitiveCards ?? {}).length,
+  });
+
   await upsertOrThrow(service, "player_progress", {
     user_id: userId,
     player_level: save.playerLevel,
@@ -454,8 +463,18 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     };
   });
 
+  console.log("[bootstrap] ensureServerGameFoundation:user_cards_payload", {
+    userId,
+    rows: baseCardRows.length,
+    cardDefinitionIds: baseCardRows.map((row) => row.card_definition_id),
+  });
+
   if (baseCardRows.length > 0) {
     await upsertOrThrow(service, "user_cards", baseCardRows, "user_id,card_definition_id");
+    console.log("[bootstrap] ensureServerGameFoundation:user_cards_upsert_ok", {
+      userId,
+      rows: baseCardRows.length,
+    });
   }
 
   await syncSaveFormationToServer(service, userId, save);
