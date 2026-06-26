@@ -324,17 +324,25 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     isEquipped: Boolean(item.equippedToCharacterId),
   })).sort(compareEquipmentRows);
 
-  const materials = (["weapon", "helmet", "armor", "boots", "accessory"] as EquipmentSlot[]).map((slot) => ({
+  const equipmentMaterials = (["weapon", "helmet", "armor", "boots", "accessory"] as EquipmentSlot[]).map((slot) => ({
     materialId: buildEquipmentMaterialId(slot),
     slot,
     quantity: Math.max(0, save.fragments[buildEquipmentMaterialId(slot)] ?? 0),
   }));
+  const materialIds = new Set(equipmentMaterials.map((entry) => entry.materialId));
+  const extraMaterials = Object.entries(save.fragments)
+    .filter(([materialId, quantity]) => !materialIds.has(materialId) && Math.max(0, Math.floor(Number(quantity) || 0)) > 0)
+    .map(([materialId, quantity]) => ({
+      materialId,
+      slot: materialId.startsWith("fragment:") ? "card_fragment" : "material",
+      quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
+    }));
 
   return {
     ok: true,
     gold: save.gold,
     items,
-    materials,
+    materials: [...equipmentMaterials, ...extraMaterials],
     heroes,
   };
 }

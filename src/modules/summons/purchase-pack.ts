@@ -764,14 +764,24 @@ function buildPackCollectionPersistenceRows(
       });
     }
 
-    if (result.variant === "base" && result.duplicateFragmentMaterialId) {
+    if (result.duplicateFragmentMaterialId) {
       materialRows.set(result.duplicateFragmentMaterialId, {
         user_id: userId,
         material_id: result.duplicateFragmentMaterialId,
-        quantity: Number(save.fragments[result.characterId] ?? 0),
+        quantity: Number(save.fragments[result.duplicateFragmentMaterialId] ?? 0),
         updated_at: nowIso,
       });
     }
+  }
+
+  for (const [materialId, quantity] of Object.entries(save.fragments)) {
+    const normalizedQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
+    materialRows.set(materialId, {
+      user_id: userId,
+      material_id: materialId,
+      quantity: normalizedQuantity,
+      updated_at: nowIso,
+    });
   }
 
   return {
@@ -819,7 +829,8 @@ function applyDuplicateCardRewardToSave(save: GameSaveSnapshot, definition: Card
   if (definition.variant === "base") {
     const character = save.characters[definition.characterId];
     if (!character) return;
-    save.fragments[definition.characterId] = (save.fragments[definition.characterId] ?? 0) + fragmentAmount;
+    const fragmentMaterialId = buildDuplicateFragmentMaterialId(definition);
+    save.fragments[fragmentMaterialId] = (save.fragments[fragmentMaterialId] ?? 0) + fragmentAmount;
     save.characters[definition.characterId] = {
       ...character,
       fragments: character.fragments + fragmentAmount,
@@ -829,6 +840,8 @@ function applyDuplicateCardRewardToSave(save: GameSaveSnapshot, definition: Card
 
   const existingDefinitive = save.definitiveCards[definition.characterId];
   if (!existingDefinitive) return;
+  const fragmentMaterialId = buildDuplicateFragmentMaterialId(definition);
+  save.fragments[fragmentMaterialId] = (save.fragments[fragmentMaterialId] ?? 0) + fragmentAmount;
   save.definitiveCards[definition.characterId] = {
     ...existingDefinitive,
     fragments: existingDefinitive.fragments + fragmentAmount,
@@ -850,7 +863,7 @@ function buildDuplicateFragmentMaterialId(definition: CardDefinition) {
   if (definition.variant === "base") {
     return `fragment:${definition.characterId}`;
   }
-  return `fragment:definitive:${definition.id}`;
+  return `fragment:definitive:${definition.characterId}`;
 }
 
 async function validatePackPurchaseLimit(

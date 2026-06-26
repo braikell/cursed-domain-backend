@@ -99,14 +99,11 @@ export async function upgradeCardDedicated(
   }
 
   const cost = getCardImproveCostForLevel(identity.cardType, identity.rarity, currentLevel);
-  const materialId = buildUpgradeMaterialId(identity.cardType, identity.rarity);
-  ensureEnoughResources(save, materialId, cost.gold, cost.fragments, "cards_upgrade");
+  const materialIds = buildUpgradeMaterialIds(identity);
+  ensureEnoughResources(save, materialIds, cost.gold, cost.fragments, "cards_upgrade");
 
   save.gold -= cost.gold;
-  save.fragments[materialId] = Math.max(0, (save.fragments[materialId] ?? 0) - cost.fragments);
-  if (save.fragments[materialId] <= 0) {
-    delete save.fragments[materialId];
-  }
+  consumeFragments(save, materialIds, cost.fragments);
 
   const nextLevel = Math.min(currentLevel + 1, currentLevelCap);
   const nextStars = getCardStarsForLevel(identity.cardType, identity.rarity, nextLevel);
@@ -187,14 +184,11 @@ export async function ascendCardDedicated(
 
   const targetAscension = currentAscension + 1;
   const cost = getCardAscensionCost(targetAscension);
-  const materialId = buildUpgradeMaterialId(identity.cardType, identity.rarity);
-  ensureEnoughResources(save, materialId, cost.gold, cost.fragments, "cards_ascend");
+  const materialIds = buildUpgradeMaterialIds(identity);
+  ensureEnoughResources(save, materialIds, cost.gold, cost.fragments, "cards_ascend");
 
   save.gold -= cost.gold;
-  save.fragments[materialId] = Math.max(0, (save.fragments[materialId] ?? 0) - cost.fragments);
-  if (save.fragments[materialId] <= 0) {
-    delete save.fragments[materialId];
-  }
+  consumeFragments(save, materialIds, cost.fragments);
 
   const currentStars = getCardStarsForLevel(identity.cardType, identity.rarity, currentLevel);
   mutateSaveCardState(save, identity, {
@@ -305,13 +299,25 @@ function normalizeCardRarity(raw: string): CardBalanceRarity {
   }
 }
 
-function buildUpgradeMaterialId(cardType: CardCatalogType, rarity: CardBalanceRarity) {
-  return cardType === "DEFINITIVA" ? `fragment:definitive_${rarity}` : `fragment:base_${rarity}`;
+function buildUpgradeMaterialIds(identity: CardIdentity) {
+  if (identity.cardType === "DEFINITIVA") {
+    return [
+      `fragment:definitive:${identity.characterKey}`,
+      `fragment:definitive:${identity.characterId}`,
+      `fragment:definitive_${identity.rarity}`,
+    ];
+  }
+  return [
+    `fragment:${identity.characterKey}`,
+    `fragment:${identity.characterId}`,
+    `fragment:base:${identity.characterKey}`,
+    `fragment:base_${identity.rarity}`,
+  ];
 }
 
 function ensureEnoughResources(
   save: GameSaveSnapshot,
-  materialId: string,
+  materialIds: string[],
   goldCost: number,
   fragmentCost: number,
   moduleName: "cards_upgrade" | "cards_ascend",
@@ -319,9 +325,26 @@ function ensureEnoughResources(
   if (save.gold < goldCost) {
     throw new HttpModuleError(409, "not_enough_gold", moduleName, "No tienes suficiente oro.");
   }
-  const available = Math.max(0, Math.floor(save.fragments[materialId] ?? 0));
+  const available = materialIds.reduce((sum, materialId) => sum + Math.max(0, Math.floor(save.fragments[materialId] ?? 0)), 0);
   if (available < fragmentCost) {
     throw new HttpModuleError(409, "not_enough_fragments", moduleName, "No tienes suficientes fragmentos.");
+  }
+}
+
+function consumeFragments(save: GameSaveSnapshot, materialIds: string[], fragmentCost: number) {
+  let remaining = Math.max(0, Math.floor(fragmentCost));
+  for (const materialId of materialIds) {
+    if (remaining <= 0) break;
+    const available = Math.max(0, Math.floor(save.fragments[materialId] ?? 0));
+    if (available <= 0) continue;
+    const consumed = Math.min(available, remaining);
+    const nextQuantity = available - consumed;
+    if (nextQuantity <= 0) {
+      delete save.fragments[materialId];
+    } else {
+      save.fragments[materialId] = nextQuantity;
+    }
+    remaining -= consumed;
   }
 }
 
