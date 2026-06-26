@@ -133,7 +133,7 @@ export async function getBootstrapMonetizationConfig(supabase: SupabaseClient): 
         gold: configVersion.payload.initialCurrencies?.gold ?? SEED_CONFIG.initialCurrencies.gold,
         gems: configVersion.payload.initialCurrencies?.gems ?? SEED_CONFIG.initialCurrencies.gems,
       },
-      dailyMissions: missionRows.map((row) => ({
+      dailyMissions: missionRows.map((row: MissionDefinitionRow) => ({
         missionId: row.mission_id,
         eventKey: row.event_key,
         rewardGold: row.reward_gold,
@@ -143,7 +143,7 @@ export async function getBootstrapMonetizationConfig(supabase: SupabaseClient): 
         sortOrder: row.sort_order,
         isEnabled: row.is_enabled,
       })),
-      dailyChests: chestRows.map((row) => ({
+      dailyChests: chestRows.map((row: ChestDefinitionRow) => ({
         chestId: row.chest_id,
         requiredPoints: row.required_points,
         rewardGold: row.reward_gold,

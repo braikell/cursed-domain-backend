@@ -10,7 +10,12 @@ export async function requireAuthedGodotUser(
 ): Promise<GodotAuthedRequestContext> {
   const accessToken = await readGodotAccessToken(context.req.raw, module);
   const supabase = createAuthSupabaseClient();
-  const authResult = await supabase.auth.getUser(accessToken);
+  const authResult = await (supabase.auth as {
+    getUser: (jwt: string) => Promise<{
+      data: { user: { id: string } | null };
+      error: { message?: string } | null;
+    }>;
+  }).getUser(accessToken);
   const user = authResult.data.user;
 
   if (authResult.error != null || user == null) {

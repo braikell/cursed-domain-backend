@@ -6,6 +6,8 @@ export type BackendModuleName =
   | "missions_status"
   | "mission_claim"
   | "battle_resolve"
+  | "cards_upgrade"
+  | "cards_ascend"
   | "equipment_status"
   | "equipment_equip"
   | "equipment_upgrade"
@@ -67,6 +69,16 @@ export interface EquipItemInput {
   itemId: string;
   requestId: string;
   targetCharacterId?: string;
+}
+
+export interface UpgradeCardInput {
+  userCardId: string;
+  requestId: string;
+}
+
+export interface AscendCardInput {
+  userCardId: string;
+  requestId: string;
 }
 
 export interface UpgradeItemInput {

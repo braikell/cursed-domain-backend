@@ -125,7 +125,18 @@ export async function bootstrapPlayer(accessToken: string, userId: string): Prom
 
 async function ensureProfile(accessToken: string, userId: string, service: SupabaseClient) {
   const authClient = createAuthSupabaseClient();
-  const authResult = await authClient.auth.getUser(accessToken);
+  const authResult = await (authClient.auth as {
+    getUser: (jwt: string) => Promise<{
+      data: {
+        user: {
+          id: string;
+          email?: string | null;
+          user_metadata?: Record<string, unknown> | null;
+        } | null;
+      };
+      error: { message?: string } | null;
+    }>;
+  }).getUser(accessToken);
   const user = authResult.data.user;
   if (authResult.error != null || user == null || user.id !== userId) {
     throw new Error("Unauthorized");
@@ -473,9 +484,9 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     await upsertOrThrow(service, "user_inventory", inventoryRows, "user_id,id");
   }
 
-  const materialRows = Object.entries(save.fragments).map(([characterId, quantity]) => ({
+  const materialRows = Object.entries(save.fragments).map(([materialKey, quantity]) => ({
     user_id: userId,
-    material_id: `fragment:${characterId}`,
+    material_id: materialKey.includes(":") ? materialKey : `fragment:${materialKey}`,
     quantity,
     updated_at: now,
   }));
@@ -588,7 +599,7 @@ async function hydrateSaveFormationFromServer(
       };
     }
 
-    const userCardIds = [...new Set(slotRows.map((slot) => slot.user_card_id).filter(Boolean))];
+    const userCardIds = [...new Set(slotRows.map((slot: FormationSlotRow) => slot.user_card_id).filter(Boolean))] as string[];
     const { data: userCards, error: userCardsError } = await service
       .from("user_cards")
       .select("id, character_key, character_id")
@@ -596,7 +607,11 @@ async function hydrateSaveFormationFromServer(
       .returns<Array<Pick<UserCardRow, "id" | "character_key" | "character_id">>>();
     if (userCardsError) throw new Error(userCardsError.message);
 
-    const userCardsById = new Map((userCards ?? []).map((row) => [row.id, row.character_key?.trim() || row.character_id]));
+    const userCardsById = new Map<string, string>(
+      (userCards ?? []).map((row: Pick<UserCardRow, "id" | "character_key" | "character_id">) =>
+        [row.id, row.character_key?.trim() || row.character_id] as const,
+      ),
+    );
     const team = Array.from({ length: MAX_TEAM_SIZE }, () => null) as (string | null)[];
     const formationAssignments: Array<{ characterId: string; slot: number }> = [];
     const usedCharacters = new Set<string>();

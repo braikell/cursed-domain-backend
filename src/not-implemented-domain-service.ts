@@ -1,4 +1,5 @@
 import type {
+  AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
   ClaimMissionInput,
@@ -7,6 +8,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PurchasePackInput,
+  UpgradeCardInput,
   UpgradeItemInput,
 } from "./contracts.js";
 import type { GodotDomainService } from "./domain-service.js";
@@ -21,6 +23,8 @@ function notImplemented(
     | "missions_status"
     | "mission_claim"
     | "battle_resolve"
+    | "cards_upgrade"
+    | "cards_ascend"
     | "equipment_status"
     | "equipment_equip"
     | "equipment_upgrade"
@@ -57,6 +61,14 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async completeBattle(_context: GodotAuthedRequestContext, _input: CompleteBattleInput): Promise<unknown> {
     return notImplemented("battle_resolve", "Battle resolve extraction not implemented yet.");
+  }
+
+  async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {
+    return notImplemented("cards_upgrade", "Card upgrade extraction not implemented yet.");
+  }
+
+  async ascendCard(_context: GodotAuthedRequestContext, _input: AscendCardInput): Promise<unknown> {
+    return notImplemented("cards_ascend", "Card ascension extraction not implemented yet.");
   }
 
   async getEquipment(_context: GodotAuthedRequestContext): Promise<unknown> {

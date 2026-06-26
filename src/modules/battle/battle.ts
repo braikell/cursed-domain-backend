@@ -18,6 +18,17 @@ import {
   updateDailyMissionProgress,
 } from "../bootstrap/monetization-foundation.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
+import {
+  canCardGainXp,
+  getCardLevelCapForAscension,
+  getCardMaxLevel,
+  getCardStarsForLevel,
+  getCardXpForNextLevel,
+  normalizeCardRarity,
+  type CardBalanceRarity,
+  type CardCatalogType,
+} from "../cards/balance.js";
+import type { OwnedCharacter } from "../bootstrap/game-save.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -70,6 +81,22 @@ interface StageDefinitionRow {
   clear_gold?: number | null;
   clear_gems?: number | null;
   clear_xp?: number | null;
+}
+
+interface UserCardProgressRow {
+  id: string;
+  character_id: string;
+  card_type: string | null;
+  variant: string | null;
+  rarity: string | null;
+  level: number;
+  xp: number;
+  stars: number;
+  ascension: number;
+  awakening: number;
+  fragments: number;
+  energy: number | null;
+  max_energy: number | null;
 }
 
 interface BattleReward {
@@ -127,6 +154,7 @@ export async function completeBattleDedicated(
     progress.highest_stage ?? save.highestStage,
   );
   const reward = buildBattleReward(currentStage, stageFlow.isReplay);
+  const heroProgress = await applyHeroBattleXp(supabase, context.userId, save, currentStage.stage_key, stageFlow.isReplay);
   const nextXp = progress.xp + reward.xp;
   const leveled = resolveLevelProgress(nextXp, progress.player_level);
   const nextGold = economy.gold + reward.gold;
@@ -137,6 +165,7 @@ export async function completeBattleDedicated(
     stageId: input.stageId,
     isReplay: stageFlow.isReplay,
     reward,
+    heroProgress,
     currentStageAfter: stageFlow.currentStage,
     highestStageAfter: stageFlow.highestStage,
     goldAfter: nextGold,
@@ -217,6 +246,7 @@ export async function completeBattleDedicated(
     stageId: input.stageId,
     result: input.result,
     reward,
+    heroProgress,
     rewards_applied: {
       gold: reward.gold,
       gems: reward.gems,
@@ -274,15 +304,130 @@ function resolveStageDefinition(stageDefinitions: StageDefinitionRow[], stageId:
 
 function buildBattleReward(stage: StageDefinitionRow, isReplay: boolean): BattleReward {
   if (isReplay) {
-    return { gold: 50, gems: 0, xp: 0 };
+    const clearGold = positiveIntFromKeys(stage, ["gold_reward", "reward_gold", "clear_gold"], 2500);
+    return { gold: Math.max(2500, Math.floor(clearGold * 0.35)), gems: 0, xp: 0 };
   }
   const sortOrder = Number.isFinite(stage.sort_order) ? Number(stage.sort_order) : 0;
-  const fallbackGold = 120 + sortOrder * 35;
+  const fallbackGold = 22000 + sortOrder * 6000;
   const fallbackXp = 25 + sortOrder * 10;
   return {
     gold: positiveIntFromKeys(stage, ["gold_reward", "reward_gold", "clear_gold"], fallbackGold),
     gems: positiveIntFromKeys(stage, ["gems_reward", "reward_gems", "clear_gems"], 0),
     xp: positiveIntFromKeys(stage, ["xp_reward", "reward_xp", "battle_xp", "clear_xp"], fallbackXp),
+  };
+}
+
+async function applyHeroBattleXp(
+  supabase: SupabaseClient,
+  userId: string,
+  save: GameSaveSnapshot,
+  stageKey: string,
+  isReplay: boolean,
+) {
+  const teamCharacterIds = (save.team ?? []).filter((characterId): characterId is string => typeof characterId === "string" && characterId.trim().length > 0);
+  if (teamCharacterIds.length === 0) {
+    return {
+      grantedXpPerHero: 0,
+      leveledCards: [] as Array<{ characterId: string; fromLevel: number; toLevel: number; finalXp: number }>,
+    };
+  }
+
+  const chapterNumber = extractChapterNumber(stageKey);
+  const baseHeroXp = isReplay ? 45 : 120;
+  const grantedXpPerHero = Math.max(1, Math.floor(baseHeroXp * Math.pow(1.2, Math.max(0, chapterNumber - 1))));
+
+  const { data, error } = await supabase
+    .from("user_cards")
+    .select("id,character_id,card_type,variant,rarity,level,xp,stars,ascension,awakening,fragments,energy,max_energy")
+    .eq("user_id", userId)
+    .in("character_id", teamCharacterIds)
+    .returns<UserCardProgressRow[]>();
+  if (error) throw new Error(error.message);
+
+  const baseRowsByCharacter = new Map<string, UserCardProgressRow>();
+  for (const row of data ?? []) {
+    const cardType = resolveCatalogCardType(row.card_type, row.variant);
+    if (cardType !== "BASE") continue;
+    if (!baseRowsByCharacter.has(row.character_id)) {
+      baseRowsByCharacter.set(row.character_id, row);
+    }
+  }
+
+  const leveledCards: Array<{ characterId: string; fromLevel: number; toLevel: number; finalXp: number }> = [];
+  const updates: Array<Promise<unknown>> = [];
+
+  for (const characterId of teamCharacterIds) {
+    const row = baseRowsByCharacter.get(characterId);
+    if (!row) continue;
+
+    const rarity = normalizeCardRarity(row.rarity ?? "basic");
+    const cardType: CardCatalogType = "BASE";
+    let level = Math.max(1, Math.floor(row.level || 1));
+    let xp = Math.max(0, Math.floor(row.xp || 0));
+    const ascension = Math.max(0, Math.floor(row.ascension || 0));
+    const fromLevel = level;
+
+    if (canCardGainXp(cardType, rarity, level, ascension)) {
+      xp += grantedXpPerHero;
+      while (canCardGainXp(cardType, rarity, level, ascension)) {
+        const xpRequired = getCardXpForNextLevel(level);
+        if (xp < xpRequired) break;
+        xp -= xpRequired;
+        level += 1;
+        const ascensionCap = getCardLevelCapForAscension(cardType, rarity, ascension);
+        const maxLevel = getCardMaxLevel(cardType, rarity);
+        if (level >= ascensionCap || level >= maxLevel) {
+          level = Math.min(level, Math.min(ascensionCap, maxLevel));
+          if (!canCardGainXp(cardType, rarity, level, ascension)) {
+            xp = 0;
+          }
+          break;
+        }
+      }
+    }
+
+    const stars = getCardStarsForLevel(cardType, rarity, level);
+    const currentCharacter: OwnedCharacter | undefined = save.characters[characterId];
+    save.characters[characterId] = {
+      id: characterId,
+      level,
+      xp,
+      stars,
+      ascension,
+      awakening: Math.max(0, Math.floor(row.awakening || currentCharacter?.awakening || 0)),
+      fragments: Math.max(0, Math.floor(row.fragments || currentCharacter?.fragments || 0)),
+      equipment: currentCharacter?.equipment ?? {},
+      energy: Math.max(0, Math.floor(row.energy ?? currentCharacter?.energy ?? 0)),
+      maxEnergy: Math.max(1, Math.floor(row.max_energy ?? currentCharacter?.maxEnergy ?? 100)),
+    };
+
+    updates.push(
+      supabase
+        .from("user_cards")
+        .update({
+          level,
+          xp,
+          stars,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("id", row.id),
+    );
+
+    leveledCards.push({ characterId, fromLevel, toLevel: level, finalXp: xp });
+  }
+
+  if (updates.length > 0) {
+    const results = await Promise.all(updates);
+    for (const result of results) {
+      const typed = result as { error?: { message?: string } | null };
+      if (typed?.error) throw new Error(typed.error.message ?? "No se pudo persistir XP de carta.");
+    }
+  }
+
+  return {
+    grantedXpPerHero,
+    leveledCards,
   };
 }
 
@@ -331,6 +476,18 @@ function resolveLevelProgress(totalXp: number, startingLevel: number) {
 
 function xpRequiredForLevel(level: number) {
   return Math.max(0, (level - 1) * 100);
+}
+
+function extractChapterNumber(stageKey: string) {
+  const match = /world_(\d+)_stage_(\d+)/i.exec(String(stageKey).trim());
+  if (!match) return 1;
+  return Math.max(1, Number(match[1]) || 1);
+}
+
+function resolveCatalogCardType(cardType: string | null, variant: string | null): CardCatalogType {
+  const normalizedType = String(cardType ?? "").trim().toUpperCase();
+  const normalizedVariant = String(variant ?? "").trim().toLowerCase();
+  return normalizedType === "DEFINITIVA" || normalizedVariant === "definitive" ? "DEFINITIVA" : "BASE";
 }
 
 function positiveIntFromKeys(source: object, keys: string[], fallback: number) {

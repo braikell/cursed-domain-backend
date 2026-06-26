@@ -154,7 +154,9 @@ async function buildMissionSnapshotResponse(
   resetDate: string,
 ) {
   const rows = await loadMissionStateRows(supabase, userId, resetDate);
-  const rowsById = new Map(rows.map((row) => [row.mission_id, row]));
+  const rowsById = new Map<string, MissionStateRow>(
+    rows.map((row: MissionStateRow) => [row.mission_id, row] as const),
+  );
 
   const missions = config.dailyMissions
     .filter((mission) => mission.isEnabled)

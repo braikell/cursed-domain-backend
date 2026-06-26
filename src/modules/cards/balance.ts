@@ -3,6 +3,118 @@ import { readFileSync } from "node:fs";
 export type CardCatalogType = "BASE" | "DEFINITIVA";
 export type CardBalanceRarity = "basic" | "epic" | "legendary" | "mythic";
 
+export const CARD_MAX_LEVEL_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, number>> = {
+  BASE: {
+    basic: 92,
+    epic: 94,
+    legendary: 96,
+    mythic: 100,
+  },
+  DEFINITIVA: {
+    basic: 100,
+    epic: 102,
+    legendary: 105,
+    mythic: 110,
+  },
+};
+export const CARD_MAX_ASCENSION_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, number>> = {
+  BASE: {
+    basic: 3,
+    epic: 3,
+    legendary: 4,
+    mythic: 4,
+  },
+  DEFINITIVA: {
+    basic: 4,
+    epic: 4,
+    legendary: 5,
+    mythic: 5,
+  },
+};
+export const CARD_ASCENSION_LEVEL_CAPS: Record<number, number> = {
+  0: 20,
+  1: 40,
+  2: 60,
+  3: 80,
+  4: 95,
+};
+export const CARD_ASCENSION_STAT_BONUS: Record<number, number> = {
+  0: 0,
+  1: 0.03,
+  2: 0.03,
+  3: 0.03,
+  4: 0.03,
+  5: 0.02,
+};
+export const CARD_XP_CURVE = {
+  baseCost: 750,
+  linearGrowth: 325,
+  quadraticGrowth: 140,
+};
+export const CARD_IMPROVE_GOLD_DISTRIBUTION_BY_TIER: Record<string, number> = {
+  "1_20": 0.1,
+  "21_40": 0.15,
+  "41_60": 0.2,
+  "61_80": 0.25,
+  "81_plus": 0.3,
+};
+export const CARD_IMPROVE_FRAGMENT_DISTRIBUTION_BY_TIER: Record<string, number> = {
+  "1_20": 0,
+  "21_40": 0.1,
+  "41_60": 0.2,
+  "61_80": 0.3,
+  "81_plus": 0.4,
+};
+export const CARD_IMPROVE_TOTAL_GOLD_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, number>> = {
+  BASE: {
+    basic: 1_000_000,
+    epic: 1_500_000,
+    legendary: 5_000_000,
+    mythic: 9_000_000,
+  },
+  DEFINITIVA: {
+    basic: 14_000_000,
+    epic: 14_000_000,
+    legendary: 14_000_000,
+    mythic: 14_000_000,
+  },
+};
+export const CARD_IMPROVE_TOTAL_FRAGMENTS_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, number>> = {
+  BASE: {
+    basic: 120,
+    epic: 220,
+    legendary: 480,
+    mythic: 900,
+  },
+  DEFINITIVA: {
+    basic: 1100,
+    epic: 1250,
+    legendary: 1450,
+    mythic: 1600,
+  },
+};
+export const CARD_UNLOCK_ELEMENTS_BY_TYPE_AND_RARITY: Record<CardCatalogType, Record<CardBalanceRarity, number>> = {
+  BASE: {
+    basic: 5,
+    epic: 4,
+    legendary: 3,
+    mythic: 2,
+  },
+  DEFINITIVA: {
+    basic: 1,
+    epic: 1,
+    legendary: 1,
+    mythic: 1,
+  },
+};
+export const CARD_ASCENSION_COSTS: Record<number, { gold: number; fragments: number }> = {
+  1: { gold: 120_000, fragments: 40 },
+  2: { gold: 280_000, fragments: 80 },
+  3: { gold: 520_000, fragments: 140 },
+  4: { gold: 900_000, fragments: 220 },
+  5: { gold: 1_400_000, fragments: 320 },
+};
+
 export interface CardCombatStats {
   ad: number;
   ap: number;
@@ -39,6 +151,12 @@ export interface CardBalanceDefinition {
   move_speed?: number;
   attack_interval?: number;
   max_energy?: number;
+  max_level?: number;
+  max_ascension?: number;
+  current_level_cap?: number;
+  current_ascension_stat_bonus?: number;
+  xp_to_next_level?: number;
+  can_gain_xp?: boolean;
   crit_chance?: number;
   crit_damage?: number;
   basicSkill?: CardDefinitionSkillPayload;
@@ -132,17 +250,164 @@ export function hasCardBalance(characterKey: string, cardType: string) {
 
 export function getBalancedCardsByRarityAndType(rarity: string, cardType: string) {
   const normalizedType = normalizeCardType(cardType);
-  const normalizedRarity = normalizeRarity(rarity);
+  const normalizedRarity = normalizeCardRarity(rarity);
   return CARD_BALANCE_DEFINITIONS.filter(
     (definition) => definition.cardType === normalizedType && definition.rarity === normalizedRarity,
   );
+}
+
+export function getCardMaxLevel(cardType: string, rarity: string) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  return CARD_MAX_LEVEL_BY_TYPE_AND_RARITY[normalizedType][normalizedRarity];
+}
+
+export function getCardMaxAscension(cardType: string, rarity: string) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  return CARD_MAX_ASCENSION_BY_TYPE_AND_RARITY[normalizedType][normalizedRarity];
+}
+
+export function getCardLevelCapForAscension(cardType: string, rarity: string, ascension: number) {
+  const maxLevel = getCardMaxLevel(cardType, rarity);
+  const maxAscension = getCardMaxAscension(cardType, rarity);
+  const normalizedAscension = Math.max(0, Math.min(Math.floor(Number(ascension) || 0), maxAscension));
+  if (normalizedAscension >= 5 || normalizedAscension >= maxAscension) {
+    return maxLevel;
+  }
+  return CARD_ASCENSION_LEVEL_CAPS[normalizedAscension] ?? maxLevel;
+}
+
+export function getCardAscensionStatBonus(ascension: number) {
+  const normalizedAscension = Math.max(0, Math.floor(Number(ascension) || 0));
+  let total = 0;
+  for (let index = 1; index <= normalizedAscension; index += 1) {
+    total += CARD_ASCENSION_STAT_BONUS[index] ?? 0;
+  }
+  return total;
+}
+
+export function canCardLevelUp(cardType: string, rarity: string, level: number, ascension: number) {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
+  return normalizedLevel < getCardLevelCapForAscension(cardType, rarity, ascension);
+}
+
+export function cardRequiresAscensionToLevel(cardType: string, rarity: string, level: number, ascension: number) {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const maxAscension = getCardMaxAscension(cardType, rarity);
+  const normalizedAscension = Math.max(0, Math.min(Math.floor(Number(ascension) || 0), maxAscension));
+  return normalizedAscension < maxAscension && normalizedLevel >= getCardLevelCapForAscension(cardType, rarity, normalizedAscension);
+}
+
+export function getCardXpForNextLevel(level: number) {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const levelIndex = normalizedLevel - 1;
+  return Math.floor(
+    CARD_XP_CURVE.baseCost +
+      levelIndex * CARD_XP_CURVE.linearGrowth +
+      levelIndex * levelIndex * CARD_XP_CURVE.quadraticGrowth,
+  );
+}
+
+export function canCardGainXp(cardType: string, rarity: string, level: number, ascension: number) {
+  return canCardLevelUp(cardType, rarity, level, ascension);
+}
+
+export function getCardMaxStars(cardType: string, rarity: string) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  return normalizedType === "DEFINITIVA" || normalizedRarity === "mythic" ? 6 : 5;
+}
+
+export function getCardStarsForLevel(cardType: string, rarity: string, level: number) {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const derivedStars = 1 + Math.floor(normalizedLevel / 20);
+  return Math.max(1, Math.min(derivedStars, getCardMaxStars(cardType, rarity)));
+}
+
+export function getCardImproveTotalGold(cardType: string, rarity: string) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  return CARD_IMPROVE_TOTAL_GOLD_BY_TYPE_AND_RARITY[normalizedType][normalizedRarity];
+}
+
+export function getCardImproveTotalFragments(cardType: string, rarity: string) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  return CARD_IMPROVE_TOTAL_FRAGMENTS_BY_TYPE_AND_RARITY[normalizedType][normalizedRarity];
+}
+
+export function getCardImproveCostForLevel(cardType: string, rarity: string, currentLevel: number) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  const normalizedLevel = Math.max(1, Math.floor(Number(currentLevel) || 1));
+  const maxLevel = getCardMaxLevel(normalizedType, normalizedRarity);
+  if (normalizedLevel >= maxLevel) {
+    return { gold: 0, fragments: 0 };
+  }
+
+  const tier = resolveImproveTier(normalizedLevel);
+  const [startLevel, endLevelExclusive] = getImproveTierBounds(tier, maxLevel);
+  const totalGold = Math.floor(
+    getCardImproveTotalGold(normalizedType, normalizedRarity) * CARD_IMPROVE_GOLD_DISTRIBUTION_BY_TIER[tier],
+  );
+  const totalFragments = Math.floor(
+    getCardImproveTotalFragments(normalizedType, normalizedRarity) * CARD_IMPROVE_FRAGMENT_DISTRIBUTION_BY_TIER[tier],
+  );
+  const stepCount = Math.max(1, endLevelExclusive - startLevel);
+  const stepIndex = Math.max(0, Math.min(normalizedLevel - startLevel, stepCount - 1));
+
+  return {
+    gold: distributeTierCost(totalGold, stepCount, stepIndex),
+    fragments: distributeTierCost(totalFragments, stepCount, stepIndex),
+  };
+}
+
+export function getCardUnlockElementsRequired(cardType: string, rarity: string) {
+  const normalizedType = normalizeCardType(cardType);
+  const normalizedRarity = normalizeCardRarity(rarity);
+  return CARD_UNLOCK_ELEMENTS_BY_TYPE_AND_RARITY[normalizedType][normalizedRarity];
+}
+
+export function getCardAscensionCost(targetAscension: number) {
+  const normalizedAscension = Math.max(1, Math.floor(Number(targetAscension) || 1));
+  return CARD_ASCENSION_COSTS[normalizedAscension] ?? CARD_ASCENSION_COSTS[5];
+}
+
+function resolveImproveTier(level: number) {
+  if (level <= 19) return "1_20";
+  if (level <= 39) return "21_40";
+  if (level <= 59) return "41_60";
+  if (level <= 79) return "61_80";
+  return "81_plus";
+}
+
+function getImproveTierBounds(tier: string, maxLevel: number): [number, number] {
+  switch (tier) {
+    case "1_20":
+      return [1, Math.min(maxLevel, 20)];
+    case "21_40":
+      return [20, Math.min(maxLevel, 40)];
+    case "41_60":
+      return [40, Math.min(maxLevel, 60)];
+    case "61_80":
+      return [60, Math.min(maxLevel, 80)];
+    default:
+      return [80, maxLevel];
+  }
+}
+
+function distributeTierCost(total: number, stepCount: number, stepIndex: number) {
+  const base = Math.floor(total / stepCount);
+  const remainder = total % stepCount;
+  return base + (stepIndex < remainder ? 1 : 0);
 }
 
 function normalizeDefinition(definition: CardBalanceDefinition): CardBalanceDefinition {
   return {
     characterKey: normalizeCharacterKey(definition.characterKey),
     cardType: normalizeCardType(definition.cardType),
-    rarity: normalizeRarity(definition.rarity),
+    rarity: normalizeCardRarity(definition.rarity),
     role: String(definition.role ?? "").trim().toUpperCase(),
     damageType: String(definition.damageType ?? "").trim().toUpperCase(),
     scaling: String(definition.scaling ?? "").trim().toUpperCase(),
@@ -214,7 +479,7 @@ function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSor
     vel: Number(definition.stats.vel ?? 0) || 0,
     pm: Math.floor(Number(definition.stats.pm ?? 0) || 0),
   };
-  const rarity = normalizeRarity(definition.rarity);
+  const rarity = normalizeCardRarity(definition.rarity);
   const cardType = normalizeCardType(definition.cardType);
   const characterKey = normalizeCharacterKey(definition.characterKey);
   const explicitSortOrder = Number(definition.sort_order);
@@ -247,6 +512,8 @@ function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSor
     basic_skill: isRecord(definition.basicSkill) ? definition.basicSkill : {},
     ultimate: isRecord(definition.ultimate) ? definition.ultimate : {},
     art_path: "",
+    max_level: getCardMaxLevel(cardType, rarity),
+    max_ascension: getCardMaxAscension(cardType, rarity),
     sort_order: Number.isFinite(explicitSortOrder) && explicitSortOrder >= 0 ? explicitSortOrder : fallbackSortOrder,
     schema_version: CARD_BALANCE_SCHEMA_VERSION,
   };
@@ -274,7 +541,7 @@ function normalizeCardType(cardType: string): CardCatalogType {
   return String(cardType).trim().toUpperCase() === "DEFINITIVA" ? "DEFINITIVA" : "BASE";
 }
 
-function normalizeRarity(rarity: string): CardBalanceRarity {
+export function normalizeCardRarity(rarity: string): CardBalanceRarity {
   switch (String(rarity).trim().toLowerCase()) {
     case "epic":
       return "epic";

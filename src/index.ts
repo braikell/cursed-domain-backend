@@ -8,6 +8,7 @@ import { purchasePackDedicated } from "./modules/summons/purchase-pack.js";
 import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
 import { claimMissionDedicated, getMissionsDedicated } from "./modules/missions/missions.js";
 import { completeBattleDedicated } from "./modules/battle/battle.js";
+import { ascendCardDedicated, upgradeCardDedicated } from "./modules/cards/service.js";
 import {
   dismantleItemDedicated,
   equipItemDedicated,
@@ -15,6 +16,7 @@ import {
   upgradeItemDedicated,
 } from "./modules/equipment/service.js";
 import type {
+  AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
   ClaimMissionInput,
@@ -23,6 +25,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PurchasePackInput,
+  UpgradeCardInput,
   UpgradeItemInput,
 } from "./contracts.js";
 
@@ -53,6 +56,14 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async completeBattle(_context: GodotAuthedRequestContext, _input: CompleteBattleInput): Promise<unknown> {
     return await completeBattleDedicated(_context, _input);
+  }
+
+  override async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {
+    return await upgradeCardDedicated(_context, _input);
+  }
+
+  override async ascendCard(_context: GodotAuthedRequestContext, _input: AscendCardInput): Promise<unknown> {
+    return await ascendCardDedicated(_context, _input);
   }
 
   override async getEquipment(_context: GodotAuthedRequestContext): Promise<unknown> {

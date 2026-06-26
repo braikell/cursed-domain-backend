@@ -12,7 +12,7 @@ import {
 } from "../bootstrap/monetization-foundation.js";
 import { normalizeGameSave, type GameSaveSnapshot, type OwnedDefinitiveCard, type OwnedCharacter } from "../bootstrap/game-save.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { getBalancedCardsByRarityAndType } from "../cards/balance.js";
+import { getBalancedCardsByRarityAndType, getCardUnlockElementsRequired } from "../cards/balance.js";
 
 type Rarity = "basic" | "epic" | "legendary" | "mythic";
 type CardVariant = "base" | "definitive";
@@ -69,11 +69,6 @@ interface UserPityRow {
   soft_pity_step: number;
 }
 
-interface UserCardFragmentsRow {
-  card_definition_id: string;
-  fragments: number;
-}
-
 interface CardDefinitionRow {
   card_key: string;
   character_key: string;
@@ -110,8 +105,14 @@ interface PackPullResult {
   variant: CardVariant;
   isDefinitive: boolean;
   isNew: boolean;
+  cardOwnedAfter: boolean;
   duplicateFragmentMaterialId?: string;
   duplicateFragmentAmount?: number;
+  unlockElementMaterialId?: string;
+  unlockElementsGranted?: number;
+  unlockElementsRequired?: number;
+  unlockElementsOwnedAfter?: number;
+  unlockedNow?: boolean;
   wasPity: boolean;
   pityStateBefore?: PityState;
   pityStateAfter?: PityState;
@@ -142,6 +143,8 @@ interface PersistableUserMaterialRow {
   quantity: number;
   updated_at: string;
 }
+
+const PACK_CARDS_PER_PURCHASE = 3;
 
 interface ResolvedPurchase {
   config: SummonMonetizationConfig;
@@ -245,7 +248,7 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
     basicPack: {
       id: "basicPack",
       displayName: "Basic Pack",
-      prices: { gold: 1500, gems: 80 },
+      prices: { gold: 6000, gems: 120 },
       limits: { gold: { count: null, windowType: null, windowHours: null }, gems: { count: null, windowType: null, windowHours: null } },
       pityTarget: "epic_or_higher",
       rates: [
@@ -257,7 +260,7 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
     epicPack: {
       id: "epicPack",
       displayName: "Epic Pack",
-      prices: { gold: 12000, gems: 450 },
+      prices: { gold: 30000, gems: 650 },
       limits: { gold: { count: 25, windowType: "calendar_day_utc", windowHours: 24 }, gems: { count: 50, windowType: "calendar_day_utc", windowHours: 24 } },
       pityTarget: "legendary_or_higher",
       rates: [
@@ -269,7 +272,7 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
     legendaryPack: {
       id: "legendaryPack",
       displayName: "Legendary Pack",
-      prices: { gold: 120000, gems: 2500 },
+      prices: { gold: 180000, gems: 2800 },
       limits: { gold: { count: 1, windowType: "calendar_day_utc", windowHours: 24 }, gems: { count: 30, windowType: "calendar_day_utc", windowHours: 24 } },
       pityTarget: "mythic",
       rates: [
@@ -281,7 +284,7 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
     mythicPack: {
       id: "mythicPack",
       displayName: "Mythic Pack",
-      prices: { gold: 400000, gems: 8500 },
+      prices: { gold: 650000, gems: 7800 },
       limits: { gold: { count: 1, windowType: "rolling_hours", windowHours: 240 }, gems: { count: 10, windowType: "calendar_day_utc", windowHours: 24 } },
       pityTarget: "mythic",
       rates: [
@@ -293,14 +296,14 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
   };
 
   const duplicateRewards = [
-    { cardType: "base_basic" as const, fragmentMaterialId: "fragment:base_basic", fragmentAmount: 5 },
-    { cardType: "base_epic" as const, fragmentMaterialId: "fragment:base_epic", fragmentAmount: 8 },
-    { cardType: "base_legendary" as const, fragmentMaterialId: "fragment:base_legendary", fragmentAmount: 15 },
-    { cardType: "base_mythic" as const, fragmentMaterialId: "fragment:base_mythic", fragmentAmount: 25 },
-    { cardType: "definitive_basic" as const, fragmentMaterialId: "fragment:definitive_basic", fragmentAmount: 10 },
-    { cardType: "definitive_epic" as const, fragmentMaterialId: "fragment:definitive_epic", fragmentAmount: 16 },
-    { cardType: "definitive_legendary" as const, fragmentMaterialId: "fragment:definitive_legendary", fragmentAmount: 30 },
-    { cardType: "definitive_mythic" as const, fragmentMaterialId: "fragment:definitive_mythic", fragmentAmount: 50 },
+    { cardType: "base_basic" as const, fragmentMaterialId: "fragment:base_basic", fragmentAmount: 8 },
+    { cardType: "base_epic" as const, fragmentMaterialId: "fragment:base_epic", fragmentAmount: 20 },
+    { cardType: "base_legendary" as const, fragmentMaterialId: "fragment:base_legendary", fragmentAmount: 45 },
+    { cardType: "base_mythic" as const, fragmentMaterialId: "fragment:base_mythic", fragmentAmount: 90 },
+    { cardType: "definitive_basic" as const, fragmentMaterialId: "fragment:definitive_basic", fragmentAmount: 110 },
+    { cardType: "definitive_epic" as const, fragmentMaterialId: "fragment:definitive_epic", fragmentAmount: 125 },
+    { cardType: "definitive_legendary" as const, fragmentMaterialId: "fragment:definitive_legendary", fragmentAmount: 145 },
+    { cardType: "definitive_mythic" as const, fragmentMaterialId: "fragment:definitive_mythic", fragmentAmount: 160 },
   ];
 
   try {
@@ -421,11 +424,11 @@ async function resolvePurchase(input: {
     softPityStep: pityRow.soft_pity_step,
   };
   const pityState: PityState = { ...pityBefore };
-  const ownedCardFragments = await loadOwnedCardFragments(input.supabase, input.userId);
   const duplicateRewards = new Map(input.config.duplicateRewards.map((entry) => [entry.cardType, entry]));
   const results: PackPullResult[] = [];
+  const totalPulls = input.input.count * PACK_CARDS_PER_PURCHASE;
 
-  for (let index = 0; index < input.input.count; index += 1) {
+  for (let index = 0; index < totalPulls; index += 1) {
     const pityStateBefore = { targetCounter: pityState.targetCounter, softPityStep: pityState.softPityStep };
     const roll = rollConfiguredPackCard(pack, pityState);
     const definition = await pickCardDefinitionForCardType(input.supabase, roll.cardType);
@@ -441,17 +444,16 @@ async function resolvePurchase(input: {
         cardType: roll.cardType,
         wasPity: roll.wasPity,
         duplicateRewardsByType: duplicateRewards,
-        ownedCardFragments,
         pityStateBefore,
         pityStateAfter,
       }),
     );
   }
 
-  save.totalSummons += input.input.count;
-  save.pulls += input.input.count;
+  save.totalSummons += totalPulls;
+  save.pulls += totalPulls;
 
-  const { cardRows, materialRows } = buildPackCollectionPersistenceRows(input.userId, save, results, ownedCardFragments, serverNow.toISOString());
+  const { cardRows, materialRows } = buildPackCollectionPersistenceRows(input.userId, save, results, serverNow.toISOString());
   return {
     config: input.config,
     pack,
@@ -608,16 +610,6 @@ async function loadUserPity(supabase: SupabaseClient, userId: string, packId: Pu
   return data ?? { pity_legendary: 0, pity_mythic: 0, target_counter: 0, soft_pity_step: 0 };
 }
 
-async function loadOwnedCardFragments(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from("user_cards")
-    .select("card_definition_id, fragments")
-    .eq("user_id", userId)
-    .returns<UserCardFragmentsRow[]>();
-  if (error) throw new Error(error.message);
-  return new Map<string, number>((data ?? []).map((row) => [row.card_definition_id, row.fragments]));
-}
-
 async function pickCardDefinitionForCardType(supabase: SupabaseClient, cardType: CardType): Promise<CardDefinition | null> {
   const variant = cardType.startsWith("definitive_") ? "DEFINITIVA" : "BASE";
   const localRarity = getCardTypeRarity(cardType);
@@ -633,8 +625,11 @@ async function pickCardDefinitionForCardType(supabase: SupabaseClient, cardType:
     .returns<Array<CardDefinitionRow & { sort_order?: number }>>();
   if (error) throw new Error(error.message);
 
-  const remoteByCharacter = new Map(
-    (data ?? []).map((row) => [`${row.character_key.trim().toLowerCase()}::${row.card_type.trim().toUpperCase()}`, row]),
+  const remoteByCharacter = new Map<string, CardDefinitionRow & { sort_order?: number }>(
+    (data ?? []).map((row: CardDefinitionRow & { sort_order?: number }) => [
+      `${row.character_key.trim().toLowerCase()}::${row.card_type.trim().toUpperCase()}`,
+      row,
+    ]),
   );
   const selected = activePool[randomInt(activePool.length)] ?? null;
   if (selected == null) return null;
@@ -655,22 +650,48 @@ function applyPackCardToCollection(input: {
   cardType: CardType;
   wasPity: boolean;
   duplicateRewardsByType: Map<CardType, { fragmentMaterialId: string; fragmentAmount: number }>;
-  ownedCardFragments: Map<string, number>;
   pityStateBefore: PityState;
   pityStateAfter: PityState;
 }): PackPullResult {
-  const { save, definition, cardType, wasPity, duplicateRewardsByType, ownedCardFragments, pityStateBefore, pityStateAfter } = input;
-  const existingFragments = ownedCardFragments.get(definition.id);
-  const isBaseOwned = definition.variant === "base" && Boolean(save.characters[definition.characterId]);
-  const isNew = definition.variant === "definitive" ? existingFragments === undefined : !isBaseOwned;
-  const duplicateReward = isNew ? null : duplicateRewardsByType.get(cardType) ?? null;
+  const { save, definition, cardType, wasPity, duplicateRewardsByType, pityStateBefore, pityStateAfter } = input;
+  const isOwnedBefore = isCardOwnedInSave(save, definition);
 
-  applyCardMutationToSave(save, definition, duplicateReward);
-  if (duplicateReward) {
-    ownedCardFragments.set(definition.id, (existingFragments ?? 0) + duplicateReward.fragmentAmount);
-  } else {
-    ownedCardFragments.set(definition.id, existingFragments ?? 0);
+  if (!isOwnedBefore) {
+    const unlockElementMaterialId = buildCardElementMaterialId(definition.id);
+    const unlockElementsRequired = getCardUnlockElementsRequired(definition.variant === "base" ? "BASE" : "DEFINITIVA", definition.rarity);
+    const unlockElementsOwnedBefore = Math.max(0, Number(save.fragments[unlockElementMaterialId] ?? 0));
+    const unlockElementsOwnedAfter = Math.min(unlockElementsRequired, unlockElementsOwnedBefore + 1);
+    const unlockedNow = unlockElementsOwnedAfter >= unlockElementsRequired;
+
+    if (unlockedNow) {
+      delete save.fragments[unlockElementMaterialId];
+      applyCardUnlockToSave(save, definition);
+    } else {
+      save.fragments[unlockElementMaterialId] = unlockElementsOwnedAfter;
+    }
+
+    return {
+      cardType,
+      cardDefinitionId: definition.id,
+      characterId: definition.characterId,
+      rarity: definition.rarity,
+      variant: definition.variant,
+      isDefinitive: definition.variant === "definitive",
+      isNew: unlockedNow,
+      cardOwnedAfter: unlockedNow,
+      unlockElementMaterialId,
+      unlockElementsGranted: 1,
+      unlockElementsRequired,
+      unlockElementsOwnedAfter,
+      unlockedNow,
+      wasPity,
+      pityStateBefore,
+      pityStateAfter,
+    };
   }
+
+  const duplicateReward = duplicateRewardsByType.get(cardType) ?? null;
+  applyDuplicateCardRewardToSave(save, definition, duplicateReward?.fragmentAmount ?? 0);
 
   return {
     cardType,
@@ -679,8 +700,9 @@ function applyPackCardToCollection(input: {
     rarity: definition.rarity,
     variant: definition.variant,
     isDefinitive: definition.variant === "definitive",
-    isNew,
-    duplicateFragmentMaterialId: duplicateReward?.fragmentMaterialId,
+    isNew: false,
+    cardOwnedAfter: true,
+    duplicateFragmentMaterialId: buildDuplicateFragmentMaterialId(definition),
     duplicateFragmentAmount: duplicateReward?.fragmentAmount,
     wasPity,
     pityStateBefore,
@@ -692,7 +714,6 @@ function buildPackCollectionPersistenceRows(
   userId: string,
   save: GameSaveSnapshot,
   results: PackPullResult[],
-  ownedCardFragments: Map<string, number>,
   nowIso: string,
 ) {
   const cardRows = new Map<string, PersistableUserCardRow>();
@@ -701,31 +722,41 @@ function buildPackCollectionPersistenceRows(
   for (const result of results) {
     const baseCharacter: OwnedCharacter | undefined = save.characters[result.characterId];
     const definitiveCharacter: OwnedDefinitiveCard | undefined = save.definitiveCards[result.characterId];
-    cardRows.set(result.cardDefinitionId, {
-      user_id: userId,
-      card_definition_id: result.cardDefinitionId,
-      character_id: result.characterId,
-      variant: result.variant,
-      rarity: result.rarity,
-      level: result.variant === "base" ? (baseCharacter?.level ?? 1) : (definitiveCharacter?.level ?? 1),
-      xp: result.variant === "base" ? (baseCharacter?.xp ?? 0) : (definitiveCharacter?.xp ?? 0),
-      stars: result.variant === "base" ? (baseCharacter?.stars ?? 1) : (definitiveCharacter?.stars ?? 1),
-      ascension: result.variant === "base" ? (baseCharacter?.ascension ?? 0) : (definitiveCharacter?.ascension ?? 0),
-      awakening: result.variant === "base" ? (baseCharacter?.awakening ?? 0) : (definitiveCharacter?.awakening ?? 0),
-      fragments: ownedCardFragments.get(result.cardDefinitionId) ?? 0,
-      energy: result.variant === "base" ? Math.floor(baseCharacter?.energy ?? 0) : 0,
-      max_energy: result.variant === "base" ? Math.floor(baseCharacter?.maxEnergy ?? 100) : 100,
-      is_starter: result.characterId === "yuji" || result.characterId === "nobara",
-      updated_at: nowIso,
-      acquired_at: result.variant === "definitive" && definitiveCharacter ? new Date(definitiveCharacter.acquiredAt).toISOString() : nowIso,
-    });
+    if (result.cardOwnedAfter && ((result.variant === "base" && baseCharacter) || (result.variant === "definitive" && definitiveCharacter))) {
+      cardRows.set(result.cardDefinitionId, {
+        user_id: userId,
+        card_definition_id: result.cardDefinitionId,
+        character_id: result.characterId,
+        variant: result.variant,
+        rarity: result.rarity,
+        level: result.variant === "base" ? (baseCharacter?.level ?? 1) : (definitiveCharacter?.level ?? 1),
+        xp: result.variant === "base" ? (baseCharacter?.xp ?? 0) : (definitiveCharacter?.xp ?? 0),
+        stars: result.variant === "base" ? (baseCharacter?.stars ?? 1) : (definitiveCharacter?.stars ?? 1),
+        ascension: result.variant === "base" ? (baseCharacter?.ascension ?? 0) : (definitiveCharacter?.ascension ?? 0),
+        awakening: result.variant === "base" ? (baseCharacter?.awakening ?? 0) : (definitiveCharacter?.awakening ?? 0),
+        fragments: result.variant === "base" ? (baseCharacter?.fragments ?? 0) : (definitiveCharacter?.fragments ?? 0),
+        energy: result.variant === "base" ? Math.floor(baseCharacter?.energy ?? 0) : 0,
+        max_energy: result.variant === "base" ? Math.floor(baseCharacter?.maxEnergy ?? 100) : 100,
+        is_starter: result.characterId === "yuji" || result.characterId === "nobara",
+        updated_at: nowIso,
+        acquired_at: result.variant === "definitive" && definitiveCharacter ? new Date(definitiveCharacter.acquiredAt).toISOString() : nowIso,
+      });
+    }
 
-    if (result.duplicateFragmentMaterialId && result.duplicateFragmentAmount) {
-      const existing = materialRows.get(result.duplicateFragmentMaterialId);
+    if (result.unlockElementMaterialId) {
+      materialRows.set(result.unlockElementMaterialId, {
+        user_id: userId,
+        material_id: result.unlockElementMaterialId,
+        quantity: Number(save.fragments[result.unlockElementMaterialId] ?? 0),
+        updated_at: nowIso,
+      });
+    }
+
+    if (result.variant === "base" && result.duplicateFragmentMaterialId) {
       materialRows.set(result.duplicateFragmentMaterialId, {
         user_id: userId,
         material_id: result.duplicateFragmentMaterialId,
-        quantity: (existing?.quantity ?? 0) + result.duplicateFragmentAmount,
+        quantity: Number(save.fragments[result.characterId] ?? 0),
         updated_at: nowIso,
       });
     }
@@ -737,11 +768,7 @@ function buildPackCollectionPersistenceRows(
   };
 }
 
-function applyCardMutationToSave(
-  save: GameSaveSnapshot,
-  definition: CardDefinition,
-  duplicateReward: { fragmentMaterialId: string; fragmentAmount: number } | null,
-) {
+function applyCardUnlockToSave(save: GameSaveSnapshot, definition: CardDefinition) {
   if (definition.variant === "base") {
     if (!save.characters[definition.characterId]) {
       save.characters[definition.characterId] = {
@@ -756,21 +783,11 @@ function applyCardMutationToSave(
         energy: 0,
         maxEnergy: 100,
       };
-      return;
     }
-
-    if (!duplicateReward) return;
-    const character = save.characters[definition.characterId];
-    save.fragments[definition.characterId] = (save.fragments[definition.characterId] ?? 0) + duplicateReward.fragmentAmount;
-    save.characters[definition.characterId] = {
-      ...character,
-      fragments: character.fragments + duplicateReward.fragmentAmount,
-    };
     return;
   }
 
   const existingDefinitive = save.definitiveCards[definition.characterId];
-  const duplicateAmount = duplicateReward?.fragmentAmount ?? 0;
   save.definitiveCards[definition.characterId] = {
     characterId: definition.characterId,
     cardDefinitionId: definition.id,
@@ -779,9 +796,49 @@ function applyCardMutationToSave(
     stars: existingDefinitive?.stars ?? 1,
     ascension: existingDefinitive?.ascension ?? 0,
     awakening: existingDefinitive?.awakening ?? 0,
-    fragments: (existingDefinitive?.fragments ?? 0) + duplicateAmount,
+    fragments: existingDefinitive?.fragments ?? 0,
     acquiredAt: existingDefinitive?.acquiredAt ?? Date.now(),
   };
+}
+
+function applyDuplicateCardRewardToSave(save: GameSaveSnapshot, definition: CardDefinition, fragmentAmount: number) {
+  if (fragmentAmount <= 0) return;
+
+  if (definition.variant === "base") {
+    const character = save.characters[definition.characterId];
+    if (!character) return;
+    save.fragments[definition.characterId] = (save.fragments[definition.characterId] ?? 0) + fragmentAmount;
+    save.characters[definition.characterId] = {
+      ...character,
+      fragments: character.fragments + fragmentAmount,
+    };
+    return;
+  }
+
+  const existingDefinitive = save.definitiveCards[definition.characterId];
+  if (!existingDefinitive) return;
+  save.definitiveCards[definition.characterId] = {
+    ...existingDefinitive,
+    fragments: existingDefinitive.fragments + fragmentAmount,
+  };
+}
+
+function isCardOwnedInSave(save: GameSaveSnapshot, definition: CardDefinition) {
+  if (definition.variant === "base") {
+    return Boolean(save.characters[definition.characterId]);
+  }
+  return Boolean(save.definitiveCards[definition.characterId]);
+}
+
+function buildCardElementMaterialId(cardDefinitionId: string) {
+  return `element:${cardDefinitionId}`;
+}
+
+function buildDuplicateFragmentMaterialId(definition: CardDefinition) {
+  if (definition.variant === "base") {
+    return `fragment:${definition.characterId}`;
+  }
+  return `fragment:definitive:${definition.id}`;
 }
 
 async function validatePackPurchaseLimit(

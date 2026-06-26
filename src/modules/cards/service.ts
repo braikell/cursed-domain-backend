@@ -1,0 +1,478 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import type {
+  AscendCardInput,
+  GodotAuthedRequestContext,
+  UpgradeCardInput,
+} from "../../contracts.js";
+import { HttpModuleError } from "../../errors.js";
+import { createServiceSupabaseClient } from "../../supabase.js";
+import {
+  canCardLevelUp,
+  getCardAscensionCost,
+  getCardLevelCapForAscension,
+  getCardMaxAscension,
+  getCardMaxLevel,
+  getCardStarsForLevel,
+  getCardImproveCostForLevel,
+  getCardBalance,
+  type CardBalanceRarity,
+  type CardCatalogType,
+} from "./balance.js";
+import type { GameSaveSnapshot, OwnedCharacter, OwnedDefinitiveCard } from "../bootstrap/game-save.js";
+import { createInitialGameSave, normalizeGameSave } from "../bootstrap/game-save.js";
+import {
+  ensureBootstrapMonetizationFoundation,
+  ensureDailyMissionSnapshotState,
+  getBootstrapMonetizationConfig,
+  getUtcResetDate,
+  updateDailyMissionProgress,
+} from "../bootstrap/monetization-foundation.js";
+
+interface PlayerSaveRow {
+  save: GameSaveSnapshot;
+}
+
+interface UserCardRow {
+  id: string;
+  user_id: string;
+  card_definition_id: string;
+  character_id: string;
+  character_key: string | null;
+  variant: string | null;
+  card_type: string | null;
+  rarity: string | null;
+  level: number;
+  xp: number;
+  stars: number;
+  ascension: number;
+  awakening: number;
+  fragments: number;
+  energy: number | null;
+  max_energy: number | null;
+  acquired_at: string | null;
+  updated_at: string | null;
+}
+
+interface IdempotencyRow {
+  operation: string;
+  response: unknown | null;
+}
+
+interface CardIdentity {
+  characterId: string;
+  characterKey: string;
+  cardType: CardCatalogType;
+  rarity: CardBalanceRarity;
+}
+
+export async function upgradeCardDedicated(
+  context: GodotAuthedRequestContext,
+  input: UpgradeCardInput,
+): Promise<unknown> {
+  const supabase = createServiceSupabaseClient();
+  const operation = `upgrade_card_v1:${input.userCardId}`;
+  const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId, "cards_upgrade");
+  if (replay.status === "replayed") {
+    if (replay.response == null) {
+      throw new HttpModuleError(409, "operation_in_progress", "cards_upgrade", "La mejora de carta sigue procesandose. Intenta otra vez en unos segundos.");
+    }
+    return replay.response;
+  }
+
+  await ensureBootstrapMonetizationFoundation(supabase, context.userId);
+  const config = await getBootstrapMonetizationConfig(supabase);
+  await ensureDailyMissionSnapshotState(supabase, context.userId, config, getUtcResetDate());
+
+  const save = await loadPlayerSave(supabase, context.userId);
+  const row = await loadUserCardRow(supabase, context.userId, input.userCardId);
+  const identity = resolveCardIdentity(row);
+  const currentLevel = Math.max(1, Math.floor(Number(row.level) || 1));
+  const currentAscension = Math.max(0, Math.floor(Number(row.ascension) || 0));
+  const currentLevelCap = getCardLevelCapForAscension(identity.cardType, identity.rarity, currentAscension);
+  if (!canCardLevelUp(identity.cardType, identity.rarity, currentLevel, currentAscension)) {
+    if (currentLevel >= getCardMaxLevel(identity.cardType, identity.rarity)) {
+      throw new HttpModuleError(409, "card_max_level_reached", "cards_upgrade", "La carta ya alcanzo su nivel maximo.");
+    }
+    throw new HttpModuleError(409, "card_requires_ascension", "cards_upgrade", "Debes ascender la carta antes de seguir subiendo de nivel.");
+  }
+
+  const cost = getCardImproveCostForLevel(identity.cardType, identity.rarity, currentLevel);
+  const materialId = buildUpgradeMaterialId(identity.cardType, identity.rarity);
+  ensureEnoughResources(save, materialId, cost.gold, cost.fragments, "cards_upgrade");
+
+  save.gold -= cost.gold;
+  save.fragments[materialId] = Math.max(0, (save.fragments[materialId] ?? 0) - cost.fragments);
+  if (save.fragments[materialId] <= 0) {
+    delete save.fragments[materialId];
+  }
+
+  const nextLevel = Math.min(currentLevel + 1, currentLevelCap);
+  const nextStars = getCardStarsForLevel(identity.cardType, identity.rarity, nextLevel);
+  const nextXp = 0;
+
+  mutateSaveCardState(save, identity, {
+    level: nextLevel,
+    xp: nextXp,
+    stars: nextStars,
+    ascension: currentAscension,
+    awakening: Math.max(0, Math.floor(Number(row.awakening) || 0)),
+    fragments: Math.max(0, Math.floor(Number(row.fragments) || 0)),
+    energy: Math.max(0, Math.floor(Number(row.energy) || 0)),
+    maxEnergy: Math.max(0, Math.floor(Number(row.max_energy) || 0)),
+    cardDefinitionId: row.card_definition_id,
+    acquiredAt: row.acquired_at,
+  });
+
+  await persistCardProgressState(supabase, context.userId, save, row.id, {
+    level: nextLevel,
+    xp: nextXp,
+    stars: nextStars,
+    ascension: currentAscension,
+  });
+
+  await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", cost.gold);
+
+  const response = {
+    ok: true,
+    action: "upgrade_card",
+    userCardId: row.id,
+    characterKey: identity.characterKey,
+    cardType: identity.cardType,
+    rarity: identity.rarity,
+    fromLevel: currentLevel,
+    toLevel: nextLevel,
+    currentLevelCap,
+    cost,
+    save,
+  };
+  await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
+  return response;
+}
+
+export async function ascendCardDedicated(
+  context: GodotAuthedRequestContext,
+  input: AscendCardInput,
+): Promise<unknown> {
+  const supabase = createServiceSupabaseClient();
+  const operation = `ascend_card_v1:${input.userCardId}`;
+  const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId, "cards_ascend");
+  if (replay.status === "replayed") {
+    if (replay.response == null) {
+      throw new HttpModuleError(409, "operation_in_progress", "cards_ascend", "La ascension de carta sigue procesandose. Intenta otra vez en unos segundos.");
+    }
+    return replay.response;
+  }
+
+  await ensureBootstrapMonetizationFoundation(supabase, context.userId);
+  const config = await getBootstrapMonetizationConfig(supabase);
+  await ensureDailyMissionSnapshotState(supabase, context.userId, config, getUtcResetDate());
+
+  const save = await loadPlayerSave(supabase, context.userId);
+  const row = await loadUserCardRow(supabase, context.userId, input.userCardId);
+  const identity = resolveCardIdentity(row);
+  const currentLevel = Math.max(1, Math.floor(Number(row.level) || 1));
+  const currentAscension = Math.max(0, Math.floor(Number(row.ascension) || 0));
+  const maxAscension = getCardMaxAscension(identity.cardType, identity.rarity);
+  if (currentAscension >= maxAscension) {
+    throw new HttpModuleError(409, "card_max_ascension_reached", "cards_ascend", "La carta ya alcanzo su ascension maxima.");
+  }
+
+  const currentLevelCap = getCardLevelCapForAscension(identity.cardType, identity.rarity, currentAscension);
+  if (currentLevel < currentLevelCap) {
+    throw new HttpModuleError(409, "card_level_cap_not_reached", "cards_ascend", "La carta debe llegar a su tope actual antes de ascender.");
+  }
+
+  const targetAscension = currentAscension + 1;
+  const cost = getCardAscensionCost(targetAscension);
+  const materialId = buildUpgradeMaterialId(identity.cardType, identity.rarity);
+  ensureEnoughResources(save, materialId, cost.gold, cost.fragments, "cards_ascend");
+
+  save.gold -= cost.gold;
+  save.fragments[materialId] = Math.max(0, (save.fragments[materialId] ?? 0) - cost.fragments);
+  if (save.fragments[materialId] <= 0) {
+    delete save.fragments[materialId];
+  }
+
+  const currentStars = getCardStarsForLevel(identity.cardType, identity.rarity, currentLevel);
+  mutateSaveCardState(save, identity, {
+    level: currentLevel,
+    xp: Math.max(0, Math.floor(Number(row.xp) || 0)),
+    stars: currentStars,
+    ascension: targetAscension,
+    awakening: Math.max(0, Math.floor(Number(row.awakening) || 0)),
+    fragments: Math.max(0, Math.floor(Number(row.fragments) || 0)),
+    energy: Math.max(0, Math.floor(Number(row.energy) || 0)),
+    maxEnergy: Math.max(0, Math.floor(Number(row.max_energy) || 0)),
+    cardDefinitionId: row.card_definition_id,
+    acquiredAt: row.acquired_at,
+  });
+
+  await persistCardProgressState(supabase, context.userId, save, row.id, {
+    level: currentLevel,
+    xp: Math.max(0, Math.floor(Number(row.xp) || 0)),
+    stars: currentStars,
+    ascension: targetAscension,
+  });
+
+  await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", cost.gold);
+
+  const response = {
+    ok: true,
+    action: "ascend_card",
+    userCardId: row.id,
+    characterKey: identity.characterKey,
+    cardType: identity.cardType,
+    rarity: identity.rarity,
+    fromAscension: currentAscension,
+    toAscension: targetAscension,
+    newLevelCap: getCardLevelCapForAscension(identity.cardType, identity.rarity, targetAscension),
+    cost,
+    save,
+  };
+  await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
+  return response;
+}
+
+async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
+  const { data, error } = await supabase
+    .from("player_saves")
+    .select("save")
+    .eq("user_id", userId)
+    .maybeSingle<PlayerSaveRow>();
+  if (error) throw new Error(error.message);
+  return normalizeGameSave(data?.save ?? createInitialGameSave());
+}
+
+async function loadUserCardRow(supabase: SupabaseClient, userId: string, userCardId: string) {
+  const { data, error } = await supabase
+    .from("user_cards")
+    .select("id,user_id,card_definition_id,character_id,character_key,variant,card_type,rarity,level,xp,stars,ascension,awakening,fragments,energy,max_energy,acquired_at,updated_at")
+    .eq("user_id", userId)
+    .eq("id", userCardId)
+    .maybeSingle<UserCardRow>();
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new HttpModuleError(404, "card_not_found", "cards_upgrade", "Carta no encontrada.");
+  }
+  return data;
+}
+
+function resolveCardIdentity(row: UserCardRow): CardIdentity {
+  const cardType = String(row.card_type ?? row.variant ?? "BASE").trim().toUpperCase() === "DEFINITIVA"
+    || String(row.variant ?? "").trim().toLowerCase() == "definitive"
+    ? "DEFINITIVA"
+    : "BASE";
+  const characterKey = String(row.character_key ?? row.character_id).trim().toLowerCase();
+  const rarity = normalizeCardRarity(String(row.rarity ?? getCardBalance(characterKey, cardType)?.rarity ?? "basic"));
+  return {
+    characterId: row.character_id,
+    characterKey,
+    cardType,
+    rarity,
+  };
+}
+
+function normalizeCardRarity(raw: string): CardBalanceRarity {
+  switch (String(raw).trim().toLowerCase()) {
+    case "epic":
+    case "epico":
+      return "epic";
+    case "legendary":
+    case "legendario":
+      return "legendary";
+    case "mythic":
+    case "mitico":
+      return "mythic";
+    default:
+      return "basic";
+  }
+}
+
+function buildUpgradeMaterialId(cardType: CardCatalogType, rarity: CardBalanceRarity) {
+  return cardType === "DEFINITIVA" ? `fragment:definitive_${rarity}` : `fragment:base_${rarity}`;
+}
+
+function ensureEnoughResources(
+  save: GameSaveSnapshot,
+  materialId: string,
+  goldCost: number,
+  fragmentCost: number,
+  moduleName: "cards_upgrade" | "cards_ascend",
+) {
+  if (save.gold < goldCost) {
+    throw new HttpModuleError(409, "not_enough_gold", moduleName, "No tienes suficiente oro.");
+  }
+  const available = Math.max(0, Math.floor(save.fragments[materialId] ?? 0));
+  if (available < fragmentCost) {
+    throw new HttpModuleError(409, "not_enough_fragments", moduleName, "No tienes suficientes fragmentos.");
+  }
+}
+
+function mutateSaveCardState(
+  save: GameSaveSnapshot,
+  identity: CardIdentity,
+  state: {
+    level: number;
+    xp: number;
+    stars: number;
+    ascension: number;
+    awakening: number;
+    fragments: number;
+    energy: number;
+    maxEnergy: number;
+    cardDefinitionId: string;
+    acquiredAt: string | null;
+  },
+) {
+  if (identity.cardType === "DEFINITIVA") {
+    const current = save.definitiveCards[identity.characterId];
+    const nextCard: OwnedDefinitiveCard = {
+      characterId: identity.characterId,
+      cardDefinitionId: state.cardDefinitionId,
+      level: state.level,
+      xp: state.xp,
+      stars: state.stars,
+      ascension: state.ascension,
+      awakening: state.awakening,
+      fragments: state.fragments,
+      acquiredAt: state.acquiredAt ? Date.parse(state.acquiredAt) : current?.acquiredAt ?? Date.now(),
+    };
+    save.definitiveCards[identity.characterId] = nextCard;
+    return;
+  }
+
+  const currentCharacter = save.characters[identity.characterId];
+  const nextCharacter: OwnedCharacter = {
+    id: identity.characterId,
+    level: state.level,
+    xp: state.xp,
+    stars: state.stars,
+    ascension: state.ascension,
+    awakening: state.awakening,
+    fragments: state.fragments,
+    equipment: currentCharacter?.equipment ?? {},
+    energy: state.energy,
+    maxEnergy: state.maxEnergy > 0 ? state.maxEnergy : currentCharacter?.maxEnergy ?? 100,
+  };
+  save.characters[identity.characterId] = nextCharacter;
+}
+
+async function persistCardProgressState(
+  supabase: SupabaseClient,
+  userId: string,
+  save: GameSaveSnapshot,
+  userCardId: string,
+  cardState: {
+    level: number;
+    xp: number;
+    stars: number;
+    ascension: number;
+  },
+) {
+  const now = new Date().toISOString();
+  const { error: saveError } = await supabase.from("player_saves").upsert(
+    {
+      user_id: userId,
+      save,
+      save_version: save.schemaVersion,
+      updated_at: now,
+    },
+    { onConflict: "user_id" },
+  );
+  if (saveError) throw new Error(saveError.message);
+
+  const { error: economyError } = await supabase.from("user_economy").upsert(
+    {
+      user_id: userId,
+      gold: save.gold,
+      gems: save.gems,
+      updated_at: now,
+    },
+    { onConflict: "user_id" },
+  );
+  if (economyError) throw new Error(economyError.message);
+
+  const { error: materialDeleteError } = await supabase
+    .from("user_materials")
+    .delete()
+    .eq("user_id", userId);
+  if (materialDeleteError) throw new Error(materialDeleteError.message);
+
+  const materialEntries = Object.entries(save.fragments);
+  if (materialEntries.length > 0) {
+    const { error: materialInsertError } = await supabase.from("user_materials").insert(
+      materialEntries.map(([materialId, quantity]) => ({
+        user_id: userId,
+        material_id: materialId,
+        quantity: Math.max(0, Math.floor(quantity)),
+        updated_at: now,
+      })),
+    );
+    if (materialInsertError) throw new Error(materialInsertError.message);
+  }
+
+  const { error: cardError } = await supabase
+    .from("user_cards")
+    .update({
+      level: cardState.level,
+      xp: cardState.xp,
+      stars: cardState.stars,
+      ascension: cardState.ascension,
+      updated_at: now,
+    })
+    .eq("user_id", userId)
+    .eq("id", userCardId);
+  if (cardError) throw new Error(cardError.message);
+}
+
+async function beginIdempotentOperation(
+  supabase: SupabaseClient,
+  userId: string,
+  operation: string,
+  requestId: string,
+  module: "cards_upgrade" | "cards_ascend",
+) {
+  assertRequestId(requestId, module);
+  const { error: insertError } = await supabase.from("idempotency_keys").insert({
+    user_id: userId,
+    request_id: requestId,
+    operation,
+  });
+  if (!insertError) {
+    return { status: "started" as const, response: null as unknown };
+  }
+
+  const { data, error: readError } = await supabase
+    .from("idempotency_keys")
+    .select("operation, response")
+    .eq("user_id", userId)
+    .eq("request_id", requestId)
+    .maybeSingle<IdempotencyRow>();
+  if (readError || !data) throw new Error(insertError.message);
+  if (data.operation !== operation) {
+    throw new HttpModuleError(400, "request_id_reused", module, "requestId ya fue usado para otra operacion.");
+  }
+  return { status: "replayed" as const, response: data.response };
+}
+
+async function completeIdempotentOperation(
+  supabase: SupabaseClient,
+  userId: string,
+  requestId: string,
+  response: unknown,
+) {
+  const { error } = await supabase
+    .from("idempotency_keys")
+    .update({ response })
+    .eq("user_id", userId)
+    .eq("request_id", requestId);
+  if (error) throw new Error(error.message);
+}
+
+function assertRequestId(requestId: string, module: "cards_upgrade" | "cards_ascend") {
+  const value = requestId.trim();
+  if (!/^[a-zA-Z0-9_-]{8,80}$/.test(value)) {
+    throw new HttpModuleError(400, "invalid_request_id", module, "Invalid requestId.");
+  }
+}

@@ -30,6 +30,16 @@ const completeBattleInputSchema = z.object({
   requestId: z.string().min(8).max(80),
 });
 
+const upgradeCardInputSchema = z.object({
+  userCardId: z.string().min(1).max(120),
+  requestId: z.string().min(8).max(80),
+});
+
+const ascendCardInputSchema = z.object({
+  userCardId: z.string().min(1).max(120),
+  requestId: z.string().min(8).max(80),
+});
+
 const equipItemInputSchema = z.object({
   itemId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -128,6 +138,32 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "battle_resolve", "Invalid request payload.");
       }
       const response = await domainService.completeBattle(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/cards/upgrade", async (context) =>
+    withModule(context, "cards_upgrade", async () => {
+      const authed = await requireAuthedGodotUser(context, "cards_upgrade");
+      const body = await context.req.json().catch(() => null);
+      const parsed = upgradeCardInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "cards_upgrade", "Invalid request payload.");
+      }
+      const response = await domainService.upgradeCard(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/cards/ascend", async (context) =>
+    withModule(context, "cards_ascend", async () => {
+      const authed = await requireAuthedGodotUser(context, "cards_ascend");
+      const body = await context.req.json().catch(() => null);
+      const parsed = ascendCardInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "cards_ascend", "Invalid request payload.");
+      }
+      const response = await domainService.ascendCard(authed, parsed.data);
       return context.json(response);
     }),
   );
