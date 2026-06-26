@@ -490,7 +490,7 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
       user_id: userId,
       id: item.id,
       slot: item.slot,
-      rarity: item.rarity,
+      rarity: normalizeEquipmentRarityForDatabase(item.rarity),
       name: item.name,
       atk: item.ad,
       hp: item.hp,
@@ -780,4 +780,26 @@ function compareBaseCardPriority(left: UserCardRow, right: UserCardRow) {
     return leftTime - rightTime;
   }
   return left.id.localeCompare(right.id);
+}
+
+function normalizeEquipmentRarityForDatabase(raw: string): string {
+  const value = String(raw ?? "").trim().toLowerCase();
+  switch (value) {
+    case "basic":
+    case "basico":
+    case "comun":
+      return "basico";
+    case "epic":
+    case "epico":
+    case "raro":
+      return "epico";
+    case "legendary":
+    case "legendario":
+      return "legendario";
+    case "mythic":
+    case "mitico":
+      return "mitico";
+    default:
+      return "basico";
+  }
 }
