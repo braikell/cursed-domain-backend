@@ -184,12 +184,33 @@ export function normalizeGameSave(source: unknown): GameSaveSnapshot {
     inventory: Array.isArray(save.inventory)
       ? (save.inventory as EquipmentItem[]).map((item) => normalizeEquipmentItem(item))
       : [],
-    fragments: typeof save.fragments === "object" && save.fragments != null ? (save.fragments as Record<string, number>) : {},
+    fragments: normalizeFragmentStacks(save.fragments),
     definitiveCards: typeof save.definitiveCards === "object" && save.definitiveCards != null ? (save.definitiveCards as Record<string, OwnedDefinitiveCard>) : {},
     missions: Array.isArray(save.missions) ? (save.missions as MissionEntry[]) : fallback.missions,
     schemaVersion: GAME_SAVE_SCHEMA_VERSION,
     cardModelVersion: 1,
   };
+}
+
+function normalizeFragmentStacks(source: unknown): Record<string, number> {
+  if (source == null || typeof source !== "object") return {};
+
+  const normalized: Record<string, number> = {};
+  for (const [rawKey, rawQuantity] of Object.entries(source as Record<string, unknown>)) {
+    const materialId = normalizeFragmentMaterialId(rawKey);
+    if (materialId.length === 0) continue;
+    const quantity = Math.max(0, Math.floor(Number(rawQuantity) || 0));
+    if (quantity <= 0) continue;
+    normalized[materialId] = Math.max(normalized[materialId] ?? 0, quantity);
+  }
+  return normalized;
+}
+
+function normalizeFragmentMaterialId(value: string): string {
+  const materialId = value.trim().toLowerCase();
+  if (materialId.length === 0) return "";
+  if (materialId.includes(":")) return materialId;
+  return `fragment:${materialId}`;
 }
 
 function normalizeEquipmentItem(item: EquipmentItem): EquipmentItem {

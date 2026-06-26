@@ -26,20 +26,57 @@ on conflict (user_id, material_id) do update
 set quantity = greatest(public.user_materials.quantity, excluded.quantity),
     updated_at = now();
 
-with material_fragment_rows as (
+with save_fragment_entries as (
+  select
+    ps.user_id,
+    case
+      when entry.key like '%:%' then lower(entry.key)
+      else 'fragment:' || lower(entry.key)
+    end as material_id,
+    greatest(
+      0,
+      floor(
+        case
+          when (entry.value #>> '{}') ~ '^-?[0-9]+(\.[0-9]+)?$' then (entry.value #>> '{}')::numeric
+          else 0
+        end
+      )
+    )::integer as quantity
+  from public.player_saves ps
+  cross join lateral jsonb_each(coalesce(ps.save->'fragments', '{}'::jsonb)) as entry(key, value)
+),
+material_fragment_entries as (
+  select
+    user_id,
+    lower(material_id) as material_id,
+    greatest(0, quantity)::integer as quantity
+  from public.user_materials
+  where quantity > 0
+),
+canonical_fragment_rows as (
+  select user_id, material_id, max(quantity) as quantity
+  from (
+    select user_id, material_id, quantity from save_fragment_entries
+    union all
+    select user_id, material_id, quantity from material_fragment_entries
+  ) source
+  where material_id is not null
+    and material_id <> ''
+    and quantity > 0
+  group by user_id, material_id
+),
+material_fragment_rows as (
   select
     user_id,
     jsonb_object_agg(material_id, quantity) as fragment_payload
-  from public.user_materials
-  where material_id like 'fragment:%'
-    and quantity > 0
+  from canonical_fragment_rows
   group by user_id
 )
 update public.player_saves ps
 set save = jsonb_set(
     coalesce(ps.save, '{}'::jsonb),
     '{fragments}',
-    coalesce(ps.save->'fragments', '{}'::jsonb) || material_fragment_rows.fragment_payload,
+    material_fragment_rows.fragment_payload,
     true
   ),
   updated_at = now()

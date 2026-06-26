@@ -536,12 +536,7 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     await upsertOrThrow(service, "user_inventory", inventoryRows, "user_id,id");
   }
 
-  const materialRows = Object.entries(save.fragments).map(([materialKey, quantity]) => ({
-    user_id: userId,
-    material_id: materialKey.includes(":") ? materialKey : `fragment:${materialKey}`,
-    quantity,
-    updated_at: now,
-  }));
+  const materialRows = buildUserMaterialRows(userId, save.fragments, now);
   if (materialRows.length > 0) {
     await upsertOrThrow(service, "user_materials", materialRows, "user_id,material_id");
   }
@@ -709,6 +704,30 @@ async function hydrateSaveFormationFromServer(
     }
     throw error;
   }
+}
+
+function buildUserMaterialRows(userId: string, fragments: Record<string, number>, now: string) {
+  const quantitiesByMaterialId = new Map<string, number>();
+  for (const [materialKey, quantity] of Object.entries(fragments)) {
+    const materialId = normalizeSaveMaterialId(materialKey);
+    if (materialId.length === 0) continue;
+    const normalizedQuantity = Math.max(0, Math.floor(Number(quantity) || 0));
+    if (normalizedQuantity <= 0) continue;
+    quantitiesByMaterialId.set(materialId, Math.max(quantitiesByMaterialId.get(materialId) ?? 0, normalizedQuantity));
+  }
+  return Array.from(quantitiesByMaterialId.entries()).map(([materialId, quantity]) => ({
+    user_id: userId,
+    material_id: materialId,
+    quantity,
+    updated_at: now,
+  }));
+}
+
+function normalizeSaveMaterialId(value: string) {
+  const materialId = value.trim().toLowerCase();
+  if (materialId.length === 0) return "";
+  if (materialId.includes(":")) return materialId;
+  return `fragment:${materialId}`;
 }
 
 async function syncSaveFormationToServer(service: SupabaseClient, userId: string, save: GameSaveSnapshot) {
