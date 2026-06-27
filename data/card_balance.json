@@ -100,14 +100,16 @@
       },
       "ultimate": {
         "key": "gojo_base_ultimate",
-        "name": "Ultimate Base de Satoru Gojo",
+        "name": "Hollow Purple",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 1,
         "power": 2.6,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.9,
+        "vfx_key": "gojo_hollow_purple"
       }
     },
     {
@@ -724,14 +726,16 @@
       },
       "ultimate": {
         "key": "gojo_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Satoru Gojo",
+        "name": "Hollow Purple",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 2,
         "power": 2.6,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.9,
+        "vfx_key": "gojo_hollow_purple"
       }
     },
     {
