@@ -67,6 +67,8 @@ const SEED_CONFIG: MonetizationConfigLite = {
     { missionId: "claim_afk", eventKey: "claim_afk", rewardGold: 600, rewardGems: 5, rewardPoints: 5, target: 1, sortOrder: 20, isEnabled: true },
     { missionId: "complete_5_campaign_battles", eventKey: "campaign_battle_completed", rewardGold: 700, rewardGems: 5, rewardPoints: 5, target: 5, sortOrder: 30, isEnabled: true },
     { missionId: "win_3_battles", eventKey: "battle_won", rewardGold: 700, rewardGems: 5, rewardPoints: 5, target: 3, sortOrder: 40, isEnabled: true },
+    { missionId: "clear_3_tower_floors", eventKey: "tower_floor_cleared", rewardGold: 1200, rewardGems: 12, rewardPoints: 5, target: 3, sortOrder: 45, isEnabled: true },
+    { missionId: "clear_1_tower_boss", eventKey: "tower_boss_cleared", rewardGold: 1800, rewardGems: 18, rewardPoints: 5, target: 1, sortOrder: 46, isEnabled: true },
     { missionId: "upgrade_1_card", eventKey: "card_upgraded", rewardGold: 800, rewardGems: 8, rewardPoints: 5, target: 1, sortOrder: 50, isEnabled: true },
     { missionId: "upgrade_3_cards", eventKey: "card_upgraded", rewardGold: 900, rewardGems: 8, rewardPoints: 5, target: 3, sortOrder: 60, isEnabled: true },
     { missionId: "equip_or_upgrade_1_item", eventKey: "item_equipped_or_upgraded", rewardGold: 700, rewardGems: 8, rewardPoints: 5, target: 1, sortOrder: 70, isEnabled: true },

@@ -263,6 +263,8 @@ export async function completeBattleDedicated(
     persistedProgress,
     persistedSave: persistedSave == null
       ? null
+      : "error" in persistedSave
+        ? persistedSave
       : {
           currentStage: persistedSave.save?.currentStage ?? persistedSave.save?.current_stage ?? null,
           highestStage: persistedSave.save?.highestStage ?? persistedSave.save?.highest_stage ?? null,
@@ -523,16 +525,18 @@ async function applyHeroBattleXp(
     };
 
     updates.push(
-      supabase
-        .from("user_cards")
-        .update({
-          level,
-          xp,
-          stars,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId)
-        .eq("id", row.id),
+      Promise.resolve(
+        supabase
+          .from("user_cards")
+          .update({
+            level,
+            xp,
+            stars,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", userId)
+          .eq("id", row.id),
+      ),
     );
 
     leveledCards.push({

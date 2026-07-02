@@ -4,6 +4,7 @@ import type {
   ClaimAfkInput,
   ClaimMissionInput,
   CompleteBattleInput,
+  CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
   GodotAuthedRequestContext,
@@ -21,6 +22,8 @@ export interface GodotDomainService {
   getMissions(context: GodotAuthedRequestContext): Promise<unknown>;
   claimMission(context: GodotAuthedRequestContext, input: ClaimMissionInput): Promise<unknown>;
   completeBattle(context: GodotAuthedRequestContext, input: CompleteBattleInput): Promise<unknown>;
+  getTowerStatus(context: GodotAuthedRequestContext): Promise<unknown>;
+  completeTowerFloor(context: GodotAuthedRequestContext, input: CompleteTowerFloorInput): Promise<unknown>;
   upgradeCard(context: GodotAuthedRequestContext, input: UpgradeCardInput): Promise<unknown>;
   ascendCard(context: GodotAuthedRequestContext, input: AscendCardInput): Promise<unknown>;
   getEquipment(context: GodotAuthedRequestContext): Promise<unknown>;

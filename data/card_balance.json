@@ -22,14 +22,32 @@
       },
       "ultimate": {
         "key": "yuji_base_ultimate",
-        "name": "Ultimate Base de Yuji Itadori",
-        "type": "SINGLE_DAMAGE",
+        "name": "Black Flash",
+        "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "SINGLE_TARGET",
+        "area_rule": "TWO_CLOSEST_ENEMIES",
         "area_lanes": 0,
-        "power": 3,
+        "power": 2.5,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3200,
+        "impact_delay_sec": 1.72,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "ultimate_lunge_distance_px": 28.0,
+        "ultimate_lunge_min_distance_px": 150.0,
+        "vfx_key": "yuji_black_flash",
+        "camera_impact_fx": true,
+        "camera_fx": {
+          "duration": 0.36,
+          "amplitude": 26.0,
+          "flash_color": "BLACK_FLASH",
+          "flash_alpha": 0.18,
+          "flash_hold": 0.04,
+          "impulse_x": 30.0,
+          "impulse_y": -9.0,
+          "impulse_in": 0.035,
+          "impulse_out": 0.22
+        }
       }
     },
     {
@@ -48,14 +66,22 @@
       },
       "ultimate": {
         "key": "nobara_base_ultimate",
-        "name": "Ultimate Base de Nobara Kugisaki",
+        "name": "Resonancia",
         "type": "DEBUFF",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "SAME_LANE",
+        "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 2.0,
+        "power": 2.35,
         "energy_cost": 50,
-        "vfx_key": "debuff_ultimate_curse"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 0.95,
+        "hit_count": 3,
+        "hit_interval_sec": 0.78,
+        "debuff_key": "nobara_resonance_curse",
+        "damage_taken_multiplier": 2.0,
+        "debuff_duration_sec": 3.0,
+        "debuff_apply_hit_index": 2,
+        "vfx_key": "nobara_resonance"
       }
     },
     {
@@ -74,14 +100,18 @@
       },
       "ultimate": {
         "key": "megumi_base_ultimate",
-        "name": "Ultimate Base de Megumi Fushiguro",
-        "type": "SUMMON",
-        "target_rule": "SELF",
-        "area_rule": "SELF",
+        "name": "10 Sombras",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 2.0,
+        "power": 3.25,
         "energy_cost": 50,
-        "vfx_key": "summoner_ultimate_ritual"
+        "animation_lock_msec": 3900,
+        "impact_delay_sec": 1.4,
+        "hit_count": 3,
+        "hit_interval_sec": 0.5,
+        "vfx_key": "megumi_ten_shadows"
       }
     },
     {
@@ -108,7 +138,7 @@
         "power": 2.6,
         "energy_cost": 50,
         "animation_lock_msec": 3300,
-        "impact_delay_sec": 1.9,
+        "impact_delay_sec": 2.3,
         "vfx_key": "gojo_hollow_purple"
       }
     },
@@ -128,14 +158,18 @@
       },
       "ultimate": {
         "key": "sukuna_base_ultimate",
-        "name": "Ultimate Base de Ryomen Sukuna",
+        "name": "Desmantelar",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 1,
         "power": 2.6,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.32,
+        "hit_count": 7,
+        "hit_interval_sec": 0.13,
+        "vfx_key": "sukuna_dismantle"
       }
     },
     {
@@ -206,14 +240,27 @@
       },
       "ultimate": {
         "key": "toji_base_ultimate",
-        "name": "Ultimate Base de Toji Fushiguro",
+        "name": "Corte del Asesino",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3400,
+        "impact_delay_sec": 2.05,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "ultimate_lunge_distance_px": 44.0,
+        "ultimate_lunge_min_distance_px": 130.0,
+        "vfx_key": "toji_assassin_cut",
+        "camera_impact_fx": true,
+        "camera_fx": {
+          "amplitude": 20.0,
+          "duration": 0.22,
+          "flash_alpha": 0.24,
+          "flash_color": "SLASH_CYAN"
+        }
       }
     },
     {
@@ -310,14 +357,18 @@
       },
       "ultimate": {
         "key": "geto_base_ultimate",
-        "name": "Ultimate Base de Suguru Geto",
-        "type": "SUMMON",
-        "target_rule": "SELF",
-        "area_rule": "SELF",
+        "name": "Uzumaki",
+        "type": "AOE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "TWO_CLOSEST_ENEMIES",
         "area_lanes": 0,
-        "power": 2.0,
+        "power": 7.5,
         "energy_cost": 50,
-        "vfx_key": "summoner_ultimate_ritual"
+        "animation_lock_msec": 3800,
+        "impact_delay_sec": 1.55,
+        "hit_count": 3,
+        "hit_interval_sec": 0.38,
+        "vfx_key": "geto_uzumaki"
       }
     },
     {
@@ -362,14 +413,20 @@
       },
       "ultimate": {
         "key": "jogo_base_ultimate",
-        "name": "Ultimate Base de Jogo",
-        "type": "AOE_DAMAGE",
+        "name": "Volcan Maldito",
+        "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "LANES_AROUND_TARGET",
-        "area_lanes": 1,
-        "power": 2.6,
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3.35,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3600,
+        "impact_delay_sec": 2.02,
+        "hit_count": 1,
+        "hit_interval_sec": 0,
+        "splash_target_count": 1,
+        "splash_damage_multiplier": 0.5,
+        "vfx_key": "jogo_cursed_volcano"
       }
     },
     {
@@ -388,14 +445,23 @@
       },
       "ultimate": {
         "key": "hanami_base_ultimate",
-        "name": "Ultimate Base de Hanami",
+        "name": "Raices Malditas",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "LANES_AROUND_TARGET",
+        "area_rule": "TWO_CLOSEST_LANES",
         "area_lanes": 1,
-        "power": 2.6,
+        "power": 2.45,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3600,
+        "impact_delay_sec": 1.08,
+        "hit_count": 3,
+        "hit_interval_sec": 0.52,
+        "control_effect_key": "hanami_cursed_roots",
+        "control_duration_sec": 2.0,
+        "stuns": true,
+        "silences": false,
+        "effect_apply_hit_index": 2,
+        "vfx_key": "hanami_cursed_roots"
       }
     },
     {
@@ -466,14 +532,18 @@
       },
       "ultimate": {
         "key": "choso_base_ultimate",
-        "name": "Ultimate Base de Choso",
+        "name": "Sangre Perforante",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "LANES_AROUND_TARGET",
-        "area_lanes": 1,
-        "power": 2.6,
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 3.65,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 2.05,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "vfx_key": "choso_piercing_blood"
       }
     },
     {
@@ -518,14 +588,23 @@
       },
       "ultimate": {
         "key": "toge_base_ultimate",
-        "name": "Ultimate Base de Toge Inumaki",
-        "type": "AOE_DAMAGE",
+        "name": "No Te Muevas",
+        "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "LANES_AROUND_TARGET",
-        "area_lanes": 1,
-        "power": 2.6,
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 2.05,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.45,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "control_effect_key": "inumaki_no_te_muevas",
+        "control_duration_sec": 3.0,
+        "stuns": true,
+        "silences": true,
+        "effect_apply_hit_index": 0,
+        "vfx_key": "inumaki_cursed_speech"
       }
     },
     {
@@ -622,14 +701,17 @@
       },
       "ultimate": {
         "key": "utahime_base_ultimate",
-        "name": "Ultimate Base de Utahime Iori",
+        "name": "Ritual de Bendicion",
         "type": "HEAL",
-        "target_rule": "ALL_ALLIES",
-        "area_rule": "ALL_ALLIES",
-        "area_lanes": 2,
-        "power": 2,
+        "target_rule": "LOWEST_HP_ALLY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 1,
+        "fixed_heal_amount": 700,
         "energy_cost": 50,
-        "vfx_key": "support_ultimate_heal"
+        "animation_lock_msec": 3600,
+        "impact_delay_sec": 2.05,
+        "vfx_key": "utahime_blessing_ritual"
       }
     },
     {
@@ -648,14 +730,19 @@
       },
       "ultimate": {
         "key": "shoko_base_ultimate",
-        "name": "Ultimate Base de Shoko Ieiri",
+        "name": "Tecnica Inversa: Proteccion",
         "type": "HEAL",
-        "target_rule": "ALL_ALLIES",
-        "area_rule": "ALL_ALLIES",
-        "area_lanes": 2,
-        "power": 2,
+        "target_rule": "LOWEST_HP_ALLY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 1,
+        "fixed_heal_amount": 400,
+        "shield_amount": 400,
+        "shield_duration_sec": 6,
         "energy_cost": 50,
-        "vfx_key": "support_ultimate_heal"
+        "animation_lock_msec": 3600,
+        "impact_delay_sec": 2.05,
+        "vfx_key": "shoko_reverse_shield"
       }
     },
     {
@@ -674,14 +761,32 @@
       },
       "ultimate": {
         "key": "yuji_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Yuji Itadori",
-        "type": "SINGLE_DAMAGE",
+        "name": "Black Flash",
+        "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "SINGLE_TARGET",
+        "area_rule": "TWO_CLOSEST_ENEMIES",
         "area_lanes": 0,
-        "power": 4.2,
+        "power": 2.5,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3200,
+        "impact_delay_sec": 1.72,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "ultimate_lunge_distance_px": 28.0,
+        "ultimate_lunge_min_distance_px": 150.0,
+        "vfx_key": "yuji_black_flash",
+        "camera_impact_fx": true,
+        "camera_fx": {
+          "duration": 0.36,
+          "amplitude": 26.0,
+          "flash_color": "BLACK_FLASH",
+          "flash_alpha": 0.18,
+          "flash_hold": 0.04,
+          "impulse_x": 30.0,
+          "impulse_y": -9.0,
+          "impulse_in": 0.035,
+          "impulse_out": 0.22
+        }
       }
     },
     {
@@ -700,14 +805,18 @@
       },
       "ultimate": {
         "key": "megumi_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Megumi Fushiguro",
-        "type": "SUMMON",
-        "target_rule": "SELF",
-        "area_rule": "SELF",
+        "name": "10 Sombras",
+        "type": "SINGLE_DAMAGE",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 2.0,
+        "power": 3.25,
         "energy_cost": 50,
-        "vfx_key": "summoner_ultimate_ritual"
+        "animation_lock_msec": 3900,
+        "impact_delay_sec": 1.4,
+        "hit_count": 3,
+        "hit_interval_sec": 0.5,
+        "vfx_key": "megumi_ten_shadows"
       }
     },
     {
@@ -734,7 +843,7 @@
         "power": 2.6,
         "energy_cost": 50,
         "animation_lock_msec": 3300,
-        "impact_delay_sec": 1.9,
+        "impact_delay_sec": 2.3,
         "vfx_key": "gojo_hollow_purple"
       }
     },
@@ -754,14 +863,18 @@
       },
       "ultimate": {
         "key": "sukuna_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Ryomen Sukuna",
+        "name": "Desmantelar",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 2,
         "power": 2.6,
         "energy_cost": 50,
-        "vfx_key": "magic_ultimate_area"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.32,
+        "hit_count": 7,
+        "hit_interval_sec": 0.13,
+        "vfx_key": "sukuna_dismantle"
       }
     },
     {
@@ -832,14 +945,27 @@
       },
       "ultimate": {
         "key": "toji_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Toji Fushiguro",
+        "name": "Corte del Asesino",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.2,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3400,
+        "impact_delay_sec": 2.05,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "ultimate_lunge_distance_px": 44.0,
+        "ultimate_lunge_min_distance_px": 130.0,
+        "vfx_key": "toji_assassin_cut",
+        "camera_impact_fx": true,
+        "camera_fx": {
+          "amplitude": 22.0,
+          "duration": 0.24,
+          "flash_alpha": 0.28,
+          "flash_color": "SLASH_CYAN"
+        }
       }
     },
     {
@@ -962,14 +1088,17 @@
       },
       "ultimate": {
         "key": "utahime_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Utahime Iori",
+        "name": "Ritual de Bendicion",
         "type": "HEAL",
-        "target_rule": "ALL_ALLIES",
-        "area_rule": "ALL_ALLIES",
-        "area_lanes": 2,
-        "power": 3,
+        "target_rule": "LOWEST_HP_ALLY",
+        "area_rule": "SINGLE_TARGET",
+        "area_lanes": 0,
+        "power": 1,
+        "fixed_heal_amount": 700,
         "energy_cost": 50,
-        "vfx_key": "support_ultimate_heal"
+        "animation_lock_msec": 3600,
+        "impact_delay_sec": 2.05,
+        "vfx_key": "utahime_blessing_ritual"
       }
     }
   ]

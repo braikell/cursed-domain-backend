@@ -4,6 +4,7 @@ import type {
   ClaimAfkInput,
   ClaimMissionInput,
   CompleteBattleInput,
+  CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
   GodotAuthedRequestContext,
@@ -30,7 +31,9 @@ function notImplemented(
     | "equipment_equip"
     | "equipment_unequip"
     | "equipment_upgrade"
-    | "equipment_dismantle",
+    | "equipment_dismantle"
+    | "tower_status"
+    | "tower_complete_floor",
   message: string,
 ): never {
   throw new HttpModuleError(501, "not_implemented", module, message);
@@ -63,6 +66,14 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async completeBattle(_context: GodotAuthedRequestContext, _input: CompleteBattleInput): Promise<unknown> {
     return notImplemented("battle_resolve", "Battle resolve extraction not implemented yet.");
+  }
+
+  async getTowerStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("tower_status", "Tower status extraction not implemented yet.");
+  }
+
+  async completeTowerFloor(_context: GodotAuthedRequestContext, _input: CompleteTowerFloorInput): Promise<unknown> {
+    return notImplemented("tower_complete_floor", "Tower floor completion extraction not implemented yet.");
   }
 
   async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {

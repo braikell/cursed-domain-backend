@@ -8,11 +8,13 @@ export type BackendModuleName =
   | "battle_resolve"
   | "cards_upgrade"
   | "cards_ascend"
-    | "equipment_status"
-    | "equipment_equip"
-    | "equipment_unequip"
-    | "equipment_upgrade"
-    | "equipment_dismantle";
+  | "equipment_status"
+  | "equipment_equip"
+  | "equipment_unequip"
+  | "equipment_upgrade"
+  | "equipment_dismantle"
+  | "tower_status"
+  | "tower_complete_floor";
 
 export interface ErrorEnvelope {
   ok: false;
@@ -62,6 +64,12 @@ export interface ClaimMissionInput {
 
 export interface CompleteBattleInput {
   stageId: string;
+  result: "win";
+  requestId: string;
+}
+
+export interface CompleteTowerFloorInput {
+  floorNumber: number;
   result: "win";
   requestId: string;
 }

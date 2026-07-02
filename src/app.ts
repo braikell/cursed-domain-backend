@@ -30,6 +30,12 @@ const completeBattleInputSchema = z.object({
   requestId: z.string().min(8).max(80),
 });
 
+const completeTowerFloorInputSchema = z.object({
+  floorNumber: z.number().int().positive().max(5000),
+  result: z.literal("win"),
+  requestId: z.string().min(8).max(80),
+});
+
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -146,6 +152,27 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "battle_resolve", "Invalid request payload.");
       }
       const response = await domainService.completeBattle(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.get("/api/godot/tower/status", async (context) =>
+    withModule(context, "tower_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "tower_status");
+      const response = await domainService.getTowerStatus(authed);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/tower/complete-floor", async (context) =>
+    withModule(context, "tower_complete_floor", async () => {
+      const authed = await requireAuthedGodotUser(context, "tower_complete_floor");
+      const body = await context.req.json().catch(() => null);
+      const parsed = completeTowerFloorInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "tower_complete_floor", "Invalid request payload.");
+      }
+      const response = await domainService.completeTowerFloor(authed, parsed.data);
       return context.json(response);
     }),
   );

@@ -152,16 +152,41 @@ async function ensureProfile(accessToken: string, userId: string, service: Supab
         : null;
   const avatarUrl = typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null;
 
-  const { error } = await service.from("profiles").upsert(
-    {
-      id: user.id,
-      email,
-      display_name: displayName,
-      avatar_url: avatarUrl,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" },
-  );
+  const { data: existingProfile, error: existingProfileError } = await service
+    .from("profiles")
+    .select("display_name, avatar_url, profile_created_at, display_name_changed_at, profile_backdrop")
+    .eq("id", user.id)
+    .maybeSingle<{
+      display_name: string | null;
+      avatar_url: string | null;
+      profile_created_at: string | null;
+      display_name_changed_at: string | null;
+      profile_backdrop: string | null;
+    }>();
+  const profileMetadataColumnsAvailable =
+    existingProfileError == null ||
+    !(
+      existingProfileError.message.includes("profile_created_at") ||
+      existingProfileError.message.includes("display_name_changed_at") ||
+      existingProfileError.message.includes("profile_backdrop") ||
+      existingProfileError.message.includes("schema cache")
+    );
+  if (existingProfileError && profileMetadataColumnsAvailable) throw new Error(existingProfileError.message);
+
+  const profilePayload: Record<string, unknown> = {
+    id: user.id,
+    email,
+    display_name: existingProfile?.display_name ?? displayName,
+    avatar_url: existingProfile?.avatar_url ?? avatarUrl,
+    updated_at: new Date().toISOString(),
+  };
+  if (profileMetadataColumnsAvailable) {
+    profilePayload.profile_created_at = existingProfile?.profile_created_at ?? new Date().toISOString();
+    profilePayload.display_name_changed_at = existingProfile?.display_name_changed_at ?? null;
+    profilePayload.profile_backdrop = existingProfile?.profile_backdrop ?? "abyss";
+  }
+
+  const { error } = await service.from("profiles").upsert(profilePayload, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 
