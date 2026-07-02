@@ -167,6 +167,7 @@ interface ResolvedPurchase {
     windowStartedAt: string;
     windowEndsAt: string;
   };
+  purchaseCount: number;
   pityBefore: PityState;
   pityAfter: PityState;
   results: PackPullResult[];
@@ -464,6 +465,7 @@ async function resolvePurchase(input: {
     cost: { currency: input.input.purchaseCurrency, amount: totalCost },
     serverNow,
     limitWindow,
+    purchaseCount: input.input.count,
     pityBefore,
     pityAfter: { targetCounter: pityState.targetCounter, softPityStep: pityState.softPityStep },
     results,
@@ -509,7 +511,7 @@ async function finalizePurchase(input: {
       request_id: input.requestId,
       target_pack_id: input.resolved.pack.id,
       purchase_currency: input.resolved.cost.currency,
-      purchase_amount: input.resolved.results.length,
+      purchase_amount: input.resolved.purchaseCount,
       price_amount: input.resolved.cost.amount,
       action: "purchase_pack_v1",
       save_payload: input.resolved.save,
@@ -535,7 +537,7 @@ async function finalizePurchase(input: {
       material_rows: input.resolved.materialRows,
       pack_log_rows: packLogRows,
       economy_metadata: {
-        count: input.resolved.results.length,
+        count: input.resolved.purchaseCount,
         resultCount: input.resolved.results.length,
         limitWindow: input.resolved.limitWindow.windowKey,
         packType: input.resolved.pack.id,

@@ -82,8 +82,8 @@ select
   case when floor_number % 5 = 0 then 'S+' else 'A' end as enemy_grade_floor,
   case when floor_number % 5 = 0 then 'S+' else 'S' end as enemy_grade_ceiling,
   case
-    when floor_number % 5 = 0 then floor((520 + floor_number * 45 + ceil(floor_number / 5.0)::int * 80) * 1.35)::int
-    else 520 + floor_number * 45 + ceil(floor_number / 5.0)::int * 80
+    when floor_number % 5 = 0 then floor((1120 + floor_number * 105 + ceil(floor_number / 5.0)::int * 360) * (1.32 + ceil(floor_number / 5.0)::int * 0.022))::int
+    else 1120 + floor_number * 105 + ceil(floor_number / 5.0)::int * 360
   end as target_pm,
   case
     when floor_number % 5 = 0 then 40000 + floor_number * 5000
