@@ -36,6 +36,20 @@ const completeTowerFloorInputSchema = z.object({
   requestId: z.string().min(8).max(80),
 });
 
+const pvpUpsertDefenseInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  defensePower: z.number().int().min(1).max(999999999),
+  defenseSnapshot: z.record(z.string(), z.unknown()),
+});
+
+const pvpCompleteMatchInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  defenderUserId: z.string().uuid(),
+  result: z.enum(["win", "loss"]),
+  attackerPower: z.number().int().min(0).max(999999999),
+  defenderPower: z.number().int().min(0).max(999999999),
+});
+
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -173,6 +187,40 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "tower_complete_floor", "Invalid request payload.");
       }
       const response = await domainService.completeTowerFloor(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.get("/api/godot/pvp/status", async (context) =>
+    withModule(context, "pvp_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "pvp_status");
+      const response = await domainService.getPvpStatus(authed);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/pvp/upsert-defense", async (context) =>
+    withModule(context, "pvp_upsert_defense", async () => {
+      const authed = await requireAuthedGodotUser(context, "pvp_upsert_defense");
+      const body = await context.req.json().catch(() => null);
+      const parsed = pvpUpsertDefenseInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "pvp_upsert_defense", "Invalid request payload.");
+      }
+      const response = await domainService.upsertPvpDefense(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/pvp/complete-match", async (context) =>
+    withModule(context, "pvp_complete_match", async () => {
+      const authed = await requireAuthedGodotUser(context, "pvp_complete_match");
+      const body = await context.req.json().catch(() => null);
+      const parsed = pvpCompleteMatchInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "pvp_complete_match", "Invalid request payload.");
+      }
+      const response = await domainService.completePvpMatch(authed, parsed.data);
       return context.json(response);
     }),
   );

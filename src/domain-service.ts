@@ -8,6 +8,8 @@ import type {
   DismantleItemInput,
   EquipItemInput,
   GodotAuthedRequestContext,
+  PvpCompleteMatchInput,
+  PvpUpsertDefenseInput,
   PurchasePackInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -24,6 +26,9 @@ export interface GodotDomainService {
   completeBattle(context: GodotAuthedRequestContext, input: CompleteBattleInput): Promise<unknown>;
   getTowerStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   completeTowerFloor(context: GodotAuthedRequestContext, input: CompleteTowerFloorInput): Promise<unknown>;
+  getPvpStatus(context: GodotAuthedRequestContext): Promise<unknown>;
+  upsertPvpDefense(context: GodotAuthedRequestContext, input: PvpUpsertDefenseInput): Promise<unknown>;
+  completePvpMatch(context: GodotAuthedRequestContext, input: PvpCompleteMatchInput): Promise<unknown>;
   upgradeCard(context: GodotAuthedRequestContext, input: UpgradeCardInput): Promise<unknown>;
   ascendCard(context: GodotAuthedRequestContext, input: AscendCardInput): Promise<unknown>;
   getEquipment(context: GodotAuthedRequestContext): Promise<unknown>;

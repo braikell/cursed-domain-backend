@@ -9,6 +9,7 @@ import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
 import { claimMissionDedicated, getMissionsDedicated } from "./modules/missions/missions.js";
 import { completeBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
+import { completePvpMatchDedicated, getPvpStatusDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
 import { ascendCardDedicated, upgradeCardDedicated } from "./modules/cards/service.js";
 import {
   dismantleItemDedicated,
@@ -27,6 +28,8 @@ import type {
   DismantleItemInput,
   EquipItemInput,
   GodotAuthedRequestContext,
+  PvpCompleteMatchInput,
+  PvpUpsertDefenseInput,
   PurchasePackInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -68,6 +71,18 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async completeTowerFloor(_context: GodotAuthedRequestContext, _input: CompleteTowerFloorInput): Promise<unknown> {
     return await completeTowerFloorDedicated(_context, _input);
+  }
+
+  override async getPvpStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return await getPvpStatusDedicated(_context);
+  }
+
+  override async upsertPvpDefense(_context: GodotAuthedRequestContext, _input: PvpUpsertDefenseInput): Promise<unknown> {
+    return await upsertPvpDefenseDedicated(_context, _input);
+  }
+
+  override async completePvpMatch(_context: GodotAuthedRequestContext, _input: PvpCompleteMatchInput): Promise<unknown> {
+    return await completePvpMatchDedicated(_context, _input);
   }
 
   override async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {

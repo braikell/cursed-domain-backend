@@ -8,6 +8,8 @@ import type {
   DismantleItemInput,
   EquipItemInput,
   GodotAuthedRequestContext,
+  PvpCompleteMatchInput,
+  PvpUpsertDefenseInput,
   PurchasePackInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -33,7 +35,10 @@ function notImplemented(
     | "equipment_upgrade"
     | "equipment_dismantle"
     | "tower_status"
-    | "tower_complete_floor",
+    | "tower_complete_floor"
+    | "pvp_status"
+    | "pvp_upsert_defense"
+    | "pvp_complete_match",
   message: string,
 ): never {
   throw new HttpModuleError(501, "not_implemented", module, message);
@@ -74,6 +79,18 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async completeTowerFloor(_context: GodotAuthedRequestContext, _input: CompleteTowerFloorInput): Promise<unknown> {
     return notImplemented("tower_complete_floor", "Tower floor completion extraction not implemented yet.");
+  }
+
+  async getPvpStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("pvp_status", "PvP status extraction not implemented yet.");
+  }
+
+  async upsertPvpDefense(_context: GodotAuthedRequestContext, _input: PvpUpsertDefenseInput): Promise<unknown> {
+    return notImplemented("pvp_upsert_defense", "PvP defense extraction not implemented yet.");
+  }
+
+  async completePvpMatch(_context: GodotAuthedRequestContext, _input: PvpCompleteMatchInput): Promise<unknown> {
+    return notImplemented("pvp_complete_match", "PvP match completion extraction not implemented yet.");
   }
 
   async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {

@@ -14,7 +14,10 @@ export type BackendModuleName =
   | "equipment_upgrade"
   | "equipment_dismantle"
   | "tower_status"
-  | "tower_complete_floor";
+  | "tower_complete_floor"
+  | "pvp_status"
+  | "pvp_upsert_defense"
+  | "pvp_complete_match";
 
 export interface ErrorEnvelope {
   ok: false;
@@ -106,4 +109,18 @@ export interface UpgradeItemInput {
 export interface DismantleItemInput {
   itemId: string;
   requestId: string;
+}
+
+export interface PvpUpsertDefenseInput {
+  requestId: string;
+  defensePower: number;
+  defenseSnapshot: unknown;
+}
+
+export interface PvpCompleteMatchInput {
+  requestId: string;
+  defenderUserId: string;
+  result: "win" | "loss";
+  attackerPower: number;
+  defenderPower: number;
 }
