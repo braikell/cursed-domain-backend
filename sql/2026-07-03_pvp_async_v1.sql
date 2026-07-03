@@ -1,10 +1,21 @@
 begin;
 
+create or replace function public.pvp_current_season_id()
+returns text
+language sql
+stable
+as $$
+  select to_char(date_trunc('week', now()), '"S"IYYY-IW');
+$$;
+
 create table if not exists public.user_pvp_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default 'Jugador',
   league text not null default 'bronze',
   rating int not null default 1000,
+  current_season_id text not null default public.pvp_current_season_id(),
+  season_rating int not null default 1000,
+  season_best_rating int not null default 1000,
   wins int not null default 0,
   losses int not null default 0,
   defense_power int not null default 0,
@@ -15,18 +26,28 @@ create table if not exists public.user_pvp_profiles (
   updated_at timestamptz not null default now(),
   check (league in ('bronze', 'silver', 'gold')),
   check (rating >= 0),
+  check (season_rating >= 0),
+  check (season_best_rating >= 0),
   check (wins >= 0),
   check (losses >= 0),
   check (defense_power >= 0)
 );
 
+alter table public.user_pvp_profiles
+  add column if not exists current_season_id text not null default public.pvp_current_season_id(),
+  add column if not exists season_rating int not null default 1000,
+  add column if not exists season_best_rating int not null default 1000;
+
 create table if not exists public.user_pvp_battle_logs (
   id uuid primary key default gen_random_uuid(),
+  season_id text not null default public.pvp_current_season_id(),
   attacker_user_id uuid not null references auth.users(id) on delete cascade,
   defender_user_id uuid not null references auth.users(id) on delete cascade,
   result text not null,
   rating_delta int not null default 0,
+  attacker_rating_before int not null default 1000,
   attacker_rating_after int not null default 1000,
+  defender_rating_before int not null default 1000,
   defender_rating_after int not null default 1000,
   attacker_power int not null default 0,
   defender_power int not null default 0,
@@ -35,6 +56,11 @@ create table if not exists public.user_pvp_battle_logs (
   check (attacker_power >= 0),
   check (defender_power >= 0)
 );
+
+alter table public.user_pvp_battle_logs
+  add column if not exists season_id text not null default public.pvp_current_season_id(),
+  add column if not exists attacker_rating_before int not null default 1000,
+  add column if not exists defender_rating_before int not null default 1000;
 
 create index if not exists user_pvp_profiles_rating_idx
   on public.user_pvp_profiles (rating desc, defense_power desc, updated_at desc);
@@ -47,6 +73,9 @@ create index if not exists user_pvp_profiles_power_idx
 
 create index if not exists user_pvp_battle_logs_attacker_created_idx
   on public.user_pvp_battle_logs (attacker_user_id, created_at desc);
+
+create index if not exists user_pvp_profiles_season_rating_idx
+  on public.user_pvp_profiles (current_season_id, season_rating desc, season_best_rating desc);
 
 create or replace function public.pvp_league_for_rating(p_rating int)
 returns text

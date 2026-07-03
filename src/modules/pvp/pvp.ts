@@ -11,6 +11,9 @@ interface PvpProfileRow {
   display_name: string;
   league: PvpLeague;
   rating: number;
+  current_season_id?: string | null;
+  season_rating?: number | null;
+  season_best_rating?: number | null;
   wins: number;
   losses: number;
   defense_power: number;
@@ -31,6 +34,8 @@ interface IdempotencyRow {
 const DEFAULT_RATING = 1000;
 const MATCHMAKING_LIMIT = 5;
 const LEADERBOARD_LIMIT = 20;
+const PVP_PROFILE_SELECT =
+  "user_id,display_name,league,rating,current_season_id,season_rating,season_best_rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at";
 
 export async function getPvpStatusDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
@@ -75,7 +80,7 @@ export async function upsertPvpDefenseDedicated(
       },
       { onConflict: "user_id" },
     )
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .single<PvpProfileRow>();
   if (error) throw new Error(error.message);
 
@@ -115,19 +120,27 @@ export async function completePvpMatchDedicated(
   const ratingDelta = calculateRatingDelta(attacker.rating, defender.rating, attackerWon);
   const attackerNextRating = Math.max(0, attacker.rating + ratingDelta);
   const defenderNextRating = Math.max(0, defender.rating - ratingDelta);
+  const seasonId = currentSeasonId();
+  const attackerSeason = normalizeSeason(attacker, seasonId);
+  const defenderSeason = normalizeSeason(defender, seasonId);
+  const attackerNextSeasonRating = Math.max(0, attackerSeason.rating + ratingDelta);
+  const defenderNextSeasonRating = Math.max(0, defenderSeason.rating - ratingDelta);
   const now = new Date().toISOString();
 
   const { data: attackerData, error: attackerError } = await supabase
     .from("user_pvp_profiles")
     .update({
       rating: attackerNextRating,
+      current_season_id: seasonId,
+      season_rating: attackerNextSeasonRating,
+      season_best_rating: Math.max(attackerSeason.bestRating, attackerNextSeasonRating),
       wins: attacker.wins + (attackerWon ? 1 : 0),
       losses: attacker.losses + (attackerWon ? 0 : 1),
       last_match_at: now,
       updated_at: now,
     })
     .eq("user_id", context.userId)
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .single<PvpProfileRow>();
   if (attackerError) throw new Error(attackerError.message);
 
@@ -135,21 +148,27 @@ export async function completePvpMatchDedicated(
     .from("user_pvp_profiles")
     .update({
       rating: defenderNextRating,
+      current_season_id: seasonId,
+      season_rating: defenderNextSeasonRating,
+      season_best_rating: Math.max(defenderSeason.bestRating, defenderNextSeasonRating),
       wins: defender.wins + (attackerWon ? 0 : 1),
       losses: defender.losses + (attackerWon ? 1 : 0),
       updated_at: now,
     })
     .eq("user_id", input.defenderUserId)
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .single<PvpProfileRow>();
   if (defenderError) throw new Error(defenderError.message);
 
   const { error: logError } = await supabase.from("user_pvp_battle_logs").insert({
+    season_id: seasonId,
     attacker_user_id: context.userId,
     defender_user_id: input.defenderUserId,
     result: input.result,
     rating_delta: ratingDelta,
+    attacker_rating_before: attacker.rating,
     attacker_rating_after: attackerNextRating,
+    defender_rating_before: defender.rating,
     defender_rating_after: defenderNextRating,
     attacker_power: Math.max(0, Math.trunc(input.attackerPower)),
     defender_power: Math.max(0, Math.trunc(input.defenderPower)),
@@ -161,6 +180,12 @@ export async function completePvpMatchDedicated(
     ok: true as const,
     result: input.result,
     ratingDelta,
+    ratingBefore: attacker.rating,
+    ratingAfter: attackerNextRating,
+    seasonId,
+    seasonRatingBefore: attackerSeason.rating,
+    seasonRatingAfter: attackerNextSeasonRating,
+    seasonBestRating: Math.max(attackerSeason.bestRating, attackerNextSeasonRating),
     profile: toClientProfile(attackerData),
     defender: toClientProfile(defenderData),
   };
@@ -182,6 +207,9 @@ async function ensurePvpProfile(supabase: SupabaseClient, userId: string) {
         display_name: displayName,
         rating: DEFAULT_RATING,
         league: leagueForRating(DEFAULT_RATING),
+        current_season_id: currentSeasonId(),
+        season_rating: DEFAULT_RATING,
+        season_best_rating: DEFAULT_RATING,
         wins: 0,
         losses: 0,
         defense_power: 0,
@@ -190,7 +218,7 @@ async function ensurePvpProfile(supabase: SupabaseClient, userId: string) {
       },
       { onConflict: "user_id" },
     )
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .single<PvpProfileRow>();
   if (error) throw new Error(error.message);
   return data;
@@ -199,7 +227,7 @@ async function ensurePvpProfile(supabase: SupabaseClient, userId: string) {
 async function loadPvpProfile(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("user_pvp_profiles")
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .eq("user_id", userId)
     .maybeSingle<PvpProfileRow>();
   if (error) throw new Error(error.message);
@@ -211,7 +239,7 @@ async function loadRivals(supabase: SupabaseClient, userId: string, self: PvpPro
   const maxPower = Math.max(minPower + 1, Math.ceil(Math.max(self.defense_power, 1) * 1.45));
   const { data, error } = await supabase
     .from("user_pvp_profiles")
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .neq("user_id", userId)
     .gt("defense_power", 0)
     .gte("defense_power", minPower)
@@ -224,7 +252,7 @@ async function loadRivals(supabase: SupabaseClient, userId: string, self: PvpPro
 
   const fallback = await supabase
     .from("user_pvp_profiles")
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .neq("user_id", userId)
     .gt("defense_power", 0)
     .order("rating", { ascending: false })
@@ -237,7 +265,7 @@ async function loadRivals(supabase: SupabaseClient, userId: string, self: PvpPro
 async function loadLeaderboard(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("user_pvp_profiles")
-    .select("user_id,display_name,league,rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at")
+    .select(PVP_PROFILE_SELECT)
     .gt("defense_power", 0)
     .order("rating", { ascending: false })
     .limit(LEADERBOARD_LIMIT)
@@ -270,12 +298,19 @@ function normalizeDefenseSnapshot(value: unknown) {
 }
 
 function toClientProfile(row: PvpProfileRow) {
+  const seasonId = row.current_season_id ?? currentSeasonId();
+  const seasonRating = row.season_rating ?? row.rating;
+  const seasonBestRating = row.season_best_rating ?? seasonRating;
   return {
     userId: row.user_id,
     displayName: row.display_name,
     league: row.league,
     leagueLabel: leagueLabel(row.league),
     rating: row.rating,
+    currentSeasonId: seasonId,
+    seasonRating,
+    seasonBestRating,
+    seasonLabel: seasonLabel(seasonId),
     wins: row.wins,
     losses: row.losses,
     defensePower: row.defense_power,
@@ -316,6 +351,30 @@ function buildLeagueDefinitions() {
     { key: "silver", label: "PLATA", minRating: 1200 },
     { key: "gold", label: "ORO", minRating: 1500 },
   ];
+}
+
+function currentSeasonId(date = new Date()) {
+  const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `S${utcDate.getUTCFullYear()}-${String(week).padStart(2, "0")}`;
+}
+
+function seasonLabel(seasonId: string) {
+  return `Temporada ${seasonId.replace(/^S/, "")}`;
+}
+
+function normalizeSeason(row: PvpProfileRow, seasonId: string) {
+  if ((row.current_season_id ?? "") !== seasonId) {
+    return { rating: DEFAULT_RATING, bestRating: DEFAULT_RATING };
+  }
+  const rating = Math.max(0, Math.trunc(row.season_rating ?? row.rating));
+  return {
+    rating,
+    bestRating: Math.max(rating, Math.trunc(row.season_best_rating ?? rating)),
+  };
 }
 
 async function beginIdempotentOperation(
