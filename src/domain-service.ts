@@ -10,6 +10,10 @@ import type {
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
   PvpUpsertDefenseInput,
+  SocialRemoveFriendInput,
+  SocialRespondRequestInput,
+  SocialSearchInput,
+  SocialSendRequestInput,
   PurchasePackInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -29,6 +33,11 @@ export interface GodotDomainService {
   getPvpStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   upsertPvpDefense(context: GodotAuthedRequestContext, input: PvpUpsertDefenseInput): Promise<unknown>;
   completePvpMatch(context: GodotAuthedRequestContext, input: PvpCompleteMatchInput): Promise<unknown>;
+  getSocialStatus(context: GodotAuthedRequestContext): Promise<unknown>;
+  searchSocialPlayers(context: GodotAuthedRequestContext, input: SocialSearchInput): Promise<unknown>;
+  sendFriendRequest(context: GodotAuthedRequestContext, input: SocialSendRequestInput): Promise<unknown>;
+  respondFriendRequest(context: GodotAuthedRequestContext, input: SocialRespondRequestInput): Promise<unknown>;
+  removeFriend(context: GodotAuthedRequestContext, input: SocialRemoveFriendInput): Promise<unknown>;
   upgradeCard(context: GodotAuthedRequestContext, input: UpgradeCardInput): Promise<unknown>;
   ascendCard(context: GodotAuthedRequestContext, input: AscendCardInput): Promise<unknown>;
   getEquipment(context: GodotAuthedRequestContext): Promise<unknown>;

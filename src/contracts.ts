@@ -17,7 +17,12 @@ export type BackendModuleName =
   | "tower_complete_floor"
   | "pvp_status"
   | "pvp_upsert_defense"
-  | "pvp_complete_match";
+  | "pvp_complete_match"
+  | "social_status"
+  | "social_search"
+  | "social_send_request"
+  | "social_respond_request"
+  | "social_remove_friend";
 
 export interface ErrorEnvelope {
   ok: false;
@@ -123,4 +128,25 @@ export interface PvpCompleteMatchInput {
   result: "win" | "loss";
   attackerPower: number;
   defenderPower: number;
+}
+
+export interface SocialSearchInput {
+  query: string;
+}
+
+export interface SocialSendRequestInput {
+  requestId: string;
+  targetUserId?: string;
+  targetQuery?: string;
+}
+
+export interface SocialRespondRequestInput {
+  requestId: string;
+  requestIdToRespond: string;
+  action: "accept" | "decline" | "cancel";
+}
+
+export interface SocialRemoveFriendInput {
+  requestId: string;
+  friendUserId: string;
 }

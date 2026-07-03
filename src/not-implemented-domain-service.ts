@@ -10,6 +10,10 @@ import type {
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
   PvpUpsertDefenseInput,
+  SocialRemoveFriendInput,
+  SocialRespondRequestInput,
+  SocialSearchInput,
+  SocialSendRequestInput,
   PurchasePackInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -38,7 +42,12 @@ function notImplemented(
     | "tower_complete_floor"
     | "pvp_status"
     | "pvp_upsert_defense"
-    | "pvp_complete_match",
+    | "pvp_complete_match"
+    | "social_status"
+    | "social_search"
+    | "social_send_request"
+    | "social_respond_request"
+    | "social_remove_friend",
   message: string,
 ): never {
   throw new HttpModuleError(501, "not_implemented", module, message);
@@ -91,6 +100,26 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async completePvpMatch(_context: GodotAuthedRequestContext, _input: PvpCompleteMatchInput): Promise<unknown> {
     return notImplemented("pvp_complete_match", "PvP match completion extraction not implemented yet.");
+  }
+
+  async getSocialStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("social_status", "Social status extraction not implemented yet.");
+  }
+
+  async searchSocialPlayers(_context: GodotAuthedRequestContext, _input: SocialSearchInput): Promise<unknown> {
+    return notImplemented("social_search", "Social search extraction not implemented yet.");
+  }
+
+  async sendFriendRequest(_context: GodotAuthedRequestContext, _input: SocialSendRequestInput): Promise<unknown> {
+    return notImplemented("social_send_request", "Friend request extraction not implemented yet.");
+  }
+
+  async respondFriendRequest(_context: GodotAuthedRequestContext, _input: SocialRespondRequestInput): Promise<unknown> {
+    return notImplemented("social_respond_request", "Friend response extraction not implemented yet.");
+  }
+
+  async removeFriend(_context: GodotAuthedRequestContext, _input: SocialRemoveFriendInput): Promise<unknown> {
+    return notImplemented("social_remove_friend", "Friend removal extraction not implemented yet.");
   }
 
   async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {

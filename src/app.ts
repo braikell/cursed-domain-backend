@@ -50,6 +50,27 @@ const pvpCompleteMatchInputSchema = z.object({
   defenderPower: z.number().int().min(0).max(999999999),
 });
 
+const socialSearchInputSchema = z.object({
+  query: z.string().min(2).max(40),
+});
+
+const socialSendRequestInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  targetUserId: z.string().uuid().optional(),
+  targetQuery: z.string().min(2).max(40).optional(),
+});
+
+const socialRespondRequestInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  requestIdToRespond: z.string().uuid(),
+  action: z.enum(["accept", "decline", "cancel"]),
+});
+
+const socialRemoveFriendInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  friendUserId: z.string().uuid(),
+});
+
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -221,6 +242,66 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "pvp_complete_match", "Invalid request payload.");
       }
       const response = await domainService.completePvpMatch(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.get("/api/godot/social/status", async (context) =>
+    withModule(context, "social_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "social_status");
+      const response = await domainService.getSocialStatus(authed);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/social/search", async (context) =>
+    withModule(context, "social_search", async () => {
+      const authed = await requireAuthedGodotUser(context, "social_search");
+      const body = await context.req.json().catch(() => null);
+      const parsed = socialSearchInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "social_search", "Invalid request payload.");
+      }
+      const response = await domainService.searchSocialPlayers(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/social/send-request", async (context) =>
+    withModule(context, "social_send_request", async () => {
+      const authed = await requireAuthedGodotUser(context, "social_send_request");
+      const body = await context.req.json().catch(() => null);
+      const parsed = socialSendRequestInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "social_send_request", "Invalid request payload.");
+      }
+      const response = await domainService.sendFriendRequest(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/social/respond-request", async (context) =>
+    withModule(context, "social_respond_request", async () => {
+      const authed = await requireAuthedGodotUser(context, "social_respond_request");
+      const body = await context.req.json().catch(() => null);
+      const parsed = socialRespondRequestInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "social_respond_request", "Invalid request payload.");
+      }
+      const response = await domainService.respondFriendRequest(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/social/remove-friend", async (context) =>
+    withModule(context, "social_remove_friend", async () => {
+      const authed = await requireAuthedGodotUser(context, "social_remove_friend");
+      const body = await context.req.json().catch(() => null);
+      const parsed = socialRemoveFriendInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "social_remove_friend", "Invalid request payload.");
+      }
+      const response = await domainService.removeFriend(authed, parsed.data);
       return context.json(response);
     }),
   );

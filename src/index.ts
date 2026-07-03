@@ -10,6 +10,13 @@ import { claimMissionDedicated, getMissionsDedicated } from "./modules/missions/
 import { completeBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
 import { completePvpMatchDedicated, getPvpStatusDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
+import {
+  getSocialStatusDedicated,
+  removeFriendDedicated,
+  respondFriendRequestDedicated,
+  searchSocialPlayersDedicated,
+  sendFriendRequestDedicated,
+} from "./modules/social/social.js";
 import { ascendCardDedicated, upgradeCardDedicated } from "./modules/cards/service.js";
 import {
   dismantleItemDedicated,
@@ -30,6 +37,10 @@ import type {
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
   PvpUpsertDefenseInput,
+  SocialRemoveFriendInput,
+  SocialRespondRequestInput,
+  SocialSearchInput,
+  SocialSendRequestInput,
   PurchasePackInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -83,6 +94,26 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async completePvpMatch(_context: GodotAuthedRequestContext, _input: PvpCompleteMatchInput): Promise<unknown> {
     return await completePvpMatchDedicated(_context, _input);
+  }
+
+  override async getSocialStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return await getSocialStatusDedicated(_context);
+  }
+
+  override async searchSocialPlayers(_context: GodotAuthedRequestContext, _input: SocialSearchInput): Promise<unknown> {
+    return await searchSocialPlayersDedicated(_context, _input);
+  }
+
+  override async sendFriendRequest(_context: GodotAuthedRequestContext, _input: SocialSendRequestInput): Promise<unknown> {
+    return await sendFriendRequestDedicated(_context, _input);
+  }
+
+  override async respondFriendRequest(_context: GodotAuthedRequestContext, _input: SocialRespondRequestInput): Promise<unknown> {
+    return await respondFriendRequestDedicated(_context, _input);
+  }
+
+  override async removeFriend(_context: GodotAuthedRequestContext, _input: SocialRemoveFriendInput): Promise<unknown> {
+    return await removeFriendDedicated(_context, _input);
   }
 
   override async upgradeCard(_context: GodotAuthedRequestContext, _input: UpgradeCardInput): Promise<unknown> {
