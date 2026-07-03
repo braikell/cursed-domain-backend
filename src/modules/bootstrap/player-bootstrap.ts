@@ -6,6 +6,7 @@ import {
   compareStageKeys,
   createInitialGameSave,
   DEFAULT_UNLOCKED_TEAM_SLOTS,
+  FORMATION_GRID_SLOT_COUNT,
   GAME_SAVE_SCHEMA_VERSION,
   MAX_TEAM_SIZE,
   normalizeGameSave,
@@ -64,18 +65,23 @@ interface PlayerProgressRuntimeRow {
 interface FormationHeaderRow {
   id: string;
   unlocked_slots: number;
+  source_save_version?: number | null;
 }
 
 interface FormationSlotRow {
   team_position: number;
   board_slot: number;
   user_card_id: string;
+  card_definition_uuid?: string | null;
+  character_definition_uuid?: string | null;
 }
 
 interface UserCardRow {
   id: string;
   character_key: string | null;
   character_id: string;
+  card_definition_uuid?: string | null;
+  character_definition_uuid?: string | null;
   acquired_at: string;
   is_starter: boolean;
   variant: string | null;
@@ -763,6 +769,14 @@ async function syncSaveFormationToServer(service: SupabaseClient, userId: string
   const normalizedFormation = normalizeTeamFormation(normalizedTeam, save.formation);
   const activeCharacterIds = normalizedTeam.filter((characterId): characterId is string => Boolean(characterId));
 
+  const { data: existingFormation, error: existingFormationError } = await service
+    .from("user_formations")
+    .select("id, source_save_version")
+    .eq("user_id", userId)
+    .eq("formation_key", PRIMARY_FORMATION_KEY)
+    .maybeSingle<Pick<FormationHeaderRow, "id" | "source_save_version">>();
+  if (existingFormationError) throw new Error(existingFormationError.message);
+
   const { data: formationRow, error: formationError } = await service
     .from("user_formations")
     .upsert(
@@ -775,24 +789,26 @@ async function syncSaveFormationToServer(service: SupabaseClient, userId: string
         unlocked_slots: clampUnlockedSlots(save.unlockedSlots),
         is_active: true,
         is_enabled: true,
-        source_save_version: save.schemaVersion,
+        source_save_version: existingFormation?.source_save_version === 0 ? 0 : save.schemaVersion,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,formation_key" },
     )
-    .select("id")
-    .single<Pick<FormationHeaderRow, "id">>();
+    .select("id, source_save_version")
+    .single<Pick<FormationHeaderRow, "id" | "source_save_version">>();
   if (formationError) throw new Error(formationError.message);
 
   const { data: userCardRows, error: userCardsError } = await service
     .from("user_cards")
-    .select("id, character_key, character_id, acquired_at, is_starter, variant, card_type")
+    .select("id, character_key, character_id, card_definition_uuid, character_definition_uuid, acquired_at, is_starter, variant, card_type")
     .eq("user_id", userId)
     .returns<UserCardRow[]>();
   if (userCardsError) throw new Error(userCardsError.message);
 
+  const userCardsById = new Map<string, UserCardRow>();
   const baseCardsByCharacter = new Map<string, UserCardRow>();
   for (const row of userCardRows ?? []) {
+    userCardsById.set(row.id, row);
     const isBaseCard =
       row.card_type === "BASE" ||
       row.variant === "base" ||
@@ -806,16 +822,49 @@ async function syncSaveFormationToServer(service: SupabaseClient, userId: string
     }
   }
 
+  const { data: existingSlotRows, error: existingSlotsError } = await service
+    .from("user_formation_slots")
+    .select("team_position, board_slot, user_card_id, card_definition_uuid, character_definition_uuid")
+    .eq("formation_id", formationRow.id)
+    .returns<FormationSlotRow[]>();
+  if (existingSlotsError) throw new Error(existingSlotsError.message);
+
+  const exactExistingSlots = (existingSlotRows ?? []).filter((slot) => {
+    if (!Number.isInteger(slot.team_position) || slot.team_position < 0 || slot.team_position >= MAX_TEAM_SIZE) return false;
+    if (!Number.isInteger(slot.board_slot) || slot.board_slot < 0 || slot.board_slot >= FORMATION_GRID_SLOT_COUNT) return false;
+    return userCardsById.has(slot.user_card_id);
+  });
+
+  if (exactExistingSlots.length > 0) {
+    return;
+  }
+
+  if ((existingSlotRows ?? []).length === 0 && formationRow.source_save_version === 0) {
+    return;
+  }
+
+  const existingCardsByTeamPosition = new Map<number, UserCardRow>();
+  for (const slot of existingSlotRows ?? []) {
+    const card = userCardsById.get(slot.user_card_id);
+    if (!card) continue;
+    const characterKey = card.character_key?.trim() || card.character_id;
+    if (normalizedTeam[slot.team_position] !== characterKey) continue;
+    existingCardsByTeamPosition.set(slot.team_position, card);
+  }
+
   const slotRows = activeCharacterIds
     .map((characterId, teamPosition) => {
-      const baseCard = baseCardsByCharacter.get(characterId);
-      if (!baseCard) return null;
+      const existingCard = existingCardsByTeamPosition.get(teamPosition);
+      const selectedCard = existingCard ?? baseCardsByCharacter.get(characterId);
+      if (!selectedCard) return null;
       const assignment = normalizedFormation.find((entry) => entry.characterId === characterId) ?? null;
       return {
         formation_id: formationRow.id,
         team_position: teamPosition,
         board_slot: assignment?.slot ?? teamPosition,
-        user_card_id: baseCard.id,
+        user_card_id: selectedCard.id,
+        card_definition_uuid: selectedCard.card_definition_uuid ?? null,
+        character_definition_uuid: selectedCard.character_definition_uuid ?? null,
       };
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
