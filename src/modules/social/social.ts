@@ -14,6 +14,7 @@ interface ProfileRow {
   id: string;
   display_name: string | null;
   email: string | null;
+  last_seen_at?: string | null;
 }
 
 interface FriendRow {
@@ -40,9 +41,11 @@ interface PvpRow {
 
 const SOCIAL_LIMIT = 50;
 const SEARCH_LIMIT = 12;
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
 export async function getSocialStatusDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
+  await touchPresence(supabase, context.userId);
   const [friends, incoming, outgoing] = await Promise.all([
     loadFriends(supabase, context.userId),
     loadRequests(supabase, "addressee_id", context.userId),
@@ -77,13 +80,25 @@ export async function searchSocialPlayersDedicated(
     return { ok: true as const, players: [] };
   }
   const supabase = createServiceSupabaseClient();
-  const { data, error } = await supabase
+  await touchPresence(supabase, context.userId);
+  let { data, error } = await supabase
     .from("profiles")
-    .select("id,display_name,email")
+    .select("id,display_name,email,last_seen_at")
     .neq("id", context.userId)
     .ilike("display_name", `%${query}%`)
     .limit(SEARCH_LIMIT)
     .returns<ProfileRow[]>();
+  if (error && isMissingPresenceColumn(error.message)) {
+    const fallback = await supabase
+      .from("profiles")
+      .select("id,display_name,email")
+      .neq("id", context.userId)
+      .ilike("display_name", `%${query}%`)
+      .limit(SEARCH_LIMIT)
+      .returns<ProfileRow[]>();
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error) throw new Error(error.message);
   const ids = uniqueIds((data ?? []).map((row) => row.id));
   const [pvpProfiles, friends, incoming, outgoing] = await Promise.all([
@@ -223,11 +238,20 @@ async function loadRequests(supabase: SupabaseClient, column: "requester_id" | "
 async function loadProfiles(supabase: SupabaseClient, userIds: string[]) {
   const map = new Map<string, ProfileRow>();
   if (userIds.length === 0) return map;
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("profiles")
-    .select("id,display_name,email")
+    .select("id,display_name,email,last_seen_at")
     .in("id", userIds)
     .returns<ProfileRow[]>();
+  if (error && isMissingPresenceColumn(error.message)) {
+    const fallback = await supabase
+      .from("profiles")
+      .select("id,display_name,email")
+      .in("id", userIds)
+      .returns<ProfileRow[]>();
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error) throw new Error(error.message);
   for (const row of data ?? []) map.set(row.id, row);
   return map;
@@ -296,10 +320,13 @@ function toPlayerSummary(userId: string, profiles: Map<string, ProfileRow>, pvpP
 }
 
 function toProfileSummary(profile: ProfileRow, pvp?: PvpRow) {
+  const lastSeenAt = profile.last_seen_at ?? null;
   return {
     userId: profile.id,
     displayName: profile.display_name?.trim() || profile.email || "Jugador",
     friendCode: profile.id.slice(0, 8).toUpperCase(),
+    isOnline: isRecentlySeen(lastSeenAt),
+    lastSeenAt,
     pvpLeague: pvp?.league ?? "bronze",
     pvpRating: pvp?.rating ?? 1000,
     defensePower: pvp?.defense_power ?? 0,
@@ -333,6 +360,25 @@ function toRequestRaw(request: FriendRequestRow) {
 
 function uniqueIds(values: string[]) {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).slice(0, SOCIAL_LIMIT * 3);
+}
+
+async function touchPresence(supabase: SupabaseClient, userId: string) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", userId);
+  if (error && !isMissingPresenceColumn(error.message)) throw new Error(error.message);
+}
+
+function isRecentlySeen(lastSeenAt: string | null) {
+  if (lastSeenAt == null) return false;
+  const seenAt = Date.parse(lastSeenAt);
+  if (!Number.isFinite(seenAt)) return false;
+  return Date.now() - seenAt <= ONLINE_WINDOW_MS;
+}
+
+function isMissingPresenceColumn(message: string) {
+  return message.includes("last_seen_at") && (message.includes("column") || message.includes("schema cache"));
 }
 
 function assertRequestId(requestId: string, module: "social_send_request" | "social_respond_request" | "social_remove_friend") {

@@ -1,5 +1,8 @@
 begin;
 
+alter table public.profiles
+  add column if not exists last_seen_at timestamptz;
+
 create table if not exists public.friend_requests (
   id uuid primary key default gen_random_uuid(),
   requester_id uuid not null references auth.users(id) on delete cascade,
@@ -35,6 +38,9 @@ create index if not exists friend_requests_addressee_idx
 
 create index if not exists user_friends_friend_idx
   on public.user_friends (friend_user_id, created_at desc);
+
+create index if not exists profiles_last_seen_at_idx
+  on public.profiles (last_seen_at desc);
 
 create or replace function public.refresh_friend_request_updated_at()
 returns trigger
