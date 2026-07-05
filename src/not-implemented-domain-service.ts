@@ -9,6 +9,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
+  PvpStartMatchInput,
   PvpUpsertDefenseInput,
   SocialRemoveFriendInput,
   SocialRespondRequestInput,
@@ -42,6 +43,7 @@ function notImplemented(
     | "tower_complete_floor"
     | "pvp_status"
     | "pvp_upsert_defense"
+    | "pvp_start_match"
     | "pvp_complete_match"
     | "social_status"
     | "social_search"
@@ -96,6 +98,10 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async upsertPvpDefense(_context: GodotAuthedRequestContext, _input: PvpUpsertDefenseInput): Promise<unknown> {
     return notImplemented("pvp_upsert_defense", "PvP defense extraction not implemented yet.");
+  }
+
+  async startPvpMatch(_context: GodotAuthedRequestContext, _input: PvpStartMatchInput): Promise<unknown> {
+    return notImplemented("pvp_start_match", "PvP match start extraction not implemented yet.");
   }
 
   async completePvpMatch(_context: GodotAuthedRequestContext, _input: PvpCompleteMatchInput): Promise<unknown> {

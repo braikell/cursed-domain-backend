@@ -9,7 +9,7 @@ import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
 import { claimMissionDedicated, getMissionsDedicated } from "./modules/missions/missions.js";
 import { completeBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
-import { completePvpMatchDedicated, getPvpStatusDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
+import { completePvpMatchDedicated, getPvpStatusDedicated, startPvpMatchDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
 import {
   getSocialStatusDedicated,
   removeFriendDedicated,
@@ -36,6 +36,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
+  PvpStartMatchInput,
   PvpUpsertDefenseInput,
   SocialRemoveFriendInput,
   SocialRespondRequestInput,
@@ -90,6 +91,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async upsertPvpDefense(_context: GodotAuthedRequestContext, _input: PvpUpsertDefenseInput): Promise<unknown> {
     return await upsertPvpDefenseDedicated(_context, _input);
+  }
+
+  override async startPvpMatch(_context: GodotAuthedRequestContext, _input: PvpStartMatchInput): Promise<unknown> {
+    return await startPvpMatchDedicated(_context, _input);
   }
 
   override async completePvpMatch(_context: GodotAuthedRequestContext, _input: PvpCompleteMatchInput): Promise<unknown> {

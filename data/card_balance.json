@@ -188,14 +188,18 @@
       },
       "ultimate": {
         "key": "nanami_base_ultimate",
-        "name": "Ultimate Base de Kento Nanami",
+        "name": "Ratio Strike 7:3",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.15,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "nanami_ratio_strike",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.45,
+        "hit_count": 3,
+        "hit_interval_sec": 0.36
       }
     },
     {
@@ -893,14 +897,18 @@
       },
       "ultimate": {
         "key": "nanami_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Kento Nanami",
+        "name": "Ratio Strike 7:3",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 4.2,
+        "power": 4.35,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "nanami_ratio_strike",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.45,
+        "hit_count": 3,
+        "hit_interval_sec": 0.36
       }
     },
     {

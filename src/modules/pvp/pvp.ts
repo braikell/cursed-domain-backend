@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { GodotAuthedRequestContext, PvpCompleteMatchInput, PvpUpsertDefenseInput } from "../../contracts.js";
+import type {
+  GodotAuthedRequestContext,
+  PvpCompleteMatchInput,
+  PvpStartMatchInput,
+  PvpUpsertDefenseInput,
+} from "../../contracts.js";
 import { HttpModuleError } from "../../errors.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
 
@@ -31,9 +36,23 @@ interface IdempotencyRow {
   response: unknown | null;
 }
 
+interface PvpMatchRow {
+  id: string;
+  attacker_user_id: string;
+  defender_user_id: string;
+  status: "started" | "completed" | "expired";
+  defender_snapshot: unknown;
+  expires_at: string;
+  created_at: string;
+}
+
 const DEFAULT_RATING = 1000;
 const MATCHMAKING_LIMIT = 5;
-const LEADERBOARD_LIMIT = 20;
+const LEADERBOARD_LIMIT = 5;
+const DAILY_SCORING_LIMIT = 30;
+const DAILY_SAME_DEFENDER_LIMIT = 5;
+const ACTIVE_MATCH_LIMIT = 2;
+const MATCH_TTL_MINUTES = 20;
 const PVP_PROFILE_SELECT =
   "user_id,display_name,league,rating,current_season_id,season_rating,season_best_rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at";
 
@@ -90,17 +109,78 @@ export async function upsertPvpDefenseDedicated(
   };
 }
 
+export async function startPvpMatchDedicated(
+  context: GodotAuthedRequestContext,
+  input: PvpStartMatchInput,
+): Promise<unknown> {
+  if (input.defenderUserId === context.userId) {
+    throw new HttpModuleError(400, "pvp_self_match", "pvp_start_match", "No puedes combatir contra tu propia defensa.");
+  }
+  assertRequestId(input.requestId, "pvp_start_match");
+  const supabase = createServiceSupabaseClient();
+  const operation = `pvp_start_match_v1:${input.defenderUserId}`;
+  const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId, "pvp_start_match");
+  if (replay.status === "replayed") {
+    if (replay.response == null) {
+      throw new HttpModuleError(409, "operation_in_progress", "pvp_start_match", "El match PvP todavia se esta preparando.");
+    }
+    return replay.response;
+  }
+
+  await expireOldStartedMatches(supabase, context.userId);
+  await pruneOldPvpMatches(supabase);
+  const [attacker, defender] = await Promise.all([
+    ensurePvpProfile(supabase, context.userId),
+    loadPvpProfile(supabase, input.defenderUserId),
+  ]);
+  if (defender == null || defender.defense_power <= 0) {
+    throw new HttpModuleError(404, "pvp_defender_not_found", "pvp_start_match", "El rival ya no tiene defensa PvP disponible.");
+  }
+
+  await assertPvpMatchLimits(supabase, context.userId, input.defenderUserId);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + MATCH_TTL_MINUTES * 60_000).toISOString();
+  const { data, error } = await supabase
+    .from("user_pvp_matches")
+    .insert({
+      attacker_user_id: context.userId,
+      defender_user_id: input.defenderUserId,
+      status: "started",
+      season_id: currentSeasonId(now),
+      defender_snapshot: defender.defense_snapshot,
+      attacker_rating_before: attacker.rating,
+      defender_rating_before: defender.rating,
+      defender_power: defender.defense_power,
+      created_at: now.toISOString(),
+      expires_at: expiresAt,
+    })
+    .select("id,attacker_user_id,defender_user_id,status,defender_snapshot,expires_at,created_at")
+    .single<PvpMatchRow>();
+  if (error) throw new Error(error.message);
+
+  const rival = toClientRival({ ...defender, defense_snapshot: data.defender_snapshot });
+  const response = {
+    ok: true as const,
+    matchId: data.id,
+    expiresAt: data.expires_at,
+    rival: {
+      ...rival,
+      matchId: data.id,
+      matchExpiresAt: data.expires_at,
+    },
+  };
+  await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
+  return response;
+}
+
 export async function completePvpMatchDedicated(
   context: GodotAuthedRequestContext,
   input: PvpCompleteMatchInput,
 ): Promise<unknown> {
-  if (input.defenderUserId === context.userId) {
-    throw new HttpModuleError(400, "pvp_self_match", "pvp_complete_match", "No puedes combatir contra tu propia defensa.");
-  }
   assertRequestId(input.requestId, "pvp_complete_match");
   const supabase = createServiceSupabaseClient();
-  const operation = `pvp_complete_match_v1:${input.defenderUserId}:${input.result}`;
-  const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId);
+  const operation = `pvp_complete_match_v2:${input.matchId}:${input.result}`;
+  const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId, "pvp_complete_match");
   if (replay.status === "replayed") {
     if (replay.response == null) {
       throw new HttpModuleError(409, "operation_in_progress", "pvp_complete_match", "El resultado PvP todavia se esta procesando.");
@@ -108,86 +188,33 @@ export async function completePvpMatchDedicated(
     return replay.response;
   }
 
-  const [attacker, defender] = await Promise.all([
-    ensurePvpProfile(supabase, context.userId),
-    loadPvpProfile(supabase, input.defenderUserId),
-  ]);
-  if (defender == null || defender.defense_power <= 0) {
-    throw new HttpModuleError(404, "pvp_defender_not_found", "pvp_complete_match", "El rival ya no tiene defensa PvP disponible.");
-  }
-
-  const attackerWon = input.result === "win";
-  const ratingDelta = calculateRatingDelta(attacker.rating, defender.rating, attackerWon);
-  const attackerNextRating = Math.max(0, attacker.rating + ratingDelta);
-  const defenderNextRating = Math.max(0, defender.rating - ratingDelta);
-  const seasonId = currentSeasonId();
-  const attackerSeason = normalizeSeason(attacker, seasonId);
-  const defenderSeason = normalizeSeason(defender, seasonId);
-  const attackerNextSeasonRating = Math.max(0, attackerSeason.rating + ratingDelta);
-  const defenderNextSeasonRating = Math.max(0, defenderSeason.rating - ratingDelta);
-  const now = new Date().toISOString();
-
-  const { data: attackerData, error: attackerError } = await supabase
-    .from("user_pvp_profiles")
-    .update({
-      rating: attackerNextRating,
-      current_season_id: seasonId,
-      season_rating: attackerNextSeasonRating,
-      season_best_rating: Math.max(attackerSeason.bestRating, attackerNextSeasonRating),
-      wins: attacker.wins + (attackerWon ? 1 : 0),
-      losses: attacker.losses + (attackerWon ? 0 : 1),
-      last_match_at: now,
-      updated_at: now,
-    })
-    .eq("user_id", context.userId)
-    .select(PVP_PROFILE_SELECT)
-    .single<PvpProfileRow>();
-  if (attackerError) throw new Error(attackerError.message);
-
-  const { data: defenderData, error: defenderError } = await supabase
-    .from("user_pvp_profiles")
-    .update({
-      rating: defenderNextRating,
-      current_season_id: seasonId,
-      season_rating: defenderNextSeasonRating,
-      season_best_rating: Math.max(defenderSeason.bestRating, defenderNextSeasonRating),
-      wins: defender.wins + (attackerWon ? 0 : 1),
-      losses: defender.losses + (attackerWon ? 1 : 0),
-      updated_at: now,
-    })
-    .eq("user_id", input.defenderUserId)
-    .select(PVP_PROFILE_SELECT)
-    .single<PvpProfileRow>();
-  if (defenderError) throw new Error(defenderError.message);
-
-  const { error: logError } = await supabase.from("user_pvp_battle_logs").insert({
-    season_id: seasonId,
-    attacker_user_id: context.userId,
-    defender_user_id: input.defenderUserId,
-    result: input.result,
-    rating_delta: ratingDelta,
-    attacker_rating_before: attacker.rating,
-    attacker_rating_after: attackerNextRating,
-    defender_rating_before: defender.rating,
-    defender_rating_after: defenderNextRating,
-    attacker_power: Math.max(0, Math.trunc(input.attackerPower)),
-    defender_power: Math.max(0, Math.trunc(input.defenderPower)),
-    created_at: now,
+  const { data: rpcData, error: rpcError } = await supabase.rpc("complete_pvp_match_lite", {
+    p_match_id: input.matchId,
+    p_attacker_user_id: context.userId,
+    p_result: input.result,
+    p_attacker_power: Math.max(0, Math.trunc(input.attackerPower)),
+    p_defender_power: Math.max(0, Math.trunc(input.defenderPower)),
   });
-  if (logError) throw new Error(logError.message);
+  if (rpcError) throw mapPvpRpcError(rpcError.message, "pvp_complete_match");
 
+  const resultData = normalizeRpcObject(rpcData);
+  const defenderUserId = strFromUnknown(resultData.defenderUserId);
+  const [attackerData, defenderData] = await Promise.all([
+    ensurePvpProfile(supabase, context.userId),
+    defenderUserId ? loadPvpProfile(supabase, defenderUserId) : Promise.resolve(null),
+  ]);
   const response = {
     ok: true as const,
     result: input.result,
-    ratingDelta,
-    ratingBefore: attacker.rating,
-    ratingAfter: attackerNextRating,
-    seasonId,
-    seasonRatingBefore: attackerSeason.rating,
-    seasonRatingAfter: attackerNextSeasonRating,
-    seasonBestRating: Math.max(attackerSeason.bestRating, attackerNextSeasonRating),
+    ratingDelta: intFromUnknown(resultData.ratingDelta, 0),
+    ratingBefore: intFromUnknown(resultData.ratingBefore, attackerData.rating),
+    ratingAfter: intFromUnknown(resultData.ratingAfter, attackerData.rating),
+    seasonId: strFromUnknown(resultData.seasonId) || currentSeasonId(),
+    seasonRatingBefore: intFromUnknown(resultData.seasonRatingBefore, attackerData.season_rating ?? attackerData.rating),
+    seasonRatingAfter: intFromUnknown(resultData.seasonRatingAfter, attackerData.season_rating ?? attackerData.rating),
+    seasonBestRating: intFromUnknown(resultData.seasonBestRating, attackerData.season_best_rating ?? attackerData.rating),
     profile: toClientProfile(attackerData),
-    defender: toClientProfile(defenderData),
+    defender: defenderData == null ? null : toClientProfile(defenderData),
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
   return response;
@@ -274,6 +301,79 @@ async function loadLeaderboard(supabase: SupabaseClient) {
   return data ?? [];
 }
 
+async function expireOldStartedMatches(supabase: SupabaseClient, userId: string) {
+  const { error } = await supabase
+    .from("user_pvp_matches")
+    .update({ status: "expired" })
+    .eq("attacker_user_id", userId)
+    .eq("status", "started")
+    .lte("expires_at", new Date().toISOString());
+  if (error) throw new Error(error.message);
+}
+
+async function pruneOldPvpMatches(supabase: SupabaseClient) {
+  const { error } = await supabase.rpc("prune_pvp_matches_lite", { p_limit: 200 });
+  if (error) {
+    // Match start must stay available even if a database has not applied this optional pruning helper yet.
+    return;
+  }
+}
+
+async function assertPvpMatchLimits(supabase: SupabaseClient, attackerUserId: string, defenderUserId: string) {
+  const now = new Date();
+  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const [active, daily, sameDefender] = await Promise.all([
+    countMatches(supabase, {
+      attackerUserId,
+      status: "started",
+      expiresAfter: now.toISOString(),
+    }),
+    countMatches(supabase, {
+      attackerUserId,
+      status: "completed",
+      createdAfter: dayStart,
+    }),
+    countMatches(supabase, {
+      attackerUserId,
+      defenderUserId,
+      status: "completed",
+      createdAfter: dayStart,
+    }),
+  ]);
+  if (active >= ACTIVE_MATCH_LIMIT) {
+    throw new HttpModuleError(429, "pvp_active_match_limit", "pvp_start_match", "Ya tienes 2 combates PvP pendientes.");
+  }
+  if (daily >= DAILY_SCORING_LIMIT) {
+    throw new HttpModuleError(429, "pvp_daily_limit", "pvp_start_match", "Alcanzaste el limite de 30 combates PvP puntuables de hoy.");
+  }
+  if (sameDefender >= DAILY_SAME_DEFENDER_LIMIT) {
+    throw new HttpModuleError(429, "pvp_same_defender_limit", "pvp_start_match", "Ya puntuaste 5 veces contra este rival hoy.");
+  }
+}
+
+async function countMatches(
+  supabase: SupabaseClient,
+  filters: {
+    attackerUserId: string;
+    defenderUserId?: string;
+    status: "started" | "completed" | "expired";
+    createdAfter?: string;
+    expiresAfter?: string;
+  },
+) {
+  let query = supabase
+    .from("user_pvp_matches")
+    .select("id", { count: "exact", head: true })
+    .eq("attacker_user_id", filters.attackerUserId)
+    .eq("status", filters.status);
+  if (filters.defenderUserId != null) query = query.eq("defender_user_id", filters.defenderUserId);
+  if (filters.createdAfter != null) query = query.gte("created_at", filters.createdAfter);
+  if (filters.expiresAfter != null) query = query.gt("expires_at", filters.expiresAfter);
+  const { count, error } = await query;
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 async function resolveDisplayName(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("profiles")
@@ -327,12 +427,6 @@ function toClientRival(row: PvpProfileRow) {
   };
 }
 
-function calculateRatingDelta(attackerRating: number, defenderRating: number, attackerWon: boolean) {
-  const difficultyBonus = Math.max(-6, Math.min(10, Math.round((defenderRating - attackerRating) / 80)));
-  if (attackerWon) return Math.max(12, Math.min(34, 22 + difficultyBonus));
-  return -Math.max(6, Math.min(18, 10 - difficultyBonus));
-}
-
 function leagueForRating(rating: number): PvpLeague {
   if (rating >= 1500) return "gold";
   if (rating >= 1200) return "silver";
@@ -366,24 +460,14 @@ function seasonLabel(seasonId: string) {
   return `Temporada ${seasonId.replace(/^S/, "")}`;
 }
 
-function normalizeSeason(row: PvpProfileRow, seasonId: string) {
-  if ((row.current_season_id ?? "") !== seasonId) {
-    return { rating: DEFAULT_RATING, bestRating: DEFAULT_RATING };
-  }
-  const rating = Math.max(0, Math.trunc(row.season_rating ?? row.rating));
-  return {
-    rating,
-    bestRating: Math.max(rating, Math.trunc(row.season_best_rating ?? rating)),
-  };
-}
-
 async function beginIdempotentOperation(
   supabase: SupabaseClient,
   userId: string,
   operation: string,
   requestId: string,
+  module: "pvp_start_match" | "pvp_complete_match",
 ) {
-  assertRequestId(requestId, "pvp_complete_match");
+  assertRequestId(requestId, module);
   const { error: insertError } = await supabase.from("idempotency_keys").insert({
     user_id: userId,
     request_id: requestId,
@@ -401,7 +485,7 @@ async function beginIdempotentOperation(
     .maybeSingle<IdempotencyRow>();
   if (readError || !data) throw new Error(insertError.message);
   if (data.operation !== operation) {
-    throw new HttpModuleError(400, "request_id_reused", "pvp_complete_match", "requestId ya fue usado en otra operacion.");
+    throw new HttpModuleError(400, "request_id_reused", module, "requestId ya fue usado en otra operacion.");
   }
   return { status: "replayed" as const, response: data.response };
 }
@@ -420,7 +504,40 @@ async function completeIdempotentOperation(
   if (error) throw new Error(error.message);
 }
 
-function assertRequestId(requestId: string, module: "pvp_upsert_defense" | "pvp_complete_match") {
+function normalizeRpcObject(value: unknown) {
+  return typeof value === "object" && value != null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function strFromUnknown(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function intFromUnknown(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+}
+
+function mapPvpRpcError(message: string, module: "pvp_complete_match") {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("pvp_match_not_found")) {
+    return new HttpModuleError(404, "pvp_match_not_found", module, "Match PvP no encontrado.");
+  }
+  if (normalized.includes("pvp_match_already_closed")) {
+    return new HttpModuleError(409, "pvp_match_already_closed", module, "Este match PvP ya fue cerrado.");
+  }
+  if (normalized.includes("pvp_match_expired")) {
+    return new HttpModuleError(409, "pvp_match_expired", module, "Este match PvP expiro. Busca rival de nuevo.");
+  }
+  if (normalized.includes("invalid_pvp_result")) {
+    return new HttpModuleError(400, "invalid_pvp_result", module, "Resultado PvP invalido.");
+  }
+  if (normalized.includes("pvp_profile_not_found")) {
+    return new HttpModuleError(404, "pvp_profile_not_found", module, "Perfil PvP no disponible.");
+  }
+  return new Error(message);
+}
+
+function assertRequestId(requestId: string, module: "pvp_upsert_defense" | "pvp_start_match" | "pvp_complete_match") {
   const value = requestId.trim();
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(value)) {
     throw new HttpModuleError(400, "invalid_request_id", module, "Invalid requestId.");

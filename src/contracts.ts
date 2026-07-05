@@ -17,6 +17,7 @@ export type BackendModuleName =
   | "tower_complete_floor"
   | "pvp_status"
   | "pvp_upsert_defense"
+  | "pvp_start_match"
   | "pvp_complete_match"
   | "social_status"
   | "social_search"
@@ -122,9 +123,14 @@ export interface PvpUpsertDefenseInput {
   defenseSnapshot: unknown;
 }
 
-export interface PvpCompleteMatchInput {
+export interface PvpStartMatchInput {
   requestId: string;
   defenderUserId: string;
+}
+
+export interface PvpCompleteMatchInput {
+  requestId: string;
+  matchId: string;
   result: "win" | "loss";
   attackerPower: number;
   defenderPower: number;

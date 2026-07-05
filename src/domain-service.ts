@@ -9,6 +9,7 @@ import type {
   EquipItemInput,
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
+  PvpStartMatchInput,
   PvpUpsertDefenseInput,
   SocialRemoveFriendInput,
   SocialRespondRequestInput,
@@ -32,6 +33,7 @@ export interface GodotDomainService {
   completeTowerFloor(context: GodotAuthedRequestContext, input: CompleteTowerFloorInput): Promise<unknown>;
   getPvpStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   upsertPvpDefense(context: GodotAuthedRequestContext, input: PvpUpsertDefenseInput): Promise<unknown>;
+  startPvpMatch(context: GodotAuthedRequestContext, input: PvpStartMatchInput): Promise<unknown>;
   completePvpMatch(context: GodotAuthedRequestContext, input: PvpCompleteMatchInput): Promise<unknown>;
   getSocialStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   searchSocialPlayers(context: GodotAuthedRequestContext, input: SocialSearchInput): Promise<unknown>;

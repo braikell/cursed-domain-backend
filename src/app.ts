@@ -42,9 +42,14 @@ const pvpUpsertDefenseInputSchema = z.object({
   defenseSnapshot: z.record(z.string(), z.unknown()),
 });
 
-const pvpCompleteMatchInputSchema = z.object({
+const pvpStartMatchInputSchema = z.object({
   requestId: z.string().min(8).max(80),
   defenderUserId: z.string().uuid(),
+});
+
+const pvpCompleteMatchInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  matchId: z.string().uuid(),
   result: z.enum(["win", "loss"]),
   attackerPower: z.number().int().min(0).max(999999999),
   defenderPower: z.number().int().min(0).max(999999999),
@@ -229,6 +234,19 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "pvp_upsert_defense", "Invalid request payload.");
       }
       const response = await domainService.upsertPvpDefense(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/pvp/start-match", async (context) =>
+    withModule(context, "pvp_start_match", async () => {
+      const authed = await requireAuthedGodotUser(context, "pvp_start_match");
+      const body = await context.req.json().catch(() => null);
+      const parsed = pvpStartMatchInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "pvp_start_match", "Invalid request payload.");
+      }
+      const response = await domainService.startPvpMatch(authed, parsed.data);
       return context.json(response);
     }),
   );
