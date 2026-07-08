@@ -399,6 +399,19 @@ async function hydrateCanonicalRuntimeState(
     nextSave.gems = economy.gems;
   }
 
+  const { data: materialRows, error: materialError } = await service
+    .from("user_materials")
+    .select("material_id, quantity")
+    .eq("user_id", userId)
+    .returns<Array<{ material_id: string | null; quantity: number | null }>>();
+  if (materialError) throw new Error(materialError.message);
+  for (const row of materialRows ?? []) {
+    const materialId = normalizeSaveMaterialId(String(row.material_id ?? ""));
+    const quantity = Math.max(0, Math.floor(Number(row.quantity) || 0));
+    if (materialId.length === 0 || quantity <= 0) continue;
+    nextSave.fragments[materialId] = Math.max(Math.max(0, Math.floor(Number(nextSave.fragments[materialId]) || 0)), quantity);
+  }
+
   const { data: afk } = await service
     .from("user_afk")
     .select("last_claimed_at")

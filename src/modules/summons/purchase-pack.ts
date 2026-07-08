@@ -602,7 +602,25 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
     .eq("user_id", userId)
     .single<PlayerSaveRow>();
   if (error) throw new Error(error.message);
-  return normalizeGameSave(data.save);
+  const save = normalizeGameSave(data.save);
+  await mergeUserMaterialStacks(supabase, userId, save);
+  return save;
+}
+
+async function mergeUserMaterialStacks(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {
+  const { data, error } = await supabase
+    .from("user_materials")
+    .select("material_id, quantity")
+    .eq("user_id", userId)
+    .returns<Array<{ material_id: string | null; quantity: number | null }>>();
+  if (error) throw new Error(error.message);
+
+  for (const row of data ?? []) {
+    const materialId = String(row.material_id ?? "").trim().toLowerCase();
+    const quantity = Math.max(0, Math.floor(Number(row.quantity) || 0));
+    if (!materialId || quantity <= 0) continue;
+    save.fragments[materialId] = Math.max(Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0)), quantity);
+  }
 }
 
 async function loadUserPity(supabase: SupabaseClient, userId: string, packId: PurchasePackInput["packId"]) {

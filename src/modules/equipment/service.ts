@@ -317,7 +317,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     .filter(([materialId, quantity]) => !materialIds.has(materialId) && Math.max(0, Math.floor(Number(quantity) || 0)) > 0)
     .map(([materialId, quantity]) => ({
       materialId,
-      slot: materialId.startsWith("fragment:") ? "card_fragment" : "material",
+      slot: materialId.startsWith("element:") ? "card_element" : materialId.startsWith("fragment:") ? "card_fragment" : "material",
       quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
     }));
 
@@ -568,7 +568,25 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
     .eq("user_id", userId)
     .maybeSingle<PlayerSaveRow>();
   if (error) throw new Error(error.message);
-  return normalizeGameSave(data?.save ?? createInitialGameSave());
+  const save = normalizeGameSave(data?.save ?? createInitialGameSave());
+  await mergeUserMaterialStacks(supabase, userId, save);
+  return save;
+}
+
+async function mergeUserMaterialStacks(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {
+  const { data, error } = await supabase
+    .from("user_materials")
+    .select("material_id, quantity")
+    .eq("user_id", userId)
+    .returns<Array<{ material_id: string | null; quantity: number | null }>>();
+  if (error) throw new Error(error.message);
+
+  for (const row of data ?? []) {
+    const materialId = String(row.material_id ?? "").trim().toLowerCase();
+    const quantity = Math.max(0, Math.floor(Number(row.quantity) || 0));
+    if (!materialId || quantity <= 0) continue;
+    save.fragments[materialId] = Math.max(Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0)), quantity);
+  }
 }
 
 function compareEquipmentRows(
