@@ -283,14 +283,18 @@
       },
       "ultimate": {
         "key": "maki_base_ultimate",
-        "name": "Ultimate Base de Maki Zenin",
+        "name": "Heavenly Spear Rush",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.35,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "maki_heavenly_spear",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.18,
+        "hit_count": 4,
+        "hit_interval_sec": 0.28
       }
     },
     {
@@ -309,14 +313,18 @@
       },
       "ultimate": {
         "key": "panda_base_ultimate",
-        "name": "Ultimate Base de Panda",
+        "name": "Gorilla Beatdown",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.25,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "panda_gorilla_beatdown",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.18,
+        "hit_count": 4,
+        "hit_interval_sec": 0.28
       }
     },
     {
@@ -335,14 +343,18 @@
       },
       "ultimate": {
         "key": "mahito_base_ultimate",
-        "name": "Ultimate Base de Mahito",
+        "name": "Mutacion Inactiva",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.35,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "mahito_idle_transfiguration",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.16,
+        "hit_count": 2,
+        "hit_interval_sec": 0.32
       }
     },
     {
@@ -391,14 +403,18 @@
       },
       "ultimate": {
         "key": "todo_base_ultimate",
-        "name": "Ultimate Base de Aoi Todo",
+        "name": "Boogie Woogie",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.35,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "todo_boogie_woogie",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.1,
+        "hit_count": 2,
+        "hit_interval_sec": 0.34
       }
     },
     {
@@ -484,14 +500,18 @@
       },
       "ultimate": {
         "key": "higuruma_base_ultimate",
-        "name": "Ultimate Base de Hiromi Higuruma",
+        "name": "Martillo del Veredicto",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.55,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "vfx_key": "higuruma_verdict_hammer"
       }
     },
     {
@@ -510,14 +530,18 @@
       },
       "ultimate": {
         "key": "kashimo_base_ultimate",
-        "name": "Ultimate Base de Hajime Kashimo",
+        "name": "Trueno Rosado",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.65,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "kashimo_pink_thunder",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0
       }
     },
     {
@@ -566,14 +590,22 @@
       },
       "ultimate": {
         "key": "mahoraga_base_ultimate",
-        "name": "Ultimate Base de Mahoraga",
-        "type": "SINGLE_DAMAGE",
-        "target_rule": "NEAREST_ENEMY",
-        "area_rule": "SINGLE_TARGET",
+        "name": "Adaptacion de la Rueda",
+        "type": "SELF_BUFF",
+        "target_rule": "SELF",
+        "area_rule": "SELF",
         "area_lanes": 0,
-        "power": 3,
+        "power": 1,
+        "fixed_heal_amount": 1200,
+        "damage_multiplier_per_stack": 1.05,
+        "scale_multiplier_per_stack": 1.05,
+        "max_stacks": 5,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 2.7,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "vfx_key": "mahoraga_wheel_adaptation"
       }
     },
     {
@@ -627,14 +659,18 @@
       },
       "ultimate": {
         "key": "naoya_base_ultimate",
-        "name": "Ultimate Base de Naoya Zenin",
+        "name": "Proyeccion 24 FPS",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.6,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "vfx_key": "naoya_projection_24fps"
       }
     },
     {
@@ -653,14 +689,20 @@
       },
       "ultimate": {
         "key": "hakari_base_ultimate",
-        "name": "Ultimate Base de Kinji Hakari",
+        "name": "Golpe de Fiebre",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.6,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "ultimate_lunge_distance_px": 30.0,
+        "ultimate_lunge_min_distance_px": 140.0,
+        "vfx_key": "hakari_fever_strike"
       }
     },
     {
@@ -679,14 +721,18 @@
       },
       "ultimate": {
         "key": "meimei_base_ultimate",
-        "name": "Ultimate Base de Mei Mei",
+        "name": "Carga de Cuervos",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 3,
+        "power": 3.35,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "meimei_crow_charge",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.18,
+        "hit_count": 2,
+        "hit_interval_sec": 0.3
       }
     },
     {
@@ -992,14 +1038,18 @@
       },
       "ultimate": {
         "key": "panda_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Panda",
+        "name": "Gorilla Beatdown",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 4.2,
+        "power": 4.45,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "panda_gorilla_beatdown",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.18,
+        "hit_count": 4,
+        "hit_interval_sec": 0.28
       }
     },
     {
@@ -1018,14 +1068,18 @@
       },
       "ultimate": {
         "key": "higuruma_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Hiromi Higuruma",
+        "name": "Martillo del Veredicto",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 4.2,
+        "power": 4.6,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "vfx_key": "higuruma_verdict_hammer"
       }
     },
     {
@@ -1044,14 +1098,18 @@
       },
       "ultimate": {
         "key": "kashimo_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Hajime Kashimo",
+        "name": "Trueno Rosado",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 4.2,
+        "power": 4.75,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "vfx_key": "kashimo_pink_thunder",
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0
       }
     },
     {
@@ -1070,14 +1128,18 @@
       },
       "ultimate": {
         "key": "naoya_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Naoya Zenin",
+        "name": "Proyeccion 24 FPS",
         "type": "SINGLE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
-        "power": 4.2,
+        "power": 4.65,
         "energy_cost": 50,
-        "vfx_key": "physical_ultimate_burst"
+        "animation_lock_msec": 3300,
+        "impact_delay_sec": 1.92,
+        "hit_count": 1,
+        "hit_interval_sec": 0.0,
+        "vfx_key": "naoya_projection_24fps"
       }
     },
     {
