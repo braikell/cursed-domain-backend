@@ -100,6 +100,8 @@ export interface UnequipItemInput {
 export interface UpgradeCardInput {
   userCardId: string;
   requestId: string;
+  levels?: number;
+  mode?: "single" | "max_affordable";
 }
 
 export interface AscendCardInput {

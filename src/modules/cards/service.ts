@@ -67,12 +67,18 @@ interface CardIdentity {
   rarity: CardBalanceRarity;
 }
 
+interface ResolvedUpgradeRequest {
+  mode: "single" | "max_affordable";
+  requestedLevels: number;
+}
+
 export async function upgradeCardDedicated(
   context: GodotAuthedRequestContext,
   input: UpgradeCardInput,
 ): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
-  const operation = `upgrade_card_v1:${input.userCardId}`;
+  const upgradeRequest = resolveUpgradeRequest(input);
+  const operation = `upgrade_card_v2:${input.userCardId}:${upgradeRequest.mode}:${upgradeRequest.requestedLevels}`;
   const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId, "cards_upgrade");
   if (replay.status === "replayed") {
     if (replay.response == null) {
@@ -98,14 +104,16 @@ export async function upgradeCardDedicated(
     throw new HttpModuleError(409, "card_requires_ascension", "cards_upgrade", "Debes ascender la carta antes de seguir subiendo de nivel.");
   }
 
-  const cost = getCardImproveCostForLevel(identity.cardType, identity.rarity, currentLevel);
   const materialIds = buildUpgradeMaterialIds(identity);
-  ensureEnoughResources(save, materialIds, cost.gold, cost.fragments, "cards_upgrade");
+  const upgradePlan = buildUpgradePlan(save, materialIds, identity, currentLevel, currentLevelCap, upgradeRequest);
+  if (upgradePlan.levelsApplied <= 0) {
+    throw new HttpModuleError(409, "not_enough_resources", "cards_upgrade", "No tienes recursos suficientes para mejorar esta carta.");
+  }
 
-  save.gold -= cost.gold;
-  consumeFragments(save, materialIds, cost.fragments);
+  save.gold -= upgradePlan.cost.gold;
+  consumeFragments(save, materialIds, upgradePlan.cost.fragments);
 
-  const nextLevel = Math.min(currentLevel + 1, currentLevelCap);
+  const nextLevel = upgradePlan.targetLevel;
   const nextStars = getCardStarsForLevel(identity.cardType, identity.rarity, nextLevel);
   const nextXp = 0;
 
@@ -129,7 +137,7 @@ export async function upgradeCardDedicated(
     ascension: currentAscension,
   });
 
-  await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", cost.gold);
+  await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", upgradePlan.cost.gold);
 
   const response = {
     ok: true,
@@ -140,13 +148,79 @@ export async function upgradeCardDedicated(
     rarity: identity.rarity,
     fromLevel: currentLevel,
     toLevel: nextLevel,
+    requestedLevels: upgradeRequest.mode === "max_affordable" ? null : upgradeRequest.requestedLevels,
+    upgradedLevels: upgradePlan.levelsApplied,
+    upgradeMode: upgradeRequest.mode,
+    stoppedReason: upgradePlan.stoppedReason,
     currentLevelCap,
-    cost,
+    cost: upgradePlan.cost,
     finalStats: getCardFinalStats(identity.characterKey, identity.cardType, nextLevel, currentAscension, getEquipmentBonusForCharacter(save, identity.characterId, identity.characterKey)),
     save,
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
   return response;
+}
+
+function resolveUpgradeRequest(input: UpgradeCardInput): ResolvedUpgradeRequest {
+  if (input.mode === "max_affordable") {
+    return {
+      mode: "max_affordable",
+      requestedLevels: 200,
+    };
+  }
+  return {
+    mode: "single",
+    requestedLevels: Math.max(1, Math.min(200, Math.floor(Number(input.levels) || 1))),
+  };
+}
+
+function buildUpgradePlan(
+  save: GameSaveSnapshot,
+  materialIds: string[],
+  identity: CardIdentity,
+  currentLevel: number,
+  currentLevelCap: number,
+  upgradeRequest: ResolvedUpgradeRequest,
+) {
+  const availableGold = Math.max(0, Math.floor(Number(save.gold) || 0));
+  const availableFragments = materialIds.reduce((sum, materialId) => sum + Math.max(0, Math.floor(save.fragments[materialId] ?? 0)), 0);
+  const maxStepsByCap = Math.max(0, currentLevelCap - currentLevel);
+  const requestedSteps = upgradeRequest.mode === "max_affordable"
+    ? maxStepsByCap
+    : Math.min(upgradeRequest.requestedLevels, maxStepsByCap);
+  let targetLevel = currentLevel;
+  let levelsApplied = 0;
+  let totalGold = 0;
+  let totalFragments = 0;
+  let stoppedReason: "requested_levels" | "level_cap" | "resources" = "requested_levels";
+
+  for (let step = 0; step < requestedSteps; step += 1) {
+    const cost = getCardImproveCostForLevel(identity.cardType, identity.rarity, targetLevel);
+    if (totalGold + cost.gold > availableGold || totalFragments + cost.fragments > availableFragments) {
+      stoppedReason = "resources";
+      break;
+    }
+    totalGold += cost.gold;
+    totalFragments += cost.fragments;
+    targetLevel += 1;
+    levelsApplied += 1;
+  }
+
+  if (levelsApplied >= maxStepsByCap) {
+    stoppedReason = "level_cap";
+  } else if (levelsApplied >= requestedSteps && upgradeRequest.mode !== "max_affordable") {
+    stoppedReason = "requested_levels";
+  }
+
+  return {
+    targetLevel,
+    levelsApplied,
+    stoppedReason,
+    cost: {
+      gold: totalGold,
+      fragments: totalFragments,
+    },
+  };
 }
 
 export async function ascendCardDedicated(

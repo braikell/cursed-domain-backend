@@ -79,6 +79,8 @@ const socialRemoveFriendInputSchema = z.object({
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
+  levels: z.number().int().min(1).max(200).optional(),
+  mode: z.enum(["single", "max_affordable"]).optional(),
 });
 
 const ascendCardInputSchema = z.object({
