@@ -53,6 +53,8 @@ interface IdempotencyRow {
   response: unknown | null;
 }
 
+type InventoryMaterialKind = "equipment_material" | "card_element" | "card_fragment" | "material";
+
 const EQUIPMENT_DEFINITIONS_BY_KEY = new Map(EQUIPMENT_ITEMS.map((item) => [item.key, item]));
 
 export async function getEquipmentDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
@@ -310,6 +312,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
   const equipmentMaterials = (["weapon", "helmet", "armor", "boots", "accessory"] as EquipmentSlot[]).map((slot) => ({
     materialId: buildEquipmentMaterialId(slot),
     slot,
+    kind: "equipment_material" as InventoryMaterialKind,
     quantity: Math.max(0, save.fragments[buildEquipmentMaterialId(slot)] ?? 0),
   }));
   const materialIds = new Set(equipmentMaterials.map((entry) => entry.materialId));
@@ -318,6 +321,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     .map(([materialId, quantity]) => ({
       materialId,
       slot: materialId.startsWith("element:") ? "card_element" : materialId.startsWith("fragment:") ? "card_fragment" : "material",
+      kind: resolveInventoryMaterialKind(materialId),
       quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
     }));
 
@@ -328,6 +332,14 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     materials: [...equipmentMaterials, ...extraMaterials],
     heroes,
   };
+}
+
+function resolveInventoryMaterialKind(materialId: string): InventoryMaterialKind {
+  const normalized = String(materialId ?? "").trim().toLowerCase();
+  if (normalized.startsWith("equipment_fragment:")) return "equipment_material";
+  if (normalized.startsWith("element:")) return "card_element";
+  if (normalized.startsWith("fragment:")) return "card_fragment";
+  return "material";
 }
 
 async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: string) {

@@ -84,7 +84,7 @@ stage_seed_raw as (
       else format('encounter_ch%1$02s_stage_%2$02s_live', chapter_number, stage_number)
     end as encounter_key,
     greatest(1, ((chapter_number - 1) * 8) + least(stage_number, 8))::integer as recommended_level,
-    case when stage_number = 17 then 1 else 3 end as enemy_count,
+    3::integer as enemy_count,
     'LOOT_TABLE'::text as loot_source,
     case
       when stage_number = 17 then case when chapter_number <= 4 then 1 when chapter_number <= 8 then 2 else 3 end
@@ -93,24 +93,25 @@ stage_seed_raw as (
       when stage_number >= 14 then 2
       else 1
     end as s_rank_slots,
-    (
-      900
-      + ((chapter_number - 1) * 650)
-      + ((stage_number - 1) * 90)
-      + case when stage_number = 17 then 900 else 0 end
+    round(
+      400.0
+      + (7000.0 - 400.0)
+      * power(((((chapter_number - 1) * 17) + (stage_number - 1))::double precision / 203.0), 1.12)
     )::integer as target_pm,
-    (
-      2000
-      + ((chapter_number - 1) * 1100)
-      + case when chapter_number >= 9 then (chapter_number - 8) * 600 else 0 end
+    round(
+      400.0
+      + (7000.0 - 400.0)
+      * power(((((chapter_number - 1) * 17) + 16)::double precision / 203.0), 1.12)
     )::integer as chapter_boss_pm,
-    (
-      850
-      + ((chapter_number - 1) * 600)
+    round(
+      400.0
+      + (7000.0 - 400.0)
+      * power(((((chapter_number - 1) * 17))::double precision / 203.0), 1.12)
     )::integer as normal_pm_start,
-    (
-      1650
-      + ((chapter_number - 1) * 760)
+    round(
+      400.0
+      + (7000.0 - 400.0)
+      * power(((((chapter_number - 1) * 17) + 15)::double precision / 203.0), 1.12)
     )::integer as normal_pm_end,
     case
       when stage_number = 17 then
@@ -146,7 +147,9 @@ stage_seed_raw as (
       else 3
     end as boss_ss_cap,
     case
-      when stage_number = 17 and chapter_number <= 4 then 'A'
+      when stage_number = 17 and chapter_number <= 2 then 'C'
+      when stage_number = 17 and chapter_number <= 4 then 'B'
+      when stage_number = 17 and chapter_number <= 8 then 'A'
       when stage_number = 17 then 'S'
       when stage_number <= 4 and chapter_number <= 4 then 'D'
       when stage_number <= 4 and chapter_number <= 8 then 'C'
@@ -162,6 +165,9 @@ stage_seed_raw as (
       else 'S'
     end as grade_floor,
     case
+      when stage_number = 17 and chapter_number <= 2 then 'B'
+      when stage_number = 17 and chapter_number <= 4 then 'A'
+      when stage_number = 17 and chapter_number <= 8 then 'S'
       when stage_number = 17 then 'S+'
       when stage_number <= 4 and chapter_number <= 4 then 'C'
       when stage_number <= 4 and chapter_number <= 8 then 'B'
