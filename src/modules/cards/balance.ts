@@ -628,7 +628,7 @@ export function normalizeCardRarity(rarity: string): CardBalanceRarity {
   }
 }
 
-function normalizeCharacterKey(characterKey: string) {
+export function normalizeCharacterKey(characterKey: string) {
   const normalized = String(characterKey ?? "").trim().toLowerCase();
   return CHARACTER_KEY_ALIASES[normalized] ?? normalized;
 }

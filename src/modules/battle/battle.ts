@@ -29,7 +29,6 @@ import {
   getCardStarsForLevel,
   getCardXpForNextLevel,
   normalizeCardRarity,
-  type CardBalanceRarity,
   type CardCatalogType,
 } from "../cards/balance.js";
 import type { OwnedCharacter } from "../bootstrap/game-save.js";

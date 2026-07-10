@@ -7,7 +7,6 @@ import {
   createInitialGameSave,
   DEFAULT_UNLOCKED_TEAM_SLOTS,
   FORMATION_GRID_SLOT_COUNT,
-  GAME_SAVE_SCHEMA_VERSION,
   MAX_TEAM_SIZE,
   normalizeGameSave,
   normalizeStageKey,
@@ -19,7 +18,7 @@ import {
   ensureBootstrapMonetizationFoundation,
   updateLoginMissionProgress,
 } from "./monetization-foundation.js";
-import { getCardBalance } from "../cards/balance.js";
+import { getCardBalance, normalizeCharacterKey } from "../cards/balance.js";
 import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
 
 interface PlayerSaveRow {
@@ -107,7 +106,7 @@ export async function bootstrapPlayer(accessToken: string, userId: string): Prom
   const service = createServiceSupabaseClient();
   await ensureProfile(accessToken, userId, service);
 
-  const ensured = await ensurePlayerSave(accessToken, userId, service);
+  const ensured = await ensurePlayerSave(userId, service);
   const snapshot = await buildCanonicalBootstrapSnapshot(service, userId, ensured.save);
 
   try {
@@ -197,7 +196,6 @@ async function ensureProfile(accessToken: string, userId: string, service: Supab
 }
 
 async function ensurePlayerSave(
-  accessToken: string,
   userId: string,
   service: SupabaseClient,
 ): Promise<{ save: GameSaveSnapshot; updatedAt: string; saveVersion: number }> {
@@ -484,14 +482,15 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
   });
 
   const baseCardRows = Object.values(save.characters).map((character) => {
-    const balance = getCardBalance(character.id, "BASE");
+    const characterId = normalizeCharacterKey(character.id);
+    const balance = getCardBalance(characterId, "BASE");
     const rarity = balance?.rarity ?? "basic";
-    const cardKey = balance?.card_key ?? `${character.id}_base_${rarity}`;
+    const cardKey = balance?.card_key ?? `${characterId}_base_${rarity}`;
     return {
       user_id: userId,
       card_definition_id: cardKey,
-      character_id: character.id,
-      character_key: character.id,
+      character_id: characterId,
+      character_key: characterId,
       variant: "base",
       card_type: "BASE",
       rarity,
@@ -505,21 +504,22 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
       fragments: character.fragments,
       energy: Math.floor(character.energy),
       max_energy: Math.floor(character.maxEnergy),
-      is_starter: STARTER_CHARACTER_IDS.has(character.id),
+      is_starter: STARTER_CHARACTER_IDS.has(characterId),
       acquired_at: now,
       updated_at: now,
     };
   });
 
   const definitiveCardRows = Object.values(save.definitiveCards ?? {}).map((card) => {
-    const balance = getCardBalance(card.characterId, "DEFINITIVA");
+    const characterId = normalizeCharacterKey(card.characterId);
+    const balance = getCardBalance(characterId, "DEFINITIVA");
     const rarity = balance?.rarity ?? "legendary";
-    const cardKey = balance?.card_key ?? card.cardDefinitionId ?? `${card.characterId}_definitiva_${rarity}`;
+    const cardKey = balance?.card_key ?? card.cardDefinitionId ?? `${characterId}_definitiva_${rarity}`;
     return {
       user_id: userId,
-      card_definition_id: card.cardDefinitionId || cardKey,
-      character_id: card.characterId,
-      character_key: card.characterId,
+      card_definition_id: cardKey,
+      character_id: characterId,
+      character_key: characterId,
       variant: "definitive",
       card_type: "DEFINITIVA",
       rarity,
@@ -700,7 +700,7 @@ async function hydrateSaveFormationFromServer(
 
     const userCardsById = new Map<string, string>(
       (userCards ?? []).map((row: Pick<UserCardRow, "id" | "character_key" | "character_id">) =>
-        [row.id, row.character_key?.trim() || row.character_id] as const,
+        [row.id, normalizeCharacterKey(row.character_key?.trim() || row.character_id)] as const,
       ),
     );
     const team = Array.from({ length: MAX_TEAM_SIZE }, () => null) as (string | null)[];
@@ -778,7 +778,7 @@ async function syncSaveFormationToServer(service: SupabaseClient, userId: string
   const normalizedTeam = [
     ...save.team.slice(0, MAX_TEAM_SIZE),
     ...Array.from({ length: Math.max(0, MAX_TEAM_SIZE - save.team.length) }, () => null),
-  ].slice(0, MAX_TEAM_SIZE);
+  ].slice(0, MAX_TEAM_SIZE).map((characterId) => characterId == null ? null : normalizeCharacterKey(characterId));
   const normalizedFormation = normalizeTeamFormation(normalizedTeam, save.formation);
   const activeCharacterIds = normalizedTeam.filter((characterId): characterId is string => Boolean(characterId));
 
@@ -828,7 +828,7 @@ async function syncSaveFormationToServer(service: SupabaseClient, userId: string
       (row.card_type == null && row.variant == null);
     if (!isBaseCard) continue;
 
-    const characterKey = row.character_key?.trim() || row.character_id;
+    const characterKey = normalizeCharacterKey(row.character_key?.trim() || row.character_id);
     const current = baseCardsByCharacter.get(characterKey);
     if (!current || compareBaseCardPriority(row, current) < 0) {
       baseCardsByCharacter.set(characterKey, row);
@@ -860,7 +860,7 @@ async function syncSaveFormationToServer(service: SupabaseClient, userId: string
   for (const slot of existingSlotRows ?? []) {
     const card = userCardsById.get(slot.user_card_id);
     if (!card) continue;
-    const characterKey = card.character_key?.trim() || card.character_id;
+    const characterKey = normalizeCharacterKey(card.character_key?.trim() || card.character_id);
     if (normalizedTeam[slot.team_position] !== characterKey) continue;
     existingCardsByTeamPosition.set(slot.team_position, card);
   }

@@ -12,7 +12,7 @@ import {
 } from "../bootstrap/monetization-foundation.js";
 import { normalizeGameSave, type GameSaveSnapshot, type OwnedDefinitiveCard, type OwnedCharacter } from "../bootstrap/game-save.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { getBalancedCardsByRarityAndType, getCardBalance, getCardUnlockElementsRequired } from "../cards/balance.js";
+import { getBalancedCardsByRarityAndType, getCardBalance, getCardUnlockElementsRequired, normalizeCharacterKey } from "../cards/balance.js";
 
 type Rarity = "basic" | "epic" | "legendary" | "mythic";
 type CardVariant = "base" | "definitive";
@@ -651,20 +651,23 @@ async function pickCardDefinitionForCardType(supabase: SupabaseClient, cardType:
 
   const remoteByCharacter = new Map<string, CardDefinitionRow & { sort_order?: number }>(
     (data ?? []).map((row: CardDefinitionRow & { sort_order?: number }) => [
-      `${row.character_key.trim().toLowerCase()}::${row.card_type.trim().toUpperCase()}`,
+      `${normalizeCharacterKey(row.character_key)}::${row.card_type.trim().toUpperCase()}`,
       row,
     ]),
   );
   const selected = activePool[randomInt(activePool.length)] ?? null;
   if (selected == null) return null;
-  const remoteRow = remoteByCharacter.get(`${selected.characterKey}::${selected.cardType}`) ?? null;
+  const canonicalCharacterId = normalizeCharacterKey(selected.characterKey);
+  const balance = getCardBalance(canonicalCharacterId, selected.cardType);
+  const canonicalCardDefinitionId = balance?.card_key ?? selected.card_key ?? `${canonicalCharacterId}_${selected.cardType.toLowerCase()}_${selected.rarity}`;
+  const remoteRow = remoteByCharacter.get(`${canonicalCharacterId}::${selected.cardType}`) ?? null;
 
   return {
-    id: remoteRow?.card_key ?? `${selected.characterKey}_${selected.cardType.toLowerCase()}_${selected.rarity}`,
-    characterId: selected.characterKey,
+    id: canonicalCardDefinitionId,
+    characterId: canonicalCharacterId,
     variant: selected.cardType === "BASE" ? "base" : "definitive",
-    rarity: selected.rarity,
-    name: remoteRow?.display_name ?? `${selected.characterKey} ${selected.cardType.toLowerCase()}`,
+    rarity: balance?.rarity ?? selected.rarity,
+    name: remoteRow?.display_name ?? `${canonicalCharacterId} ${selected.cardType.toLowerCase()}`,
   };
 }
 
@@ -744,18 +747,19 @@ function buildPackCollectionPersistenceRows(
   const materialRows = new Map<string, PersistableUserMaterialRow>();
 
   for (const result of results) {
-    const baseCharacter: OwnedCharacter | undefined = save.characters[result.characterId];
-    const definitiveCharacter: OwnedDefinitiveCard | undefined = save.definitiveCards[result.characterId];
+    const characterId = normalizeCharacterKey(result.characterId);
+    const baseCharacter: OwnedCharacter | undefined = save.characters[characterId];
+    const definitiveCharacter: OwnedDefinitiveCard | undefined = save.definitiveCards[characterId];
     if (result.cardOwnedAfter && ((result.variant === "base" && baseCharacter) || (result.variant === "definitive" && definitiveCharacter))) {
       const cardType = result.variant === "base" ? "BASE" : "DEFINITIVA";
-      const balance = getCardBalance(result.characterId, cardType);
+      const balance = getCardBalance(characterId, cardType);
       const cardKey = balance?.card_key ?? result.cardDefinitionId;
       const rarity = balance?.rarity ?? result.rarity;
-      cardRows.set(result.cardDefinitionId, {
+      cardRows.set(cardKey, {
         user_id: userId,
-        card_definition_id: result.cardDefinitionId,
-        character_id: result.characterId,
-        character_key: result.characterId,
+        card_definition_id: cardKey,
+        character_id: characterId,
+        character_key: characterId,
         card_key: cardKey,
         card_type: cardType,
         variant: result.variant,
@@ -769,7 +773,7 @@ function buildPackCollectionPersistenceRows(
         fragments: result.variant === "base" ? (baseCharacter?.fragments ?? 0) : (definitiveCharacter?.fragments ?? 0),
         energy: result.variant === "base" ? Math.floor(baseCharacter?.energy ?? 0) : 0,
         max_energy: result.variant === "base" ? Math.floor(baseCharacter?.maxEnergy ?? 100) : 100,
-        is_starter: result.characterId === "yuji" || result.characterId === "nobara",
+        is_starter: characterId === "yuji" || characterId === "nobara",
         updated_at: nowIso,
         acquired_at: result.variant === "definitive" && definitiveCharacter ? new Date(definitiveCharacter.acquiredAt).toISOString() : nowIso,
       });
@@ -811,10 +815,11 @@ function buildPackCollectionPersistenceRows(
 }
 
 function applyCardUnlockToSave(save: GameSaveSnapshot, definition: CardDefinition) {
+  const characterId = normalizeCharacterKey(definition.characterId);
   if (definition.variant === "base") {
-    if (!save.characters[definition.characterId]) {
-      save.characters[definition.characterId] = {
-        id: definition.characterId,
+    if (!save.characters[characterId]) {
+      save.characters[characterId] = {
+        id: characterId,
         level: 1,
         xp: 0,
         stars: 1,
@@ -829,9 +834,9 @@ function applyCardUnlockToSave(save: GameSaveSnapshot, definition: CardDefinitio
     return;
   }
 
-  const existingDefinitive = save.definitiveCards[definition.characterId];
-  save.definitiveCards[definition.characterId] = {
-    characterId: definition.characterId,
+  const existingDefinitive = save.definitiveCards[characterId];
+  save.definitiveCards[characterId] = {
+    characterId,
     cardDefinitionId: definition.id,
     level: existingDefinitive?.level ?? 1,
     xp: existingDefinitive?.xp ?? 0,
@@ -846,33 +851,35 @@ function applyCardUnlockToSave(save: GameSaveSnapshot, definition: CardDefinitio
 function applyDuplicateCardRewardToSave(save: GameSaveSnapshot, definition: CardDefinition, fragmentAmount: number) {
   if (fragmentAmount <= 0) return;
 
+  const characterId = normalizeCharacterKey(definition.characterId);
   if (definition.variant === "base") {
-    const character = save.characters[definition.characterId];
+    const character = save.characters[characterId];
     if (!character) return;
-    const fragmentMaterialId = buildDuplicateFragmentMaterialId(definition);
+    const fragmentMaterialId = buildDuplicateFragmentMaterialId({ ...definition, characterId });
     save.fragments[fragmentMaterialId] = (save.fragments[fragmentMaterialId] ?? 0) + fragmentAmount;
-    save.characters[definition.characterId] = {
+    save.characters[characterId] = {
       ...character,
       fragments: character.fragments + fragmentAmount,
     };
     return;
   }
 
-  const existingDefinitive = save.definitiveCards[definition.characterId];
+  const existingDefinitive = save.definitiveCards[characterId];
   if (!existingDefinitive) return;
-  const fragmentMaterialId = buildDuplicateFragmentMaterialId(definition);
+  const fragmentMaterialId = buildDuplicateFragmentMaterialId({ ...definition, characterId });
   save.fragments[fragmentMaterialId] = (save.fragments[fragmentMaterialId] ?? 0) + fragmentAmount;
-  save.definitiveCards[definition.characterId] = {
+  save.definitiveCards[characterId] = {
     ...existingDefinitive,
     fragments: existingDefinitive.fragments + fragmentAmount,
   };
 }
 
 function isCardOwnedInSave(save: GameSaveSnapshot, definition: CardDefinition) {
+  const characterId = normalizeCharacterKey(definition.characterId);
   if (definition.variant === "base") {
-    return Boolean(save.characters[definition.characterId]);
+    return Boolean(save.characters[characterId]);
   }
-  return Boolean(save.definitiveCards[definition.characterId]);
+  return Boolean(save.definitiveCards[characterId]);
 }
 
 function buildCardElementMaterialId(cardDefinitionId: string) {
@@ -880,10 +887,11 @@ function buildCardElementMaterialId(cardDefinitionId: string) {
 }
 
 function buildDuplicateFragmentMaterialId(definition: CardDefinition) {
+  const characterId = normalizeCharacterKey(definition.characterId);
   if (definition.variant === "base") {
-    return `fragment:${definition.characterId}`;
+    return `fragment:${characterId}`;
   }
-  return `fragment:definitive:${definition.characterId}`;
+  return `fragment:definitive:${characterId}`;
 }
 
 async function validatePackPurchaseLimit(
@@ -1086,22 +1094,6 @@ function mapRarityToCatalog(rarity: Rarity) {
       return "LEGENDARY";
     case "mythic":
       return "MYTHIC";
-  }
-}
-
-function mapCatalogRarity(rarity: string): Rarity {
-  switch (rarity) {
-    case "COMMON":
-      return "basic";
-    case "RARE":
-    case "EPIC":
-      return "epic";
-    case "LEGENDARY":
-      return "legendary";
-    case "MYTHIC":
-      return "mythic";
-    default:
-      return "basic";
   }
 }
 

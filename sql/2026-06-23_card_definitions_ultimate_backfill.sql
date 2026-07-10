@@ -56,7 +56,8 @@ with prepared as (
           when 'SOPORTE' then case when upper(cd.card_type) = 'DEFINITIVA' then 3.0 else 2.0 end
           else case when upper(cd.card_type) = 'DEFINITIVA' then 4.2 else 3.0 end
         end,
-      'energy_cost', 50,
+      'energy_cost',
+        case when upper(cd.card_type) = 'DEFINITIVA' then 70 else 75 end,
       'vfx_key',
         case upper(cd.role)
           when 'DPS_FISICO' then 'physical_ultimate_burst'
@@ -80,7 +81,7 @@ updated as (
       cd.ultimate is null
       or cd.ultimate = '{}'::jsonb
       or jsonb_typeof(cd.ultimate) <> 'object'
-      or coalesce((cd.ultimate ->> 'energy_cost')::int, -1) <> 50
+      or coalesce((cd.ultimate ->> 'energy_cost')::int, -1) <> case when upper(cd.card_type) = 'DEFINITIVA' then 70 else 75 end
       or not (cd.ultimate ?& array[
         'key',
         'name',
