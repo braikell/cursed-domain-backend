@@ -1097,6 +1097,22 @@ function mapRarityToCatalog(rarity: Rarity) {
   }
 }
 
+function mapCatalogRarity(rarity: string): Rarity {
+  switch (rarity) {
+    case "COMMON":
+      return "basic";
+    case "RARE":
+    case "EPIC":
+      return "epic";
+    case "LEGENDARY":
+      return "legendary";
+    case "MYTHIC":
+      return "mythic";
+    default:
+      return "basic";
+  }
+}
+
 function isMissingPackSchemaError(message: string) {
   return (
     message.includes("pack_definitions") ||

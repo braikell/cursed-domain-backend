@@ -7,6 +7,7 @@ import {
   createInitialGameSave,
   DEFAULT_UNLOCKED_TEAM_SLOTS,
   FORMATION_GRID_SLOT_COUNT,
+  GAME_SAVE_SCHEMA_VERSION,
   MAX_TEAM_SIZE,
   normalizeGameSave,
   normalizeStageKey,
@@ -106,7 +107,7 @@ export async function bootstrapPlayer(accessToken: string, userId: string): Prom
   const service = createServiceSupabaseClient();
   await ensureProfile(accessToken, userId, service);
 
-  const ensured = await ensurePlayerSave(userId, service);
+  const ensured = await ensurePlayerSave(accessToken, userId, service);
   const snapshot = await buildCanonicalBootstrapSnapshot(service, userId, ensured.save);
 
   try {
@@ -196,6 +197,7 @@ async function ensureProfile(accessToken: string, userId: string, service: Supab
 }
 
 async function ensurePlayerSave(
+  accessToken: string,
   userId: string,
   service: SupabaseClient,
 ): Promise<{ save: GameSaveSnapshot; updatedAt: string; saveVersion: number }> {
@@ -900,9 +902,34 @@ async function upsertOrThrow(
   values: Record<string, unknown> | Array<Record<string, unknown>>,
   onConflict?: string,
 ) {
-  const query = service.from(table).upsert(values, onConflict ? { onConflict } : undefined);
+  const safeValues = Array.isArray(values) && onConflict
+    ? dedupeUpsertRows(table, values, onConflict)
+    : values;
+  const query = service.from(table).upsert(safeValues, onConflict ? { onConflict } : undefined);
   const { error } = await query;
   if (error) throw new Error(error.message);
+}
+
+function dedupeUpsertRows(table: string, rows: Array<Record<string, unknown>>, onConflict: string) {
+  const conflictColumns = onConflict.split(",").map((column) => column.trim()).filter(Boolean);
+  if (conflictColumns.length === 0 || rows.length <= 1) return rows;
+
+  const deduped = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const key = conflictColumns.map((column) => String(row[column] ?? "")).join("\u001f");
+    deduped.set(key, row);
+  }
+
+  if (deduped.size !== rows.length) {
+    console.warn("[bootstrap] duplicate upsert rows collapsed", {
+      table,
+      onConflict,
+      before: rows.length,
+      after: deduped.size,
+    });
+  }
+
+  return Array.from(deduped.values());
 }
 
 function clampUnlockedSlots(value: number | null | undefined) {
