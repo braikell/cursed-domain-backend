@@ -91,6 +91,11 @@ interface CardDefinition {
   name: string;
 }
 
+interface CardDefinitionPools {
+  base: Map<string, CardDefinitionRow & { sort_order?: number }>;
+  definitive: Map<string, CardDefinitionRow & { sort_order?: number }>;
+}
+
 interface PackPullResult {
   cardType: CardType;
   cardDefinitionId: string;
@@ -408,12 +413,13 @@ async function resolvePurchase(input: {
 
   const limitWindow = await validatePackPurchaseLimit(input.supabase, input.userId, input.input, pack, serverNow);
   const duplicateRewards = new Map(input.config.duplicateRewards.map((entry) => [entry.cardType, entry]));
+  const definitionPools = await loadCardDefinitionPools(input.supabase);
   const results: PackPullResult[] = [];
   const totalPulls = input.input.count * PACK_CARDS_PER_PURCHASE;
 
   for (let index = 0; index < totalPulls; index += 1) {
     const cardType = rollCardType(pack.rates);
-    const definition = await pickCardDefinitionForCardType(input.supabase, cardType);
+    const definition = pickCardDefinitionForCardType(cardType, definitionPools);
     if (definition == null) {
       throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
     }
@@ -623,32 +629,43 @@ async function mergeUserMaterialStacks(supabase: SupabaseClient, userId: string,
   }
 }
 
-async function pickCardDefinitionForCardType(supabase: SupabaseClient, cardType: CardType): Promise<CardDefinition | null> {
-  const variant = cardType.startsWith("definitive_") ? "DEFINITIVA" : "BASE";
-  const localRarity = getCardTypeRarity(cardType);
-  const activePool = getBalancedCardsByRarityAndType(localRarity, variant);
-  if (!activePool.length) return null;
-
+async function loadCardDefinitionPools(supabase: SupabaseClient): Promise<CardDefinitionPools> {
   const { data, error } = await supabase
     .from("card_definitions")
     .select("card_key, character_key, card_type, rarity, display_name, sort_order")
-    .eq("card_type", variant)
+    .in("card_type", ["BASE", "DEFINITIVA"])
     .eq("is_enabled", true)
     .order("sort_order", { ascending: true })
     .returns<Array<CardDefinitionRow & { sort_order?: number }>>();
   if (error) throw new Error(error.message);
 
-  const remoteByCharacter = new Map<string, CardDefinitionRow & { sort_order?: number }>(
-    (data ?? []).map((row: CardDefinitionRow & { sort_order?: number }) => [
-      `${normalizeCharacterKey(row.character_key)}::${row.card_type.trim().toUpperCase()}`,
-      row,
-    ]),
-  );
+  const pools: CardDefinitionPools = {
+    base: new Map<string, CardDefinitionRow & { sort_order?: number }>(),
+    definitive: new Map<string, CardDefinitionRow & { sort_order?: number }>(),
+  };
+  for (const row of data ?? []) {
+    const key = `${normalizeCharacterKey(row.character_key)}::${row.card_type.trim().toUpperCase()}`;
+    if (row.card_type.trim().toUpperCase() === "DEFINITIVA") {
+      pools.definitive.set(key, row);
+    } else {
+      pools.base.set(key, row);
+    }
+  }
+  return pools;
+}
+
+function pickCardDefinitionForCardType(cardType: CardType, pools: CardDefinitionPools): CardDefinition | null {
+  const variant = cardType.startsWith("definitive_") ? "DEFINITIVA" : "BASE";
+  const localRarity = getCardTypeRarity(cardType);
+  const activePool = getBalancedCardsByRarityAndType(localRarity, variant);
+  if (!activePool.length) return null;
+
   const selected = activePool[randomInt(activePool.length)] ?? null;
   if (selected == null) return null;
   const canonicalCharacterId = normalizeCharacterKey(selected.characterKey);
   const balance = getCardBalance(canonicalCharacterId, selected.cardType);
   const canonicalCardDefinitionId = balance?.card_key ?? selected.card_key ?? `${canonicalCharacterId}_${selected.cardType.toLowerCase()}_${selected.rarity}`;
+  const remoteByCharacter = variant === "DEFINITIVA" ? pools.definitive : pools.base;
   const remoteRow = remoteByCharacter.get(`${canonicalCharacterId}::${selected.cardType}`) ?? null;
 
   return {
