@@ -238,6 +238,7 @@ const ROLE_MOVE_SPEEDS: Record<string, number> = {
   INVOCADOR: 68,
   SOPORTE: 45,
 };
+const MELEE_INVOCATOR_CHARACTER_KEYS = new Set(["yuta"]);
 const DEFAULT_ATTACK_INTERVAL = 1.45;
 const DEFAULT_MAX_ENERGY = 100;
 const DEFAULT_CRIT_CHANCE = 0.08;
@@ -547,9 +548,11 @@ function finalizeDefinitions(definitions: CardBalanceDefinition[]) {
 
 function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSortOrder: number): CardBalanceDefinition {
   const role = String(definition.role ?? "").trim().toUpperCase();
-  const attackRange = ROLE_ATTACK_RANGES[role] ?? ROLE_ATTACK_RANGES.DPS_FISICO;
-  const desiredRange = ROLE_DESIRED_RANGES[role] ?? ROLE_DESIRED_RANGES.DPS_FISICO;
-  const moveSpeed = ROLE_MOVE_SPEEDS[role] ?? ROLE_MOVE_SPEEDS.DPS_FISICO;
+  const characterKey = normalizeCharacterKey(definition.characterKey);
+  const combatRangeRole = getCombatRangeRole(characterKey, role);
+  const attackRange = ROLE_ATTACK_RANGES[combatRangeRole] ?? ROLE_ATTACK_RANGES.DPS_FISICO;
+  const desiredRange = ROLE_DESIRED_RANGES[combatRangeRole] ?? ROLE_DESIRED_RANGES.DPS_FISICO;
+  const moveSpeed = ROLE_MOVE_SPEEDS[combatRangeRole] ?? ROLE_MOVE_SPEEDS.DPS_FISICO;
   const stats = {
     ad: Math.floor(Number(definition.stats.ad ?? 0) || 0),
     ap: Math.floor(Number(definition.stats.ap ?? 0) || 0),
@@ -559,7 +562,6 @@ function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSor
   };
   const rarity = normalizeCardRarity(definition.rarity);
   const cardType = normalizeCardType(definition.cardType);
-  const characterKey = normalizeCharacterKey(definition.characterKey);
   const explicitSortOrder = Number(definition.sort_order);
   return {
     ...definition,
@@ -637,6 +639,12 @@ export function normalizeCardRarity(rarity: string): CardBalanceRarity {
 export function normalizeCharacterKey(characterKey: string) {
   const normalized = String(characterKey ?? "").trim().toLowerCase();
   return CHARACTER_KEY_ALIASES[normalized] ?? normalized;
+}
+
+function getCombatRangeRole(characterKey: string, role: string) {
+  return MELEE_INVOCATOR_CHARACTER_KEYS.has(normalizeCharacterKey(characterKey))
+    ? "DPS_FISICO"
+    : String(role ?? "").trim().toUpperCase();
 }
 
 function calculateAttackValue(ad: number, ap: number, pm: number, scaling: string) {

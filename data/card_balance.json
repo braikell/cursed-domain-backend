@@ -226,14 +226,19 @@
       },
       "ultimate": {
         "key": "yuta_base_ultimate",
-        "name": "Ultimate Base de Yuta Okkotsu",
+        "name": "Manifestacion de Rika",
         "type": "SUMMON",
-        "target_rule": "SELF",
-        "area_rule": "SELF",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 2,
         "energy_cost": 75,
-        "vfx_key": "summoner_ultimate_ritual"
+        "vfx_key": "yuta_rika_manifestation",
+        "animation_lock_msec": 2500,
+        "cast_duration_sec": 2.5,
+        "impact_delay_sec": 1.15,
+        "hit_count": 3,
+        "hit_interval_sec": 0.42
       }
     },
     {
@@ -1013,14 +1018,19 @@
       },
       "ultimate": {
         "key": "yuta_definitiva_ultimate",
-        "name": "Ultimate Definitiva de Yuta Okkotsu",
+        "name": "Manifestacion de Rika",
         "type": "SUMMON",
-        "target_rule": "SELF",
-        "area_rule": "SELF",
+        "target_rule": "NEAREST_ENEMY",
+        "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 2,
         "energy_cost": 70,
-        "vfx_key": "summoner_ultimate_ritual"
+        "vfx_key": "yuta_rika_manifestation",
+        "animation_lock_msec": 2500,
+        "cast_duration_sec": 2.5,
+        "impact_delay_sec": 1.15,
+        "hit_count": 3,
+        "hit_interval_sec": 0.42
       }
     },
     {
