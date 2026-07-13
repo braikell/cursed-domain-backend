@@ -44,7 +44,6 @@ interface PackConfig {
     gold: { count: number | null; windowType: "calendar_day_utc" | "rolling_hours" | null; windowHours: number | null };
     gems: { count: number | null; windowType: "calendar_day_utc" | "rolling_hours" | null; windowHours: number | null };
   };
-  pityTarget: "epic_or_higher" | "legendary_or_higher" | "mythic";
   rates: Array<{ cardType: CardType; rate: number }>;
   isEnabled: boolean;
 }
@@ -69,13 +68,6 @@ interface UserPackLimitRow {
   window_type: "calendar_day_utc" | "rolling_hours" | null;
 }
 
-interface UserPityRow {
-  pity_legendary: number;
-  pity_mythic: number;
-  target_counter: number;
-  soft_pity_step: number;
-}
-
 interface CardDefinitionRow {
   card_key: string;
   character_key: string;
@@ -89,11 +81,6 @@ interface FinalizePackPurchaseResultRow {
   gems: number;
   purchases_before: number;
   purchases_after: number;
-}
-
-interface PityState {
-  targetCounter: number;
-  softPityStep: number;
 }
 
 interface CardDefinition {
@@ -121,8 +108,6 @@ interface PackPullResult {
   unlockElementsOwnedAfter?: number;
   unlockedNow?: boolean;
   wasPity: boolean;
-  pityStateBefore?: PityState;
-  pityStateAfter?: PityState;
 }
 
 interface PersistableUserCardRow {
@@ -155,7 +140,8 @@ interface PersistableUserMaterialRow {
   updated_at: string;
 }
 
-const PACK_CARDS_PER_PURCHASE = 3;
+const PACK_CARDS_PER_PURCHASE = 2;
+const X10_DISCOUNT_RATE = 0.10;
 
 interface ResolvedPurchase {
   config: SummonMonetizationConfig;
@@ -175,8 +161,6 @@ interface ResolvedPurchase {
     windowEndsAt: string;
   };
   purchaseCount: number;
-  pityBefore: PityState;
-  pityAfter: PityState;
   results: PackPullResult[];
   save: GameSaveSnapshot;
   cardRows: PersistableUserCardRow[];
@@ -233,8 +217,6 @@ export async function purchasePackDedicated(
     purchaseCurrency: input.purchaseCurrency,
     count: input.count,
     cost: resolved.cost,
-    pityBefore: resolved.pityBefore,
-    pityAfter: resolved.pityAfter,
     limitWindow: {
       windowKey: resolved.limitWindow.windowKey,
       purchasesBefore: finalized.purchasesBefore,
@@ -262,7 +244,6 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
       displayName: "Basic Pack",
       prices: { gold: 6000, gems: 120 },
       limits: { gold: { count: null, windowType: null, windowHours: null }, gems: { count: null, windowType: null, windowHours: null } },
-      pityTarget: "epic_or_higher",
       rates: [
         { cardType: "base_basic", rate: 80 }, { cardType: "base_epic", rate: 19.8 }, { cardType: "base_legendary", rate: 0.1 }, { cardType: "base_mythic", rate: 0.01 },
         { cardType: "definitive_basic", rate: 0.06 }, { cardType: "definitive_epic", rate: 0.03 }, { cardType: "definitive_legendary", rate: 0 }, { cardType: "definitive_mythic", rate: 0 },
@@ -274,7 +255,6 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
       displayName: "Epic Pack",
       prices: { gold: 30000, gems: 650 },
       limits: { gold: { count: 25, windowType: "calendar_day_utc", windowHours: 24 }, gems: { count: 50, windowType: "calendar_day_utc", windowHours: 24 } },
-      pityTarget: "legendary_or_higher",
       rates: [
         { cardType: "base_basic", rate: 50 }, { cardType: "base_epic", rate: 47.5 }, { cardType: "base_legendary", rate: 1.49 }, { cardType: "base_mythic", rate: 0.01 },
         { cardType: "definitive_basic", rate: 0.75 }, { cardType: "definitive_epic", rate: 0.25 }, { cardType: "definitive_legendary", rate: 0 }, { cardType: "definitive_mythic", rate: 0 },
@@ -286,7 +266,6 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
       displayName: "Legendary Pack",
       prices: { gold: 180000, gems: 2800 },
       limits: { gold: { count: 1, windowType: "calendar_day_utc", windowHours: 24 }, gems: { count: 30, windowType: "calendar_day_utc", windowHours: 24 } },
-      pityTarget: "mythic",
       rates: [
         { cardType: "base_basic", rate: 5 }, { cardType: "base_epic", rate: 65 }, { cardType: "base_legendary", rate: 25 }, { cardType: "base_mythic", rate: 2 },
         { cardType: "definitive_basic", rate: 2 }, { cardType: "definitive_epic", rate: 0.9 }, { cardType: "definitive_legendary", rate: 0.05 }, { cardType: "definitive_mythic", rate: 0.05 },
@@ -298,7 +277,6 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
       displayName: "Mythic Pack",
       prices: { gold: 650000, gems: 7800 },
       limits: { gold: { count: 1, windowType: "rolling_hours", windowHours: 240 }, gems: { count: 10, windowType: "calendar_day_utc", windowHours: 24 } },
-      pityTarget: "mythic",
       rates: [
         { cardType: "base_basic", rate: 0 }, { cardType: "base_epic", rate: 14 }, { cardType: "base_legendary", rate: 45 }, { cardType: "base_mythic", rate: 31 },
         { cardType: "definitive_basic", rate: 4 }, { cardType: "definitive_epic", rate: 3 }, { cardType: "definitive_legendary", rate: 2 }, { cardType: "definitive_mythic", rate: 1 },
@@ -333,7 +311,7 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
       const [{ data: packRows, error: packError }, { data: duplicateRows, error: duplicateError }] = await Promise.all([
         supabase
           .from("pack_definitions")
-          .select("pack_id, display_name, price_gold, price_gems, gold_limit_count, gold_limit_window_type, gold_limit_window_hours, gem_limit_count, gem_limit_window_type, gem_limit_window_hours, pity_target, rates, is_enabled")
+          .select("pack_id, display_name, price_gold, price_gems, gold_limit_count, gold_limit_window_type, gold_limit_window_hours, gem_limit_count, gem_limit_window_type, gem_limit_window_hours, rates, is_enabled")
           .eq("config_version", configVersion.config_version)
           .returns<Array<Record<string, unknown>>>(),
         supabase
@@ -366,7 +344,6 @@ async function getSummonMonetizationConfig(supabase: SupabaseClient): Promise<Su
                 windowHours: numberOrNull(row.gem_limit_window_hours),
               },
             },
-            pityTarget: String(row.pity_target ?? packs[packId].pityTarget) as PackConfig["pityTarget"],
             rates: Array.isArray(row.rates) ? (row.rates as Array<{ cardType: CardType; rate: number }>).map((entry) => ({
               cardType: entry.cardType,
               rate: Number(entry.rate),
@@ -423,41 +400,31 @@ async function resolvePurchase(input: {
   }
 
   const serverNow = new Date();
-  const totalCost = price * input.input.count;
+  const totalCost = calculatePackPurchaseCost(price, input.input.count);
   const currentBalance = input.input.purchaseCurrency === "gold" ? save.gold : save.gems;
   if (currentBalance < totalCost) {
     throw new HttpModuleError(400, "insufficient_funds", "summons", `No tienes ${input.input.purchaseCurrency === "gold" ? "oro" : "gemas"} suficientes.`);
   }
 
   const limitWindow = await validatePackPurchaseLimit(input.supabase, input.userId, input.input, pack, serverNow);
-  const pityRow = await loadUserPity(input.supabase, input.userId, input.input.packId);
-  const pityBefore: PityState = {
-    targetCounter: pityRow.target_counter,
-    softPityStep: pityRow.soft_pity_step,
-  };
-  const pityState: PityState = { ...pityBefore };
   const duplicateRewards = new Map(input.config.duplicateRewards.map((entry) => [entry.cardType, entry]));
   const results: PackPullResult[] = [];
   const totalPulls = input.input.count * PACK_CARDS_PER_PURCHASE;
 
   for (let index = 0; index < totalPulls; index += 1) {
-    const pityStateBefore = { targetCounter: pityState.targetCounter, softPityStep: pityState.softPityStep };
-    const roll = rollConfiguredPackCard(pack, pityState);
-    const definition = await pickCardDefinitionForCardType(input.supabase, roll.cardType);
+    const cardType = rollCardType(pack.rates);
+    const definition = await pickCardDefinitionForCardType(input.supabase, cardType);
     if (definition == null) {
-      throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${roll.cardType}.`);
+      throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
     }
 
-    const pityStateAfter = { targetCounter: pityState.targetCounter, softPityStep: pityState.softPityStep };
     results.push(
       applyPackCardToCollection({
         save,
         definition,
-        cardType: roll.cardType,
-        wasPity: roll.wasPity,
+        cardType,
+        wasPity: false,
         duplicateRewardsByType: duplicateRewards,
-        pityStateBefore,
-        pityStateAfter,
       }),
     );
   }
@@ -475,8 +442,6 @@ async function resolvePurchase(input: {
     serverNow,
     limitWindow,
     purchaseCount: input.input.count,
-    pityBefore,
-    pityAfter: { targetCounter: pityState.targetCounter, softPityStep: pityState.softPityStep },
     results,
     save,
     cardRows,
@@ -506,8 +471,8 @@ async function finalizePurchase(input: {
     duplicate_fragment_material_id: result.duplicateFragmentMaterialId ?? null,
     duplicate_fragment_amount: result.duplicateFragmentAmount ?? null,
     was_pity: result.wasPity,
-    pity_state_before: result.pityStateBefore ?? {},
-    pity_state_after: result.pityStateAfter ?? {},
+    pity_state_before: {},
+    pity_state_after: {},
     probabilities_version: input.resolved.config.probabilitiesVersion,
     config_version: input.resolved.config.configVersion,
     server_date: input.resolved.serverNow.toISOString().slice(0, 10),
@@ -532,8 +497,8 @@ async function finalizePurchase(input: {
       unlocked_slots: input.resolved.save.unlockedSlots,
       total_summons: input.resolved.save.totalSummons,
       total_battles_won: input.resolved.save.totalBattlesWon,
-      pity_target_counter: input.resolved.pityAfter.targetCounter,
-      pity_soft_pity_step: input.resolved.pityAfter.softPityStep,
+      pity_target_counter: 0,
+      pity_soft_pity_step: 0,
       config_version: input.resolved.config.configVersion,
       probabilities_version: input.resolved.config.probabilitiesVersion,
       window_key: input.resolved.limitWindow.windowKey,
@@ -658,17 +623,6 @@ async function mergeUserMaterialStacks(supabase: SupabaseClient, userId: string,
   }
 }
 
-async function loadUserPity(supabase: SupabaseClient, userId: string, packId: PurchasePackInput["packId"]) {
-  const { data, error } = await supabase
-    .from("user_pity")
-    .select("pity_legendary, pity_mythic, target_counter, soft_pity_step")
-    .eq("user_id", userId)
-    .eq("pack_id", packId)
-    .maybeSingle<UserPityRow>();
-  if (error) throw new Error(error.message);
-  return data ?? { pity_legendary: 0, pity_mythic: 0, target_counter: 0, soft_pity_step: 0 };
-}
-
 async function pickCardDefinitionForCardType(supabase: SupabaseClient, cardType: CardType): Promise<CardDefinition | null> {
   const variant = cardType.startsWith("definitive_") ? "DEFINITIVA" : "BASE";
   const localRarity = getCardTypeRarity(cardType);
@@ -712,10 +666,8 @@ function applyPackCardToCollection(input: {
   cardType: CardType;
   wasPity: boolean;
   duplicateRewardsByType: Map<CardType, { fragmentMaterialId: string; fragmentAmount: number }>;
-  pityStateBefore: PityState;
-  pityStateAfter: PityState;
 }): PackPullResult {
-  const { save, definition, cardType, wasPity, duplicateRewardsByType, pityStateBefore, pityStateAfter } = input;
+  const { save, definition, cardType, wasPity, duplicateRewardsByType } = input;
   const isOwnedBefore = isCardOwnedInSave(save, definition);
 
   if (!isOwnedBefore) {
@@ -747,8 +699,6 @@ function applyPackCardToCollection(input: {
       unlockElementsOwnedAfter,
       unlockedNow,
       wasPity,
-      pityStateBefore,
-      pityStateAfter,
     };
   }
 
@@ -767,8 +717,6 @@ function applyPackCardToCollection(input: {
     duplicateFragmentMaterialId: buildDuplicateFragmentMaterialId(definition),
     duplicateFragmentAmount: duplicateReward?.fragmentAmount,
     wasPity,
-    pityStateBefore,
-    pityStateAfter,
   };
 }
 
@@ -1003,62 +951,12 @@ function shouldResetWindow(row: UserPackLimitRow | null, windowType: "calendar_d
   return new Date(row.window_ends_at).getTime() <= now.getTime();
 }
 
-function rollConfiguredPackCard(pack: PackConfig, pityState: PityState) {
-  pityState.targetCounter += 1;
-  const guaranteed = resolveGuaranteedCardType(pack.id, pityState);
-  if (guaranteed) {
-    pityState.targetCounter = 0;
-    pityState.softPityStep = 0;
-    return { cardType: guaranteed, wasPity: true };
+function calculatePackPurchaseCost(unitPrice: number, count: number) {
+  const subtotal = unitPrice * count;
+  if (count === 10) {
+    return Math.max(0, Math.round(subtotal * (1 - X10_DISCOUNT_RATE)));
   }
-
-  const adjustedRates = applySoftPityRules(pack.id, pack.rates, pityState);
-  const rolledCardType = rollCardType(adjustedRates);
-  const rolledRarity = getCardTypeRarity(rolledCardType);
-  const targetHit = isTargetHit(pack.pityTarget, rolledRarity);
-
-  if (targetHit) {
-    pityState.targetCounter = 0;
-    pityState.softPityStep = 0;
-  } else {
-    pityState.softPityStep = deriveSoftPityStep(pack.id, pityState);
-  }
-
-  return { cardType: rolledCardType, wasPity: false };
-}
-
-function resolveGuaranteedCardType(packId: PurchasePackInput["packId"], pityState: PityState): CardType | null {
-  if (packId === "basicPack" && pityState.targetCounter >= 10) return "base_epic";
-  if (packId === "epicPack" && pityState.targetCounter >= 20) return "base_legendary";
-  if (packId === "mythicPack" && pityState.targetCounter >= 3) return "base_mythic";
-  return null;
-}
-
-function applySoftPityRules(packId: PurchasePackInput["packId"], rates: Array<{ cardType: CardType; rate: number }>, pityState: PityState) {
-  const adjusted = rates.map((entry) => ({ ...entry }));
-  if (packId === "epicPack" && pityState.targetCounter === 10) {
-    return replaceSingleCardRate(adjusted, "base_legendary", 10);
-  }
-  if (packId === "legendaryPack") {
-    if (pityState.targetCounter >= 10) return replaceSingleCardRate(adjusted, "base_mythic", 12);
-    if (pityState.targetCounter >= 5) return replaceSingleCardRate(adjusted, "base_mythic", 7);
-  }
-  return adjusted;
-}
-
-function replaceSingleCardRate(rates: Array<{ cardType: CardType; rate: number }>, targetCardType: CardType, newRate: number) {
-  const target = rates.find((entry) => entry.cardType === targetCardType);
-  if (!target) return rates;
-  const delta = newRate - target.rate;
-  if (Math.abs(delta) < 0.0001) return rates;
-  const others = rates.filter((entry) => entry.cardType !== targetCardType);
-  const othersTotal = others.reduce((sum, entry) => sum + entry.rate, 0);
-  if (othersTotal <= 0) return rates;
-  return rates.map((entry) => {
-    if (entry.cardType === targetCardType) return { ...entry, rate: newRate };
-    const reduction = (entry.rate / othersTotal) * delta;
-    return { ...entry, rate: Math.max(0, entry.rate - reduction) };
-  });
+  return subtotal;
 }
 
 function rollCardType(rates: Array<{ cardType: CardType; rate: number }>) {
@@ -1076,19 +974,6 @@ function getCardTypeRarity(cardType: CardType): Rarity {
   if (cardType.endsWith("_epic")) return "epic";
   if (cardType.endsWith("_legendary")) return "legendary";
   return "mythic";
-}
-
-function isTargetHit(target: PackConfig["pityTarget"], rarity: Rarity) {
-  if (target === "epic_or_higher") return rarity !== "basic";
-  if (target === "legendary_or_higher") return rarity === "legendary" || rarity === "mythic";
-  return rarity === "mythic";
-}
-
-function deriveSoftPityStep(packId: PurchasePackInput["packId"], pityState: PityState) {
-  if (packId === "epicPack" && pityState.targetCounter >= 10) return 1;
-  if (packId === "legendaryPack" && pityState.targetCounter >= 10) return 2;
-  if (packId === "legendaryPack" && pityState.targetCounter >= 5) return 1;
-  return 0;
 }
 
 async function upsertLegacyPlayerSaveMirror(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {

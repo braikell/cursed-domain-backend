@@ -28,7 +28,7 @@
         "area_rule": "TWO_CLOSEST_ENEMIES",
         "area_lanes": 0,
         "power": 2.5,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.7,
@@ -73,7 +73,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 2.35,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 0.8,
@@ -108,7 +108,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.25,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.3,
@@ -126,10 +126,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 360,
-        "hp": 2250,
+        "ap": 375,
+        "hp": 2200,
         "vel": 0.88,
-        "pm": 655
+        "pm": 665
       },
       "ultimate": {
         "key": "gojo_base_ultimate",
@@ -139,7 +139,7 @@
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 1,
         "power": 2.6,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.2,
@@ -157,10 +157,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 360,
-        "hp": 2250,
+        "ap": 370,
+        "hp": 2200,
         "vel": 0.85,
-        "pm": 653
+        "pm": 658
       },
       "ultimate": {
         "key": "sukuna_base_ultimate",
@@ -170,7 +170,7 @@
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 1,
         "power": 2.6,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.22,
@@ -201,7 +201,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.15,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "nanami_ratio_strike",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -218,11 +218,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 155,
-        "ap": 155,
-        "hp": 2450,
+        "ad": 124,
+        "ap": 124,
+        "hp": 3200,
         "vel": 0.91,
-        "pm": 628
+        "pm": 641
       },
       "ultimate": {
         "key": "yuta_base_ultimate",
@@ -232,7 +232,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 2,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "yuta_rika_manifestation",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -263,7 +263,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,
@@ -303,7 +303,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.35,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "maki_heavenly_spear",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -334,7 +334,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.25,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "panda_gorilla_beatdown",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -365,7 +365,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.35,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "mahito_idle_transfiguration",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -396,7 +396,7 @@
         "area_rule": "TWO_CLOSEST_ENEMIES",
         "area_lanes": 0,
         "power": 7.5,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.35,
@@ -427,7 +427,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.35,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "todo_boogie_woogie",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -458,7 +458,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.35,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,
@@ -491,7 +491,7 @@
         "area_rule": "TWO_CLOSEST_LANES",
         "area_lanes": 1,
         "power": 2.45,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.1,
@@ -527,7 +527,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.55,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.9,
@@ -558,7 +558,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.65,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "kashimo_pink_thunder",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -589,7 +589,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.65,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,
@@ -625,7 +625,7 @@
         "damage_multiplier_per_stack": 1.1,
         "scale_multiplier_per_stack": 1.15,
         "max_stacks": 5,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.25,
@@ -656,7 +656,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 2.05,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.45,
@@ -692,7 +692,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.6,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.85,
@@ -723,7 +723,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.6,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.9,
@@ -756,7 +756,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.35,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "vfx_key": "meimei_crow_charge",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -789,7 +789,7 @@
         "power": 1,
         "fixed_heal_amount": 470,
         "heal_scaling_mode": "LEVEL_DELTA",
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,
@@ -824,7 +824,7 @@
         "shield_amount": 250,
         "heal_scaling_mode": "LEVEL_DELTA",
         "shield_duration_sec": 6,
-        "energy_cost": 75,
+        "energy_cost": 70,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,
@@ -841,11 +841,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 189,
+        "ad": 193,
         "ap": 4,
-        "hp": 3254,
+        "hp": 3490,
         "vel": 1,
-        "pm": 598
+        "pm": 626
       },
       "ultimate": {
         "key": "yuji_definitiva_ultimate",
@@ -855,7 +855,7 @@
         "area_rule": "TWO_CLOSEST_ENEMIES",
         "area_lanes": 0,
         "power": 2.5,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.7,
@@ -886,11 +886,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 144,
-        "ap": 144,
+        "ad": 150,
+        "ap": 150,
         "hp": 2504,
         "vel": 0.8,
-        "pm": 602
+        "pm": 614
       },
       "ultimate": {
         "key": "megumi_definitiva_ultimate",
@@ -900,7 +900,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 3.25,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.3,
@@ -918,10 +918,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 5,
-        "ap": 365,
-        "hp": 2255,
+        "ap": 383,
+        "hp": 2300,
         "vel": 0.88,
-        "pm": 666
+        "pm": 688
       },
       "ultimate": {
         "key": "gojo_definitiva_ultimate",
@@ -931,7 +931,7 @@
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 2,
         "power": 2.6,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.2,
@@ -949,10 +949,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 5,
-        "ap": 365,
-        "hp": 2255,
+        "ap": 380,
+        "hp": 2280,
         "vel": 0.85,
-        "pm": 664
+        "pm": 681
       },
       "ultimate": {
         "key": "sukuna_definitiva_ultimate",
@@ -962,7 +962,7 @@
         "area_rule": "LANES_AROUND_TARGET",
         "area_lanes": 2,
         "power": 2.6,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.22,
@@ -979,11 +979,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 189,
+        "ad": 190,
         "ap": 4,
-        "hp": 3204,
+        "hp": 3400,
         "vel": 0.94,
-        "pm": 589
+        "pm": 609
       },
       "ultimate": {
         "key": "nanami_definitiva_ultimate",
@@ -993,7 +993,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.35,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "vfx_key": "nanami_ratio_strike",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -1010,11 +1010,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 160,
-        "ap": 160,
-        "hp": 2455,
+        "ad": 132,
+        "ap": 132,
+        "hp": 3350,
         "vel": 0.91,
-        "pm": 638
+        "pm": 672
       },
       "ultimate": {
         "key": "yuta_definitiva_ultimate",
@@ -1024,7 +1024,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 2,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "vfx_key": "yuta_rika_manifestation",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -1043,9 +1043,9 @@
       "stats": {
         "ad": 240,
         "ap": 5,
-        "hp": 3205,
+        "hp": 3300,
         "vel": 0.95,
-        "pm": 642
+        "pm": 651
       },
       "ultimate": {
         "key": "toji_definitiva_ultimate",
@@ -1055,7 +1055,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.2,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,
@@ -1081,11 +1081,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 168,
+        "ad": 166,
         "ap": 3,
-        "hp": 3503,
+        "hp": 3700,
         "vel": 0.75,
-        "pm": 581
+        "pm": 599
       },
       "ultimate": {
         "key": "panda_definitiva_ultimate",
@@ -1095,7 +1095,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.45,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "vfx_key": "panda_gorilla_beatdown",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -1114,9 +1114,9 @@
       "stats": {
         "ad": 214,
         "ap": 4,
-        "hp": 3054,
+        "hp": 3200,
         "vel": 1,
-        "pm": 603
+        "pm": 618
       },
       "ultimate": {
         "key": "higuruma_definitiva_ultimate",
@@ -1126,7 +1126,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.6,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.9,
@@ -1145,9 +1145,9 @@
       "stats": {
         "ad": 244,
         "ap": 4,
-        "hp": 3154,
+        "hp": 3240,
         "vel": 1,
-        "pm": 643
+        "pm": 652
       },
       "ultimate": {
         "key": "kashimo_definitiva_ultimate",
@@ -1157,7 +1157,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.75,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "vfx_key": "kashimo_pink_thunder",
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
@@ -1176,9 +1176,9 @@
       "stats": {
         "ad": 214,
         "ap": 4,
-        "hp": 3004,
+        "hp": 3080,
         "vel": 1,
-        "pm": 598
+        "pm": 606
       },
       "ultimate": {
         "key": "naoya_definitiva_ultimate",
@@ -1188,7 +1188,7 @@
         "area_rule": "SINGLE_TARGET",
         "area_lanes": 0,
         "power": 4.65,
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 1.85,
@@ -1207,9 +1207,9 @@
       "stats": {
         "ad": 92,
         "ap": 122,
-        "hp": 2202,
+        "hp": 2345,
         "vel": 0.85,
-        "pm": 552
+        "pm": 568
       },
       "ultimate": {
         "key": "utahime_definitiva_ultimate",
@@ -1221,7 +1221,7 @@
         "power": 1,
         "fixed_heal_amount": 500,
         "heal_scaling_mode": "LEVEL_DELTA",
-        "energy_cost": 70,
+        "energy_cost": 65,
         "animation_lock_msec": 2500,
         "cast_duration_sec": 2.5,
         "impact_delay_sec": 2.05,

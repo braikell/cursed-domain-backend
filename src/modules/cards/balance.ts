@@ -232,13 +232,14 @@ const ROLE_DESIRED_RANGES: Record<string, number> = {
   SOPORTE: 1087,
 };
 const ROLE_MOVE_SPEEDS: Record<string, number> = {
-  DPS_FISICO: 85,
-  DPS_MAGICO: 55,
-  DPS_DEBUFFER: 60,
-  INVOCADOR: 68,
-  SOPORTE: 45,
+  DPS_FISICO: 100,
+  DPS_MAGICO: 65,
+  DPS_DEBUFFER: 70,
+  INVOCADOR: 74,
+  SOPORTE: 60,
 };
 const MELEE_INVOCATOR_CHARACTER_KEYS = new Set(["yuta"]);
+const EXPLICIT_DEFINITIVE_STAT_CHARACTER_KEYS = new Set(["yuta", "sukuna", "gojo", "yuji", "nanami", "toji", "higuruma", "megumi", "kashimo", "panda", "naoya", "utahime"]);
 const DEFAULT_ATTACK_INTERVAL = 1.45;
 const DEFAULT_MAX_ENERGY = 100;
 const DEFAULT_CRIT_CHANCE = 0.08;
@@ -339,7 +340,7 @@ export function calculateCardFinalStats(
   const ap = Math.floor(baseAp * (1 + growth.atkGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.ap ?? 0) || 0));
   const hp = Math.floor(baseHp * (1 + growth.hpGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.hp ?? 0) || 0));
   const vel = baseVel;
-  const pm = Math.round(ad + ap + hp * 0.10 + vel * 80);
+  const pm = calculatePm(ad, ap, hp, vel, String(definition.scaling ?? ""), CARD_PM_FORMULA);
   return {
     ad,
     ap,
@@ -521,6 +522,14 @@ function resolveDerivedDefinitives(
     const base = baseByCharacter.get(definition.characterKey);
     if (base == null) {
       return definition;
+    }
+    if (EXPLICIT_DEFINITIVE_STAT_CHARACTER_KEYS.has(definition.characterKey)) {
+      return {
+        ...definition,
+        role: base.role,
+        damageType: base.damageType,
+        scaling: base.scaling,
+      };
     }
 
     const bonus = DEFINITIVE_RARITY_BONUS[definition.rarity] ?? 2;
