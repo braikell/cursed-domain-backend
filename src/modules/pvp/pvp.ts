@@ -47,7 +47,7 @@ interface PvpMatchRow {
 }
 
 const DEFAULT_RATING = 1000;
-const MATCHMAKING_LIMIT = 5;
+const MATCHMAKING_LIMIT = 20;
 const LEADERBOARD_LIMIT = 5;
 const DAILY_SCORING_LIMIT = 30;
 const DAILY_SAME_DEFENDER_LIMIT = 5;
@@ -67,7 +67,7 @@ export async function getPvpStatusDedicated(context: GodotAuthedRequestContext):
   return {
     ok: true as const,
     profile: toClientProfile(self),
-    rivals: rivals.map(toClientRival),
+    rivals: rivals.map((rival) => toClientRival(rival, context.userId)),
     leaderboard: leaderboard.map(toClientProfile),
     leagues: buildLeagueDefinitions(),
   };
@@ -262,31 +262,19 @@ async function loadPvpProfile(supabase: SupabaseClient, userId: string) {
 }
 
 async function loadRivals(supabase: SupabaseClient, userId: string, self: PvpProfileRow) {
-  const minPower = Math.max(1, Math.floor(Math.max(self.defense_power, 1) * 0.65));
-  const maxPower = Math.max(minPower + 1, Math.ceil(Math.max(self.defense_power, 1) * 1.45));
   const { data, error } = await supabase
     .from("user_pvp_profiles")
     .select(PVP_PROFILE_SELECT)
-    .neq("user_id", userId)
     .gt("defense_power", 0)
-    .gte("defense_power", minPower)
-    .lte("defense_power", maxPower)
     .order("rating", { ascending: false })
+    .order("defense_power", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(MATCHMAKING_LIMIT)
     .returns<PvpProfileRow[]>();
   if (error) throw new Error(error.message);
-  if ((data ?? []).length >= 3) return data ?? [];
-
-  const fallback = await supabase
-    .from("user_pvp_profiles")
-    .select(PVP_PROFILE_SELECT)
-    .neq("user_id", userId)
-    .gt("defense_power", 0)
-    .order("rating", { ascending: false })
-    .limit(MATCHMAKING_LIMIT)
-    .returns<PvpProfileRow[]>();
-  if (fallback.error) throw new Error(fallback.error.message);
-  return fallback.data ?? [];
+  const rows = data ?? [];
+  if (rows.some((row) => row.user_id === userId) || self.defense_power <= 0) return rows;
+  return [self, ...rows].slice(0, MATCHMAKING_LIMIT);
 }
 
 async function loadLeaderboard(supabase: SupabaseClient) {
@@ -420,10 +408,11 @@ function toClientProfile(row: PvpProfileRow) {
   };
 }
 
-function toClientRival(row: PvpProfileRow) {
+function toClientRival(row: PvpProfileRow, viewerUserId?: string) {
   return {
     ...toClientProfile(row),
     opponentUserId: row.user_id,
+    isSelf: viewerUserId != null && row.user_id === viewerUserId,
   };
 }
 

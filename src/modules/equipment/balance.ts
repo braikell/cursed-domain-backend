@@ -172,7 +172,7 @@ export function buildEquipmentStats(
 }
 
 export function buildEquipmentMaterialId(slot: EquipmentSlot): string {
-  return `equipment_fragment:${slot}`;
+  return `gear_mats:${slot}`;
 }
 
 export function normalizeEquipmentRarity(raw: unknown): EquipmentRarity {

@@ -20,6 +20,13 @@ import {
   type CardBalanceRarity,
   type CardCatalogType,
 } from "./balance.js";
+import {
+  buildCardUpgradeFragmentMaterialIds,
+  countAvailableCardFragments,
+  normalizeCardMaterialId,
+  pruneOwnedCardUnlockElements,
+  syncOwnedCardFragmentMirrors,
+} from "./materials.js";
 import type { GameSaveSnapshot, OwnedCharacter, OwnedDefinitiveCard } from "../bootstrap/game-save.js";
 import { createInitialGameSave, normalizeGameSave } from "../bootstrap/game-save.js";
 import {
@@ -111,7 +118,8 @@ export async function upgradeCardDedicated(
   }
 
   save.gold -= upgradePlan.cost.gold;
-  consumeFragments(save, materialIds, upgradePlan.cost.fragments);
+  consumeFragments(save, materialIds, upgradePlan.cost.fragments, "cards_upgrade");
+  const remainingFragments = countAvailableCardFragments(save, identity);
 
   const nextLevel = upgradePlan.targetLevel;
   const nextStars = getCardStarsForLevel(identity.cardType, identity.rarity, nextLevel);
@@ -123,7 +131,7 @@ export async function upgradeCardDedicated(
     stars: nextStars,
     ascension: currentAscension,
     awakening: Math.max(0, Math.floor(Number(row.awakening) || 0)),
-    fragments: Math.max(0, Math.floor(Number(row.fragments) || 0)),
+    fragments: remainingFragments,
     energy: Math.max(0, Math.floor(Number(row.energy) || 0)),
     maxEnergy: Math.max(0, Math.floor(Number(row.max_energy) || 0)),
     cardDefinitionId: row.card_definition_id,
@@ -135,6 +143,7 @@ export async function upgradeCardDedicated(
     xp: nextXp,
     stars: nextStars,
     ascension: currentAscension,
+    fragments: remainingFragments,
   });
 
   await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", upgradePlan.cost.gold);
@@ -262,7 +271,8 @@ export async function ascendCardDedicated(
   ensureEnoughResources(save, materialIds, cost.gold, cost.fragments, "cards_ascend");
 
   save.gold -= cost.gold;
-  consumeFragments(save, materialIds, cost.fragments);
+  consumeFragments(save, materialIds, cost.fragments, "cards_ascend");
+  const remainingFragments = countAvailableCardFragments(save, identity);
 
   const currentStars = getCardStarsForLevel(identity.cardType, identity.rarity, currentLevel);
   mutateSaveCardState(save, identity, {
@@ -271,7 +281,7 @@ export async function ascendCardDedicated(
     stars: currentStars,
     ascension: targetAscension,
     awakening: Math.max(0, Math.floor(Number(row.awakening) || 0)),
-    fragments: Math.max(0, Math.floor(Number(row.fragments) || 0)),
+    fragments: remainingFragments,
     energy: Math.max(0, Math.floor(Number(row.energy) || 0)),
     maxEnergy: Math.max(0, Math.floor(Number(row.max_energy) || 0)),
     cardDefinitionId: row.card_definition_id,
@@ -283,6 +293,7 @@ export async function ascendCardDedicated(
     xp: Math.max(0, Math.floor(Number(row.xp) || 0)),
     stars: currentStars,
     ascension: targetAscension,
+    fragments: remainingFragments,
   });
 
   await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", cost.gold);
@@ -314,6 +325,8 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
   if (error) throw new Error(error.message);
   const save = normalizeGameSave(data?.save ?? createInitialGameSave());
   await mergeUserMaterialStacks(supabase, userId, save);
+  pruneOwnedCardUnlockElements(save);
+  syncOwnedCardFragmentMirrors(save);
   return save;
 }
 
@@ -326,7 +339,7 @@ async function mergeUserMaterialStacks(supabase: SupabaseClient, userId: string,
   if (error) throw new Error(error.message);
 
   for (const row of data ?? []) {
-    const materialId = String(row.material_id ?? "").trim().toLowerCase();
+    const materialId = normalizeCardMaterialId(String(row.material_id ?? ""));
     const quantity = Math.max(0, Math.floor(Number(row.quantity) || 0));
     if (!materialId || quantity <= 0) continue;
     save.fragments[materialId] = Math.max(Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0)), quantity);
@@ -392,19 +405,7 @@ function normalizeCardRarity(raw: string): CardBalanceRarity {
 }
 
 function buildUpgradeMaterialIds(identity: CardIdentity) {
-  if (identity.cardType === "DEFINITIVA") {
-    return [
-      `fragment:definitive:${identity.characterKey}`,
-      `fragment:definitive:${identity.characterId}`,
-      `fragment:definitive_${identity.rarity}`,
-    ];
-  }
-  return [
-    `fragment:${identity.characterKey}`,
-    `fragment:${identity.characterId}`,
-    `fragment:base:${identity.characterKey}`,
-    `fragment:base_${identity.rarity}`,
-  ];
+  return buildCardUpgradeFragmentMaterialIds(identity);
 }
 
 function ensureEnoughResources(
@@ -423,7 +424,12 @@ function ensureEnoughResources(
   }
 }
 
-function consumeFragments(save: GameSaveSnapshot, materialIds: string[], fragmentCost: number) {
+function consumeFragments(
+  save: GameSaveSnapshot,
+  materialIds: string[],
+  fragmentCost: number,
+  moduleName: "cards_upgrade" | "cards_ascend",
+) {
   let remaining = Math.max(0, Math.floor(fragmentCost));
   for (const materialId of materialIds) {
     if (remaining <= 0) break;
@@ -437,6 +443,9 @@ function consumeFragments(save: GameSaveSnapshot, materialIds: string[], fragmen
       save.fragments[materialId] = nextQuantity;
     }
     remaining -= consumed;
+  }
+  if (remaining > 0) {
+    throw new HttpModuleError(409, "fragment_consumption_incomplete", moduleName, "No se pudieron consumir todos los fragmentos requeridos.");
   }
 }
 
@@ -499,6 +508,7 @@ async function persistCardProgressState(
     xp: number;
     stars: number;
     ascension: number;
+    fragments: number;
   },
 ) {
   const now = new Date().toISOString();
@@ -550,6 +560,7 @@ async function persistCardProgressState(
       xp: cardState.xp,
       stars: cardState.stars,
       ascension: cardState.ascension,
+      fragments: cardState.fragments,
       updated_at: now,
     })
     .eq("user_id", userId)

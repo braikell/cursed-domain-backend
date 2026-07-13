@@ -147,6 +147,7 @@ export interface CardCombatStats {
 
 export interface CardFinalStats extends CardCombatStats {
   atk: number;
+  attack_speed_multiplier: number;
   speed: number;
 }
 
@@ -172,9 +173,11 @@ export interface CardBalanceDefinition {
   vel?: number;
   pm?: number;
   atk?: number;
+  attack_speed_multiplier?: number;
   speed?: number;
   attack_range?: number;
   desired_range?: number;
+  movement_speed?: number;
   move_speed?: number;
   attack_interval?: number;
   max_energy?: number;
@@ -215,25 +218,25 @@ const DEFINITIVE_RARITY_BONUS: Record<CardBalanceRarity, number> = {
   mythic: 5,
 };
 const ROLE_ATTACK_RANGES: Record<string, number> = {
-  DPS_FISICO: 120,
-  DPS_MAGICO: 500,
-  DPS_DEBUFFER: 300,
-  INVOCADOR: 300,
-  SOPORTE: 530,
+  DPS_FISICO: 125,
+  DPS_MAGICO: 950,
+  DPS_DEBUFFER: 480,
+  INVOCADOR: 480,
+  SOPORTE: 1100,
 };
 const ROLE_DESIRED_RANGES: Record<string, number> = {
-  DPS_FISICO: 117.4,
-  DPS_MAGICO: 487.4,
-  DPS_DEBUFFER: 289.4,
-  INVOCADOR: 289.4,
-  SOPORTE: 517.4,
+  DPS_FISICO: 119,
+  DPS_MAGICO: 940,
+  DPS_DEBUFFER: 432,
+  INVOCADOR: 432,
+  SOPORTE: 1087,
 };
 const ROLE_MOVE_SPEEDS: Record<string, number> = {
-  DPS_FISICO: 50,
-  DPS_MAGICO: 40,
-  DPS_DEBUFFER: 43,
-  INVOCADOR: 42,
-  SOPORTE: 32,
+  DPS_FISICO: 85,
+  DPS_MAGICO: 55,
+  DPS_DEBUFFER: 60,
+  INVOCADOR: 68,
+  SOPORTE: 45,
 };
 const DEFAULT_ATTACK_INTERVAL = 1.45;
 const DEFAULT_MAX_ENERGY = 100;
@@ -343,6 +346,7 @@ export function calculateCardFinalStats(
     vel,
     pm,
     atk: calculateAttackValue(ad, ap, pm, String(definition.scaling ?? "")),
+    attack_speed_multiplier: vel,
     speed: vel,
   };
 }
@@ -356,7 +360,7 @@ export function getCardFinalStats(
 ): CardFinalStats {
   const definition = getCardBalance(characterKey, cardType);
   if (definition == null) {
-    return { ad: 0, ap: 0, hp: 0, vel: 0, pm: 0, atk: 1, speed: 0 };
+    return { ad: 0, ap: 0, hp: 0, vel: 0, pm: 0, atk: 1, attack_speed_multiplier: 0, speed: 0 };
   }
   return calculateCardFinalStats(definition, level, ascension, equipmentBonus);
 }
@@ -574,9 +578,11 @@ function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSor
     vel: stats.vel,
     pm: stats.pm,
     atk: calculateAttackValue(stats.ad, stats.ap, stats.pm, definition.scaling),
+    attack_speed_multiplier: stats.vel,
     speed: stats.vel,
     attack_range: attackRange,
     desired_range: desiredRange,
+    movement_speed: moveSpeed,
     move_speed: moveSpeed,
     attack_interval: DEFAULT_ATTACK_INTERVAL,
     max_energy: DEFAULT_MAX_ENERGY,

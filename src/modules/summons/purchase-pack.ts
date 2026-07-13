@@ -13,6 +13,13 @@ import {
 import { normalizeGameSave, type GameSaveSnapshot, type OwnedDefinitiveCard, type OwnedCharacter } from "../bootstrap/game-save.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
 import { getBalancedCardsByRarityAndType, getCardBalance, getCardUnlockElementsRequired, normalizeCharacterKey } from "../cards/balance.js";
+import {
+  buildCardElementMaterialId as buildCanonicalCardElementMaterialId,
+  buildDuplicateFragmentMaterialId as buildCanonicalDuplicateFragmentMaterialId,
+  normalizeCardMaterialId,
+  pruneOwnedCardUnlockElements,
+  syncOwnedCardFragmentMirrors,
+} from "../cards/materials.js";
 
 type Rarity = "basic" | "epic" | "legendary" | "mythic";
 type CardVariant = "base" | "definitive";
@@ -457,6 +464,8 @@ async function resolvePurchase(input: {
 
   save.totalSummons += totalPulls;
   save.pulls += totalPulls;
+  pruneOwnedCardUnlockElements(save);
+  syncOwnedCardFragmentMirrors(save);
 
   const { cardRows, materialRows } = buildPackCollectionPersistenceRows(input.userId, save, results, serverNow.toISOString());
   return {
@@ -549,12 +558,36 @@ async function finalizePurchase(input: {
     })
     .single<FinalizePackPurchaseResultRow>();
   if (error) throw new Error(error.message);
+  await cleanupZeroQuantityMaterialRows(input.supabase, input.userId, input.resolved.materialRows);
   return {
     gold: data.gold,
     gems: data.gems,
     purchasesBefore: data.purchases_before,
     purchasesAfter: data.purchases_after,
   };
+}
+
+async function cleanupZeroQuantityMaterialRows(
+  supabase: SupabaseClient,
+  userId: string,
+  materialRows: PersistableUserMaterialRow[],
+) {
+  const materialIds = Array.from(new Set(
+    materialRows
+      .filter((row) => Math.max(0, Math.floor(Number(row.quantity) || 0)) <= 0)
+      .map((row) => normalizeCardMaterialId(row.material_id))
+      .filter(Boolean),
+  ));
+  if (materialIds.length === 0) return;
+
+  const { error } = await supabase
+    .from("user_materials")
+    .delete()
+    .eq("user_id", userId)
+    .in("material_id", materialIds);
+  if (error) {
+    console.warn("[summons] zero-quantity material cleanup skipped:", error.message);
+  }
 }
 
 async function beginIdempotentOperation(supabase: SupabaseClient, userId: string, operation: string, requestId: string) {
@@ -604,6 +637,8 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
   if (error) throw new Error(error.message);
   const save = normalizeGameSave(data.save);
   await mergeUserMaterialStacks(supabase, userId, save);
+  pruneOwnedCardUnlockElements(save);
+  syncOwnedCardFragmentMirrors(save);
   return save;
 }
 
@@ -616,7 +651,7 @@ async function mergeUserMaterialStacks(supabase: SupabaseClient, userId: string,
   if (error) throw new Error(error.message);
 
   for (const row of data ?? []) {
-    const materialId = String(row.material_id ?? "").trim().toLowerCase();
+    const materialId = normalizeCardMaterialId(String(row.material_id ?? ""));
     const quantity = Math.max(0, Math.floor(Number(row.quantity) || 0));
     if (!materialId || quantity <= 0) continue;
     save.fragments[materialId] = Math.max(Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0)), quantity);
@@ -859,7 +894,7 @@ function applyDuplicateCardRewardToSave(save: GameSaveSnapshot, definition: Card
     save.fragments[fragmentMaterialId] = (save.fragments[fragmentMaterialId] ?? 0) + fragmentAmount;
     save.characters[characterId] = {
       ...character,
-      fragments: character.fragments + fragmentAmount,
+      fragments: Math.max(0, Math.floor(Number(save.fragments[fragmentMaterialId]) || 0)),
     };
     return;
   }
@@ -870,7 +905,7 @@ function applyDuplicateCardRewardToSave(save: GameSaveSnapshot, definition: Card
   save.fragments[fragmentMaterialId] = (save.fragments[fragmentMaterialId] ?? 0) + fragmentAmount;
   save.definitiveCards[characterId] = {
     ...existingDefinitive,
-    fragments: existingDefinitive.fragments + fragmentAmount,
+    fragments: Math.max(0, Math.floor(Number(save.fragments[fragmentMaterialId]) || 0)),
   };
 }
 
@@ -883,15 +918,14 @@ function isCardOwnedInSave(save: GameSaveSnapshot, definition: CardDefinition) {
 }
 
 function buildCardElementMaterialId(cardDefinitionId: string) {
-  return `element:${cardDefinitionId}`;
+  return buildCanonicalCardElementMaterialId(cardDefinitionId);
 }
 
 function buildDuplicateFragmentMaterialId(definition: CardDefinition) {
-  const characterId = normalizeCharacterKey(definition.characterId);
-  if (definition.variant === "base") {
-    return `fragment:${characterId}`;
-  }
-  return `fragment:definitive:${characterId}`;
+  return buildCanonicalDuplicateFragmentMaterialId({
+    characterId: definition.characterId,
+    variant: definition.variant,
+  });
 }
 
 async function validatePackPurchaseLimit(

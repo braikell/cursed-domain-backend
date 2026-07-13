@@ -20,6 +20,7 @@ import {
   updateLoginMissionProgress,
 } from "./monetization-foundation.js";
 import { getCardBalance, normalizeCharacterKey } from "../cards/balance.js";
+import { normalizeCardMaterialId, pruneOwnedCardUnlockElements, syncOwnedCardFragmentMirrors } from "../cards/materials.js";
 import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
 
 interface PlayerSaveRow {
@@ -411,6 +412,9 @@ async function hydrateCanonicalRuntimeState(
     if (materialId.length === 0 || quantity <= 0) continue;
     nextSave.fragments[materialId] = Math.max(Math.max(0, Math.floor(Number(nextSave.fragments[materialId]) || 0)), quantity);
   }
+  const prunedOwnedElementMaterialIds = pruneOwnedCardUnlockElements(nextSave);
+  await cleanupPrunedMaterialRows(service, userId, prunedOwnedElementMaterialIds);
+  syncOwnedCardFragmentMirrors(nextSave);
 
   const { data: afk } = await service
     .from("user_afk")
@@ -435,6 +439,20 @@ async function persistCanonicalPlayerSave(service: SupabaseClient, userId: strin
     { onConflict: "user_id" },
   );
   if (error) throw new Error(error.message);
+}
+
+async function cleanupPrunedMaterialRows(service: SupabaseClient, userId: string, materialIds: string[]) {
+  const normalizedMaterialIds = Array.from(new Set(materialIds.map(normalizeCardMaterialId).filter(Boolean)));
+  if (normalizedMaterialIds.length === 0) return;
+
+  const { error } = await service
+    .from("user_materials")
+    .delete()
+    .eq("user_id", userId)
+    .in("material_id", normalizedMaterialIds);
+  if (error) {
+    console.warn("[bootstrap] pruned material cleanup skipped:", error.message);
+  }
 }
 
 async function tryEnsureServerGameFoundation(service: SupabaseClient, userId: string, save: GameSaveSnapshot) {
@@ -770,7 +788,7 @@ function buildUserMaterialRows(userId: string, fragments: Record<string, number>
 }
 
 function normalizeSaveMaterialId(value: string) {
-  const materialId = value.trim().toLowerCase();
+  const materialId = normalizeCardMaterialId(value);
   if (materialId.length === 0) return "";
   if (materialId.includes(":")) return materialId;
   return `fragment:${materialId}`;

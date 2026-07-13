@@ -34,12 +34,16 @@ import {
 } from "../cards/balance.js";
 import type { OwnedCharacter } from "../bootstrap/game-save.js";
 import {
+  buildEquipmentMaterialId,
   buildEquipmentStats,
+  EQUIPMENT_DISMANTLE_YIELD_BY_RARITY,
   EQUIPMENT_ITEMS,
+  normalizeEquipmentRarity,
   normalizeEquipmentRarityForDatabase,
   normalizeEquipmentSlotForDatabase,
   type EquipmentDefinition,
   type EquipmentRarity,
+  type EquipmentSlot,
 } from "../equipment/balance.js";
 
 interface PlayerSaveRow {
@@ -115,6 +119,8 @@ interface BattleReward {
   gold: number;
   gems: number;
   xp: number;
+  materials: number;
+  materialId: string | null;
   equipmentItems: EquipmentRewardItem[];
 }
 
@@ -180,7 +186,13 @@ export async function completeBattleDedicated(
   );
   const reward = buildBattleReward(currentStage, stageFlow.isReplay);
   const equipmentDrop = buildEquipmentDropForStage(currentStage.stage_key, stageFlow.isReplay);
-  if (equipmentDrop != null) {
+  if (equipmentDrop != null && isDuplicateEquipmentDrop(save, equipmentDrop.item)) {
+    const materialId = buildEquipmentMaterialId(equipmentDrop.item.slot as EquipmentSlot);
+    const gained = EQUIPMENT_DISMANTLE_YIELD_BY_RARITY[normalizeEquipmentRarity(equipmentDrop.item.rarity)];
+    save.fragments[materialId] = Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0)) + gained;
+    reward.materials += gained;
+    reward.materialId = materialId;
+  } else if (equipmentDrop != null) {
     reward.equipmentItems.push(equipmentDrop.reward);
     save.inventory.push(equipmentDrop.item);
   }
@@ -247,7 +259,11 @@ export async function completeBattleDedicated(
   };
   await upsertLegacyPlayerSaveMirror(supabase, context.userId, nextSave);
   if (equipmentDrop != null) {
-    await insertUserInventoryItem(supabase, context.userId, equipmentDrop.item);
+    if (reward.materialId != null && reward.materials > 0) {
+      await upsertUserMaterialQuantity(supabase, context.userId, reward.materialId, nextSave.fragments[reward.materialId] ?? reward.materials);
+    } else {
+      await insertUserInventoryItem(supabase, context.userId, equipmentDrop.item);
+    }
   }
   const persistedProgress = await loadPlayerProgressDebugRow(supabase, context.userId);
   const persistedSave = await loadPlayerSaveDebugRow(supabase, context.userId);
@@ -286,7 +302,8 @@ export async function completeBattleDedicated(
       gold: reward.gold,
       gems: reward.gems,
       xp: reward.xp,
-      materials: 0,
+      materials: reward.materials,
+      material_id: reward.materialId,
       equipment_items: reward.equipmentItems,
     },
     gold_added: reward.gold,
@@ -341,7 +358,7 @@ function resolveStageDefinition(stageDefinitions: StageDefinitionRow[], stageId:
 function buildBattleReward(stage: StageDefinitionRow, isReplay: boolean): BattleReward {
   if (isReplay) {
     const clearGold = positiveIntFromKeys(stage, ["gold_reward", "reward_gold", "clear_gold"], 2500);
-    return { gold: Math.max(2500, Math.floor(clearGold * 0.35)), gems: 0, xp: 0, equipmentItems: [] };
+    return { gold: Math.max(2500, Math.floor(clearGold * 0.35)), gems: 0, xp: 0, materials: 0, materialId: null, equipmentItems: [] };
   }
   const sortOrder = Number.isFinite(stage.sort_order) ? Number(stage.sort_order) : 0;
   const fallbackGold = 22000 + sortOrder * 6000;
@@ -350,8 +367,18 @@ function buildBattleReward(stage: StageDefinitionRow, isReplay: boolean): Battle
     gold: positiveIntFromKeys(stage, ["gold_reward", "reward_gold", "clear_gold"], fallbackGold),
     gems: positiveIntFromKeys(stage, ["gems_reward", "reward_gems", "clear_gems"], 0),
     xp: positiveIntFromKeys(stage, ["xp_reward", "reward_xp", "battle_xp", "clear_xp"], fallbackXp),
+    materials: 0,
+    materialId: null,
     equipmentItems: [],
   };
+}
+
+function isDuplicateEquipmentDrop(save: GameSaveSnapshot, item: EquipmentItem) {
+  const itemRarity = normalizeEquipmentRarity(item.rarity);
+  return save.inventory.some((candidate) =>
+    candidate.equipmentKey === item.equipmentKey &&
+    normalizeEquipmentRarity(candidate.rarity) === itemRarity
+  );
 }
 
 function buildEquipmentDropForStage(stageKey: string, isReplay: boolean): { item: EquipmentItem; reward: EquipmentRewardItem } | null {
@@ -728,6 +755,19 @@ async function insertUserInventoryItem(supabase: SupabaseClient, userId: string,
     equipped_to_card_id: null,
     updated_at: new Date().toISOString(),
   });
+  if (error) throw new Error(error.message);
+}
+
+async function upsertUserMaterialQuantity(supabase: SupabaseClient, userId: string, materialId: string, quantity: number) {
+  const { error } = await supabase.from("user_materials").upsert(
+    {
+      user_id: userId,
+      material_id: materialId,
+      quantity: Math.max(0, Math.floor(quantity)),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,material_id" },
+  );
   if (error) throw new Error(error.message);
 }
 

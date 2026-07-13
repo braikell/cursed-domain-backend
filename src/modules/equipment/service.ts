@@ -207,7 +207,7 @@ export async function upgradeItemDedicated(
   }
 
   const materialId = buildEquipmentMaterialId(item.slot as EquipmentSlot);
-  const availableMaterials = Math.max(0, save.fragments[materialId] ?? 0);
+  const availableMaterials = Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0));
   if (availableMaterials < cost.materials) {
     throw new HttpModuleError(409, "equipment_not_enough_materials", "equipment_upgrade", "No hay suficientes materiales para mejorar este item.");
   }
@@ -313,7 +313,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     materialId: buildEquipmentMaterialId(slot),
     slot,
     kind: "equipment_material" as InventoryMaterialKind,
-    quantity: Math.max(0, save.fragments[buildEquipmentMaterialId(slot)] ?? 0),
+    quantity: Math.max(0, Math.floor(Number(save.fragments[buildEquipmentMaterialId(slot)]) || 0)),
   }));
   const materialIds = new Set(equipmentMaterials.map((entry) => entry.materialId));
   const extraMaterials = Object.entries(save.fragments)
@@ -336,7 +336,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
 
 function resolveInventoryMaterialKind(materialId: string): InventoryMaterialKind {
   const normalized = String(materialId ?? "").trim().toLowerCase();
-  if (normalized.startsWith("equipment_fragment:")) return "equipment_material";
+  if (normalized.startsWith("gear_mats:")) return "equipment_material";
   if (normalized.startsWith("element:")) return "card_element";
   if (normalized.startsWith("fragment:")) return "card_fragment";
   return "material";
