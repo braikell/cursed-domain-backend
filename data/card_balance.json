@@ -25,8 +25,10 @@
         "name": "Black Flash",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "TWO_CLOSEST_ENEMIES",
+        "area_rule": "PRIMARY_AND_CLOSE_ENEMIES",
         "area_lanes": 0,
+        "secondary_target_count": 1,
+        "secondary_target_radius_px": 90,
         "power": 2.5,
         "energy_cost": 70,
         "animation_lock_msec": 2500,
@@ -852,8 +854,10 @@
         "name": "Black Flash",
         "type": "AOE_DAMAGE",
         "target_rule": "NEAREST_ENEMY",
-        "area_rule": "TWO_CLOSEST_ENEMIES",
+        "area_rule": "PRIMARY_AND_CLOSE_ENEMIES",
         "area_lanes": 0,
+        "secondary_target_count": 1,
+        "secondary_target_radius_px": 90,
         "power": 2.5,
         "energy_cost": 65,
         "animation_lock_msec": 2500,
@@ -1205,11 +1209,11 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 92,
+        "ad": 98,
         "ap": 122,
-        "hp": 2345,
+        "hp": 2400,
         "vel": 0.85,
-        "pm": 568
+        "pm": 581
       },
       "ultimate": {
         "key": "utahime_definitiva_ultimate",

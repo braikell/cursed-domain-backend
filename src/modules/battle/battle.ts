@@ -45,6 +45,7 @@ import {
   type EquipmentRarity,
   type EquipmentSlot,
 } from "../equipment/balance.js";
+import { grantPlayerXpReward } from "../progression/player-progression.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -53,11 +54,6 @@ interface PlayerSaveRow {
 interface PlayerSaveDebugRow {
   save: Record<string, unknown> | null;
   updated_at?: string | null;
-}
-
-interface UserEconomyRow {
-  gold: number;
-  gems: number;
 }
 
 interface PlayerProgressRow {
@@ -165,7 +161,6 @@ export async function completeBattleDedicated(
   }
 
   const save = await loadPlayerSave(supabase, context.userId);
-  const economy = await loadUserEconomyRow(supabase, context.userId);
   const progress = await loadPlayerProgressRow(supabase, context.userId, save);
   console.info("[battle_resolve] start", {
     userId: context.userId,
@@ -173,8 +168,8 @@ export async function completeBattleDedicated(
     requestId: input.requestId,
     currentStageBefore: progress.current_stage ?? save.currentStage,
     highestStageBefore: progress.highest_stage ?? save.highestStage,
-    goldBefore: economy.gold,
-    gemsBefore: economy.gems,
+    goldBefore: save.gold,
+    gemsBefore: save.gems,
     xpBefore: progress.xp,
   });
 
@@ -197,10 +192,22 @@ export async function completeBattleDedicated(
     save.inventory.push(equipmentDrop.item);
   }
   const heroProgress = await applyHeroBattleXp(supabase, context.userId, save, currentStage.stage_key, stageFlow.isReplay);
-  const nextXp = progress.xp + reward.xp;
-  const leveled = resolveLevelProgress(nextXp, progress.player_level);
-  const nextGold = economy.gold + reward.gold;
-  const nextGems = economy.gems + reward.gems;
+  const progressionReward = await grantPlayerXpReward(supabase, {
+    userId: context.userId,
+    source: "campaign_battle",
+    sourceId: currentStage.stage_key,
+    requestId: input.requestId,
+    xpAmount: reward.xp,
+    economyReward: {
+      gold: reward.gold,
+      gems: reward.gems,
+    },
+  });
+  const nextXp = progressionReward.xpAfter;
+  const previousPlayerLevel = progressionReward.levelBefore;
+  const leveled = { playerLevel: progressionReward.levelAfter };
+  const nextGold = progressionReward.save.gold;
+  const nextGems = progressionReward.save.gems;
   const nextTotalBattlesWon = Math.max(progress.total_battles_won, save.totalBattlesWon) + 1;
   console.info("[battle_resolve] computed", {
     userId: context.userId,
@@ -214,18 +221,8 @@ export async function completeBattleDedicated(
     gemsAfter: nextGems,
     xpAfter: nextXp,
     playerLevelAfter: leveled.playerLevel,
+    progressionReward,
   });
-
-  const { error: economyError } = await supabase.from("user_economy").upsert(
-    {
-      user_id: context.userId,
-      gold: nextGold,
-      gems: nextGems,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
-  if (economyError) throw new Error(economyError.message);
 
   const { error: progressError } = await supabase.from("player_progress").upsert(
     {
@@ -297,6 +294,7 @@ export async function completeBattleDedicated(
     stageId: input.stageId,
     result: input.result,
     reward,
+    progressionReward,
     heroProgress,
     rewards_applied: {
       gold: reward.gold,
@@ -316,9 +314,11 @@ export async function completeBattleDedicated(
     completed_stage: currentStage.stage_key,
     unlocked_next_stage: stageFlow.currentStage,
     progression: {
-      previousPlayerLevel: progress.player_level,
+      previousPlayerLevel,
       currentPlayerLevel: leveled.playerLevel,
       currentXp: nextXp,
+      levelUpRewards: progressionReward.levelUpRewards,
+      gemsGranted: progressionReward.gemsGranted,
       currentStage: stageFlow.currentStage,
       highestStage: stageFlow.highestStage,
       totalBattlesWon: nextTotalBattlesWon,
@@ -636,18 +636,6 @@ function resolveStageFlow(
   };
 }
 
-function resolveLevelProgress(totalXp: number, startingLevel: number) {
-  let level = Math.max(1, startingLevel);
-  while (totalXp >= xpRequiredForLevel(level + 1)) {
-    level += 1;
-  }
-  return { playerLevel: level };
-}
-
-function xpRequiredForLevel(level: number) {
-  return Math.max(0, (level - 1) * 100);
-}
-
 function extractChapterNumber(stageKey: string) {
   const match = /world_(\d+)_stage_(\d+)/i.exec(String(stageKey).trim());
   if (!match) return 1;
@@ -680,16 +668,6 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
     .maybeSingle<PlayerSaveRow>();
   if (error) throw new Error(error.message);
   return normalizeGameSave(data?.save ?? createInitialGameSave());
-}
-
-async function loadUserEconomyRow(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from("user_economy")
-    .select("gold, gems")
-    .eq("user_id", userId)
-    .maybeSingle<UserEconomyRow>();
-  if (error) throw new Error(error.message);
-  return data ?? { gold: 0, gems: 0 };
 }
 
 async function loadPlayerProgressRow(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {

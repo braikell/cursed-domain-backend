@@ -8,6 +8,7 @@ import type {
 } from "../../contracts.js";
 import { HttpModuleError } from "../../errors.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
+import { grantPlayerXpReward } from "../progression/player-progression.js";
 
 type PvpLeague = "bronze" | "silver" | "gold";
 
@@ -50,6 +51,7 @@ const DEFAULT_RATING = 1000;
 const MATCHMAKING_LIMIT = 20;
 const LEADERBOARD_LIMIT = 5;
 const DAILY_SCORING_LIMIT = 30;
+const PVP_WIN_XP_REWARD = 25;
 const DAILY_SAME_DEFENDER_LIMIT = 5;
 const ACTIVE_MATCH_LIMIT = 2;
 const MATCH_TTL_MINUTES = 20;
@@ -203,9 +205,23 @@ export async function completePvpMatchDedicated(
     ensurePvpProfile(supabase, context.userId),
     defenderUserId ? loadPvpProfile(supabase, defenderUserId) : Promise.resolve(null),
   ]);
+  const rewardXp = input.result === "win" ? PVP_WIN_XP_REWARD : 0;
+  const progressionReward =
+    rewardXp > 0
+      ? await grantPlayerXpReward(supabase, {
+          userId: context.userId,
+          source: "pvp_win",
+          sourceId: input.matchId,
+          requestId: input.requestId,
+          xpAmount: rewardXp,
+        })
+      : null;
   const response = {
     ok: true as const,
     result: input.result,
+    reward: {
+      xp: rewardXp,
+    },
     ratingDelta: intFromUnknown(resultData.ratingDelta, 0),
     ratingBefore: intFromUnknown(resultData.ratingBefore, attackerData.rating),
     ratingAfter: intFromUnknown(resultData.ratingAfter, attackerData.rating),
@@ -215,6 +231,19 @@ export async function completePvpMatchDedicated(
     seasonBestRating: intFromUnknown(resultData.seasonBestRating, attackerData.season_best_rating ?? attackerData.rating),
     profile: toClientProfile(attackerData),
     defender: defenderData == null ? null : toClientProfile(defenderData),
+    progressionReward,
+    save:
+      progressionReward == null
+        ? null
+        : {
+            gold: progressionReward.save.gold,
+            gems: progressionReward.save.gems,
+            xp: progressionReward.save.xp,
+            playerLevel: progressionReward.save.playerLevel,
+            schemaVersion: progressionReward.save.schemaVersion,
+            levelUpRewards: progressionReward.levelUpRewards,
+            gemsGranted: progressionReward.gemsGranted,
+          },
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
   return response;

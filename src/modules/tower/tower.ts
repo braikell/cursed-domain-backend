@@ -3,12 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CompleteTowerFloorInput, GodotAuthedRequestContext } from "../../contracts.js";
 import { HttpModuleError } from "../../errors.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { createInitialGameSave, normalizeGameSave, type GameSaveSnapshot } from "../bootstrap/game-save.js";
 import {
   ensureBootstrapMonetizationFoundation,
   getBootstrapMonetizationConfig,
   updateDailyMissionProgress,
 } from "../bootstrap/monetization-foundation.js";
+import { grantPlayerXpReward } from "../progression/player-progression.js";
 
 interface TowerFloorDefinitionRow {
   floor_number: number;
@@ -21,9 +21,11 @@ interface TowerFloorDefinitionRow {
   target_pm: number;
   reward_gold: number;
   reward_gems: number;
+  reward_xp: number;
   reward_equipment_guaranteed: boolean;
   replay_gold: number;
   replay_gems: number;
+  replay_xp: number;
   sort_order: number;
 }
 
@@ -39,15 +41,6 @@ interface UserTowerFloorClearRow {
   clear_count: number;
   first_cleared_at: string | null;
   best_clear_seconds: number | null;
-}
-
-interface UserEconomyRow {
-  gold: number;
-  gems: number;
-}
-
-interface PlayerSaveRow {
-  save: GameSaveSnapshot;
 }
 
 interface IdempotencyRow {
@@ -86,11 +79,10 @@ export async function completeTowerFloorDedicated(
   }
 
   await ensureBootstrapMonetizationFoundation(supabase, context.userId);
-  const [floors, progress, existingClear, economy] = await Promise.all([
+  const [floors, progress, existingClear] = await Promise.all([
     loadTowerFloors(supabase),
     ensureTowerProgress(supabase, context.userId),
     loadTowerClear(supabase, context.userId, input.floorNumber),
-    loadUserEconomyRow(supabase, context.userId),
   ]);
 
   const floor = floors.find((entry) => entry.floor_number === input.floorNumber);
@@ -106,25 +98,24 @@ export async function completeTowerFloorDedicated(
   const isFirstClear = existingClear == null || existingClear.clear_count <= 0;
   const rewardGold = isFirstClear ? floor.reward_gold : floor.replay_gold;
   const rewardGems = isFirstClear ? floor.reward_gems : floor.replay_gems;
-  const nextGold = economy.gold + rewardGold;
-  const nextGems = economy.gems + rewardGems;
+  const rewardXp = isFirstClear ? floor.reward_xp : floor.replay_xp;
+  const progressionReward = await grantPlayerXpReward(supabase, {
+    userId: context.userId,
+    source: "tower_floor",
+    sourceId: floor.floor_key,
+    requestId: input.requestId,
+    xpAmount: rewardXp,
+    economyReward: {
+      gold: rewardGold,
+      gems: rewardGems,
+    },
+  });
   const previousHighestFloor = progress.highest_floor;
   const highestFloor = Math.max(progress.highest_floor, floor.floor_number);
   const maxFloor = floors.reduce((max, entry) => Math.max(max, entry.floor_number), 0);
   const currentFloor = Math.min(maxFloor, Math.max(1, highestFloor + 1));
   const totalClears = progress.total_clears + 1;
   const now = new Date().toISOString();
-
-  const { error: economyError } = await supabase.from("user_economy").upsert(
-    {
-      user_id: context.userId,
-      gold: nextGold,
-      gems: nextGems,
-      updated_at: now,
-    },
-    { onConflict: "user_id" },
-  );
-  if (economyError) throw new Error(economyError.message);
 
   const { error: progressError } = await supabase.from("user_tower_progress").upsert(
     {
@@ -152,11 +143,6 @@ export async function completeTowerFloorDedicated(
   );
   if (clearError) throw new Error(clearError.message);
 
-  const save = await updateLegacyPlayerSaveMirror(supabase, context.userId, {
-    gold: nextGold,
-    gems: nextGems,
-  });
-
   const config = await getBootstrapMonetizationConfig(supabase);
   await updateDailyMissionProgress(supabase, context.userId, config, "tower_floor_cleared", 1);
   if (floor.is_boss) {
@@ -172,18 +158,26 @@ export async function completeTowerFloorDedicated(
     reward: {
       gold: rewardGold,
       gems: rewardGems,
+      xp: rewardXp,
       equipmentItems: [] as unknown[],
     },
+    progressionReward,
     progression: {
       previousHighestFloor,
       highestFloor,
       currentFloor,
       totalClears,
+      currentXp: progressionReward.xpAfter,
+      currentPlayerLevel: progressionReward.levelAfter,
+      levelUpRewards: progressionReward.levelUpRewards,
+      gemsGranted: progressionReward.gemsGranted,
     },
     save: {
-      gold: save.gold,
-      gems: save.gems,
-      schemaVersion: save.schemaVersion,
+      gold: progressionReward.save.gold,
+      gems: progressionReward.save.gems,
+      xp: progressionReward.save.xp,
+      playerLevel: progressionReward.save.playerLevel,
+      schemaVersion: progressionReward.save.schemaVersion,
     },
   };
 
@@ -205,9 +199,11 @@ async function loadTowerFloors(supabase: SupabaseClient) {
       "target_pm",
       "reward_gold",
       "reward_gems",
+      "reward_xp",
       "reward_equipment_guaranteed",
       "replay_gold",
       "replay_gems",
+      "replay_xp",
       "sort_order",
     ].join(","))
     .eq("is_enabled", true)
@@ -294,9 +290,11 @@ function buildTowerStatusResponse(
         targetPm: floor.target_pm,
         rewardGold: floor.reward_gold,
         rewardGems: floor.reward_gems,
+        rewardXp: floor.reward_xp,
         rewardEquipmentGuaranteed: floor.reward_equipment_guaranteed,
         replayGold: floor.replay_gold,
         replayGems: floor.replay_gems,
+        replayXp: floor.replay_xp,
         isUnlocked: floor.floor_number <= unlockedFloor,
         isCleared: (clear?.clear_count ?? 0) > 0,
         clearCount: clear?.clear_count ?? 0,
@@ -304,49 +302,6 @@ function buildTowerStatusResponse(
       };
     }),
   };
-}
-
-async function loadUserEconomyRow(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from("user_economy")
-    .select("gold,gems")
-    .eq("user_id", userId)
-    .maybeSingle<UserEconomyRow>();
-  if (error) throw new Error(error.message);
-  return data ?? { gold: 0, gems: 0 };
-}
-
-async function updateLegacyPlayerSaveMirror(
-  supabase: SupabaseClient,
-  userId: string,
-  patch: Pick<GameSaveSnapshot, "gold" | "gems">,
-) {
-  const { data, error } = await supabase
-    .from("player_saves")
-    .select("save")
-    .eq("user_id", userId)
-    .maybeSingle<PlayerSaveRow>();
-  if (error) throw new Error(error.message);
-
-  const current = data?.save ? normalizeGameSave(data.save) : createInitialGameSave();
-  const nextSave: GameSaveSnapshot = {
-    ...current,
-    gold: patch.gold,
-    gems: patch.gems,
-  };
-
-  const { error: upsertError } = await supabase.from("player_saves").upsert(
-    {
-      user_id: userId,
-      save: nextSave,
-      save_version: nextSave.schemaVersion,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
-  if (upsertError) throw new Error(upsertError.message);
-
-  return nextSave;
 }
 
 async function beginIdempotentOperation(

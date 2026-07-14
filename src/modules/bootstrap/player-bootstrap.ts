@@ -22,6 +22,7 @@ import {
 import { getCardBalance, normalizeCharacterKey } from "../cards/balance.js";
 import { normalizeCardMaterialId, pruneOwnedCardUnlockElements, syncOwnedCardFragmentMirrors } from "../cards/materials.js";
 import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
+import { resolvePlayerLevelFromXp } from "../progression/player-progression.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -371,7 +372,6 @@ async function hydrateCanonicalRuntimeState(
     .eq("user_id", userId)
     .maybeSingle<PlayerProgressRuntimeRow>();
   if (progress != null) {
-    if (typeof progress.player_level === "number") nextSave.playerLevel = progress.player_level;
     if (typeof progress.xp === "number") nextSave.xp = progress.xp;
     if (typeof progress.current_stage === "string" && progress.current_stage.trim().length > 0) {
       const normalizedProgressCurrent = normalizeStageKey(progress.current_stage, nextSave.currentStage);
@@ -389,6 +389,7 @@ async function hydrateCanonicalRuntimeState(
     if (typeof progress.total_summons === "number") nextSave.totalSummons = progress.total_summons;
     if (typeof progress.total_battles_won === "number") nextSave.totalBattlesWon = progress.total_battles_won;
   }
+  nextSave.playerLevel = resolvePlayerLevelFromXp(nextSave.xp);
 
   const { data: economy } = await service
     .from("user_economy")

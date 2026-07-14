@@ -10,7 +10,8 @@ import {
 } from "../bootstrap/monetization-foundation.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
 import { buildEquipmentMaterialId } from "../equipment/balance.js";
-import { normalizeStageKey, toLegacyStageKey } from "../bootstrap/game-save.js";
+import { normalizeStageKey } from "../bootstrap/game-save.js";
+import { grantPlayerXpReward } from "../progression/player-progression.js";
 
 const AFK_GOLD_PER_HOUR = 200;
 const AFK_GEMS_PER_HOUR = 1;
@@ -26,11 +27,6 @@ interface UserAfkRow {
   accumulated_gems: number | null;
   config_version: number | null;
   updated_at: string | null;
-}
-
-interface UserEconomyRow {
-  gold: number;
-  gems: number;
 }
 
 interface PlayerProgressRow {
@@ -115,33 +111,33 @@ export async function claimAfkDedicated(
   await ensureBootstrapMonetizationFoundation(supabase, context.userId);
   const config = await getBootstrapMonetizationConfig(supabase);
   const afkState = await loadUserAfkRow(supabase, context.userId);
-  const economy = await loadUserEconomyRow(supabase, context.userId);
   const saveBefore = await loadPlayerSave(supabase, context.userId);
   const progress = await loadPlayerProgressRow(supabase, context.userId, saveBefore);
   const origin = resolveAfkOrigin(progress.highest_stage ?? progress.current_stage ?? saveBefore.highestStage);
   const now = new Date();
   const lastClaimedAt = afkState.last_claimed_at ? new Date(afkState.last_claimed_at) : now;
   const reward = buildAfkRewardPreview(lastClaimedAt, now, origin.materialId);
-
-  const nextGold = economy.gold + reward.gold;
-  const nextGems = economy.gems + reward.gems;
-  const nextXp = Math.max(0, Math.floor(progress.xp || saveBefore.xp || 0)) + reward.xp;
-  const nextPlayerLevel = resolvePlayerLevel(nextXp, progress.player_level || saveBefore.playerLevel);
   const nowIso = now.toISOString();
+  const progressionReward = await grantPlayerXpReward(supabase, {
+    userId: context.userId,
+    source: "afk_claim",
+    sourceId: origin.stageKey,
+    requestId: input.requestId,
+    xpAmount: reward.xp,
+    economyReward: {
+      gold: reward.gold,
+      gems: reward.gems,
+    },
+    now,
+  });
+  const nextGold = progressionReward.save.gold;
+  const nextGems = progressionReward.save.gems;
+  const nextXp = progressionReward.xpAfter;
+  const nextPlayerLevel = progressionReward.levelAfter;
   const nextFragments = { ...saveBefore.fragments };
   if (reward.materials > 0) {
     nextFragments[reward.materialId] = Math.max(0, Math.floor(nextFragments[reward.materialId] ?? 0)) + reward.materials;
   }
-
-  const { error: economyError } = await supabase
-    .from("user_economy")
-    .update({
-      gold: nextGold,
-      gems: nextGems,
-      updated_at: nowIso,
-    })
-    .eq("user_id", context.userId);
-  if (economyError) throw new Error(economyError.message);
 
   const { error: afkError } = await supabase
     .from("user_afk")
@@ -154,22 +150,6 @@ export async function claimAfkDedicated(
     })
     .eq("user_id", context.userId);
   if (afkError) throw new Error(afkError.message);
-
-  const { error: progressError } = await supabase.from("player_progress").upsert(
-    {
-      user_id: context.userId,
-      player_level: nextPlayerLevel,
-      xp: nextXp,
-      current_stage: toLegacyStageKey(progress.current_stage ?? saveBefore.currentStage),
-      highest_stage: toLegacyStageKey(progress.highest_stage ?? saveBefore.highestStage),
-      total_battles_won: Math.max(0, Math.floor(progress.total_battles_won ?? saveBefore.totalBattlesWon ?? 0)),
-      unlocked_slots: saveBefore.unlockedSlots,
-      total_summons: saveBefore.totalSummons,
-      updated_at: nowIso,
-    },
-    { onConflict: "user_id" },
-  );
-  if (progressError) throw new Error(progressError.message);
 
   if (reward.materials > 0) {
     await upsertUserMaterialQuantity(supabase, context.userId, reward.materialId, nextFragments[reward.materialId] ?? reward.materials, nowIso);
@@ -190,6 +170,7 @@ export async function claimAfkDedicated(
     ok: true,
     requestId: input.requestId,
     reward,
+    progressionReward,
     origin,
     lastClaimedAt: nowIso,
     save: {
@@ -197,6 +178,8 @@ export async function claimAfkDedicated(
       gems: save.gems,
       xp: save.xp,
       playerLevel: save.playerLevel,
+      levelUpRewards: progressionReward.levelUpRewards,
+      gemsGranted: progressionReward.gemsGranted,
       fragments: save.fragments,
       lastAfkAt: save.lastAfkAt,
       schemaVersion: save.schemaVersion,
@@ -221,16 +204,6 @@ async function loadUserAfkRow(supabase: SupabaseClient, userId: string) {
     config_version: null,
     updated_at: null,
   };
-}
-
-async function loadUserEconomyRow(supabase: SupabaseClient, userId: string) {
-  const { data, error } = await supabase
-    .from("user_economy")
-    .select("gold, gems")
-    .eq("user_id", userId)
-    .maybeSingle<UserEconomyRow>();
-  if (error) throw new Error(error.message);
-  return data ?? { gold: 0, gems: 0 };
 }
 
 function buildAfkRewardPreview(lastClaimedAt: Date, serverNow: Date, materialId: string): AfkRewardPreview {
@@ -361,18 +334,6 @@ function resolveAfkStageName(chapter: number) {
 function resolveAfkMaterialId(chapter: number) {
   const slots = ["weapon", "helmet", "armor", "boots", "accessory"] as const;
   return buildEquipmentMaterialId(slots[(Math.max(1, chapter) - 1) % slots.length]);
-}
-
-function resolvePlayerLevel(totalXp: number, startingLevel: number) {
-  let level = Math.max(1, Math.floor(startingLevel || 1));
-  while (totalXp >= xpRequiredForLevel(level + 1)) {
-    level += 1;
-  }
-  return level;
-}
-
-function xpRequiredForLevel(level: number) {
-  return Math.max(0, (level - 1) * 100);
 }
 
 async function beginIdempotentOperation(
