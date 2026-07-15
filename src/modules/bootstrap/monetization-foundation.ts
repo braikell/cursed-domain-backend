@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { TEST_INITIAL_GEMS, TEST_INITIAL_GOLD } from "./game-save.js";
+
 export interface MonetizationConfigLite {
   configVersion: number;
   probabilitiesVersion: number;
@@ -59,8 +61,8 @@ const SEED_CONFIG: MonetizationConfigLite = {
   configVersion: 1,
   probabilitiesVersion: 1,
   initialCurrencies: {
-    gold: 5000,
-    gems: 500,
+    gold: TEST_INITIAL_GOLD,
+    gems: TEST_INITIAL_GEMS,
   },
   dailyMissions: [
     { missionId: "login", eventKey: "login", rewardGold: 400, rewardGems: 5, rewardPoints: 5, target: 1, sortOrder: 10, isEnabled: true },

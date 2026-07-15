@@ -3,6 +3,8 @@ export const MAX_TEAM_SIZE = 3;
 export const DEFAULT_UNLOCKED_TEAM_SLOTS = 3;
 export const FORMATION_GRID_SLOT_COUNT = 9;
 export const DEFAULT_STARTER_TEAM = ["yuji", "nobara", "megumi"] as const;
+export const TEST_INITIAL_GOLD = 200_000;
+export const TEST_INITIAL_GEMS = 10_000;
 
 export interface EquipmentItem {
   id: string;
@@ -131,8 +133,8 @@ export function compareStageKeys(a: unknown, b: unknown): number {
 export function createInitialGameSave(now = Date.now()): GameSaveSnapshot {
   return {
     schemaVersion: GAME_SAVE_SCHEMA_VERSION,
-    gold: 5000,
-    gems: 500,
+    gold: TEST_INITIAL_GOLD,
+    gems: TEST_INITIAL_GEMS,
     xp: 0,
     playerLevel: 1,
     characters: {
