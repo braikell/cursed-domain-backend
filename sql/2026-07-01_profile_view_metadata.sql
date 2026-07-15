@@ -9,12 +9,12 @@ set
   profile_created_at = coalesce(profile_created_at, updated_at, now()),
   profile_backdrop = case
     when profile_backdrop in ('abyss', 'eclipse') then profile_backdrop
-    else 'abyss'
+    else 'eclipse'
   end;
 
 alter table public.profiles
   alter column profile_created_at set default now(),
-  alter column profile_backdrop set default 'abyss';
+  alter column profile_backdrop set default 'eclipse';
 
 do $$
 begin

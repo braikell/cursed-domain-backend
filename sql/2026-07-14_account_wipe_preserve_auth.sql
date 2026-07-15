@@ -102,7 +102,7 @@ begin
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'profiles' and column_name = 'profile_backdrop'
   ) then
-    set_clauses := array_append(set_clauses, $$profile_backdrop = 'abyss'$$);
+    set_clauses := array_append(set_clauses, $$profile_backdrop = 'eclipse'$$);
   end if;
 
   if exists (

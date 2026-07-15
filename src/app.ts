@@ -28,6 +28,17 @@ const completeBattleInputSchema = z.object({
   stageId: z.string().min(1),
   result: z.literal("win"),
   requestId: z.string().min(8).max(80),
+  battleSessionId: z.string().uuid(),
+  durationSeconds: z.number().min(0).max(3600).optional(),
+});
+
+const startBattleInputSchema = z.object({
+  stageId: z.string().min(1),
+  requestId: z.string().min(8).max(80),
+  teamSlots: z.array(z.object({
+    userCardId: z.string().min(1).max(120),
+    boardSlot: z.number().int().min(0).max(8),
+  })).min(1).max(3),
 });
 
 const completeTowerFloorInputSchema = z.object({
@@ -194,6 +205,19 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "battle_resolve", "Invalid request payload.");
       }
       const response = await domainService.completeBattle(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/start-battle", async (context) =>
+    withModule(context, "battle_start", async () => {
+      const authed = await requireAuthedGodotUser(context, "battle_start");
+      const body = await context.req.json().catch(() => null);
+      const parsed = startBattleInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "battle_start", "Invalid request payload.");
+      }
+      const response = await domainService.startBattle(authed, parsed.data);
       return context.json(response);
     }),
   );

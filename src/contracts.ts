@@ -5,6 +5,7 @@ export type BackendModuleName =
   | "afk_claim"
   | "missions_status"
   | "mission_claim"
+  | "battle_start"
   | "battle_resolve"
   | "cards_upgrade"
   | "cards_ascend"
@@ -71,10 +72,21 @@ export interface ClaimMissionInput {
   missionId: string;
 }
 
+export interface StartBattleInput {
+  stageId: string;
+  requestId: string;
+  teamSlots: Array<{
+    userCardId: string;
+    boardSlot: number;
+  }>;
+}
+
 export interface CompleteBattleInput {
   stageId: string;
   result: "win";
   requestId: string;
+  battleSessionId: string;
+  durationSeconds?: number;
 }
 
 export interface CompleteTowerFloorInput {

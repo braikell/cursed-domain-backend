@@ -7,7 +7,7 @@ import { bootstrapPlayer } from "./modules/bootstrap/player-bootstrap.js";
 import { purchasePackDedicated } from "./modules/summons/purchase-pack.js";
 import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
 import { claimMissionDedicated, getMissionsDedicated } from "./modules/missions/missions.js";
-import { completeBattleDedicated } from "./modules/battle/battle.js";
+import { completeBattleDedicated, startBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
 import { completePvpMatchDedicated, getPvpStatusDedicated, startPvpMatchDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
 import {
@@ -43,6 +43,7 @@ import type {
   SocialSearchInput,
   SocialSendRequestInput,
   PurchasePackInput,
+  StartBattleInput,
   UnequipItemInput,
   UpgradeCardInput,
   UpgradeItemInput,
@@ -71,6 +72,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async claimMission(_context: GodotAuthedRequestContext, _input: ClaimMissionInput): Promise<unknown> {
     return await claimMissionDedicated(_context, _input);
+  }
+
+  override async startBattle(_context: GodotAuthedRequestContext, _input: StartBattleInput): Promise<unknown> {
+    return await startBattleDedicated(_context, _input);
   }
 
   override async completeBattle(_context: GodotAuthedRequestContext, _input: CompleteBattleInput): Promise<unknown> {

@@ -16,6 +16,7 @@ import type {
   SocialSearchInput,
   SocialSendRequestInput,
   PurchasePackInput,
+  StartBattleInput,
   UnequipItemInput,
   UpgradeCardInput,
   UpgradeItemInput,
@@ -28,6 +29,7 @@ export interface GodotDomainService {
   claimAfk(context: GodotAuthedRequestContext, input: ClaimAfkInput): Promise<unknown>;
   getMissions(context: GodotAuthedRequestContext): Promise<unknown>;
   claimMission(context: GodotAuthedRequestContext, input: ClaimMissionInput): Promise<unknown>;
+  startBattle(context: GodotAuthedRequestContext, input: StartBattleInput): Promise<unknown>;
   completeBattle(context: GodotAuthedRequestContext, input: CompleteBattleInput): Promise<unknown>;
   getTowerStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   completeTowerFloor(context: GodotAuthedRequestContext, input: CompleteTowerFloorInput): Promise<unknown>;

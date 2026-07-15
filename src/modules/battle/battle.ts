@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { CompleteBattleInput, GodotAuthedRequestContext } from "../../contracts.js";
+import type { CompleteBattleInput, GodotAuthedRequestContext, StartBattleInput } from "../../contracts.js";
 import { HttpModuleError } from "../../errors.js";
 import {
   compareStageKeys,
@@ -93,6 +93,8 @@ interface StageDefinitionRow {
   clear_gold?: number | null;
   clear_gems?: number | null;
   clear_xp?: number | null;
+  target_pm?: number | null;
+  chapter_boss_pm?: number | null;
 }
 
 interface UserCardProgressRow {
@@ -109,6 +111,34 @@ interface UserCardProgressRow {
   fragments: number;
   energy: number | null;
   max_energy: number | null;
+}
+
+interface BattleSessionRow {
+  id: string;
+  user_id: string;
+  mode: string;
+  stage_id: string | null;
+  team_hash: string;
+  team_power: number;
+  target_power: number;
+  min_duration_seconds: number;
+  request_id: string;
+  started_at: string;
+  expires_at: string;
+  consumed_at: string | null;
+}
+
+interface BattleStartCardRow {
+  id: string;
+  user_id: string;
+  character_id: string;
+  card_type: string | null;
+  variant: string | null;
+  rarity: string | null;
+  level: number;
+  stars: number;
+  ascension: number;
+  awakening: number;
 }
 
 interface BattleReward {
@@ -132,6 +162,67 @@ interface EquipmentRewardItem {
   hp: number;
 }
 
+const BATTLE_SESSION_TTL_MINUTES = 45;
+const MIN_BATTLE_DURATION_SECONDS = 3;
+
+export async function startBattleDedicated(
+  context: GodotAuthedRequestContext,
+  input: StartBattleInput,
+): Promise<unknown> {
+  assertRequestId(input.requestId, "battle_start");
+
+  const supabase = createServiceSupabaseClient();
+  const stageDefinitions = await loadStageDefinitions(supabase);
+  const currentStage = resolveStageDefinition(stageDefinitions, input.stageId);
+  if (currentStage == null) {
+    throw new HttpModuleError(404, "stage_not_found", "battle_start", "Stage not found.");
+  }
+
+  const save = await loadPlayerSave(supabase, context.userId);
+  const progress = await loadPlayerProgressRow(supabase, context.userId, save);
+  assertStageUnlocked(stageDefinitions, currentStage.stage_key, progress.current_stage ?? save.currentStage, progress.highest_stage ?? save.highestStage, "battle_start");
+
+  const teamSnapshot = await buildBattleTeamSnapshot(supabase, context.userId, input.teamSlots);
+  const targetPower = resolveStageTargetPower(currentStage);
+  const requiredPower = Math.max(1, Math.floor(targetPower * 0.55));
+  if (targetPower > 0 && teamSnapshot.teamPower < requiredPower) {
+    throw new HttpModuleError(409, "battle_team_power_too_low", "battle_start", "El equipo esta demasiado bajo para abrir esta batalla.");
+  }
+
+  const startedAt = new Date();
+  const expiresAt = new Date(startedAt.getTime() + BATTLE_SESSION_TTL_MINUTES * 60_000);
+  const { data, error } = await supabase
+    .from("battle_sessions")
+    .insert({
+      user_id: context.userId,
+      mode: "campaign",
+      stage_id: currentStage.stage_key,
+      team_hash: teamSnapshot.teamHash,
+      team_power: teamSnapshot.teamPower,
+      target_power: targetPower,
+      min_duration_seconds: MIN_BATTLE_DURATION_SECONDS,
+      request_id: input.requestId,
+      started_at: startedAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+    })
+    .select("id,stage_id,team_hash,team_power,target_power,min_duration_seconds,started_at,expires_at")
+    .single<Pick<BattleSessionRow, "id" | "stage_id" | "team_hash" | "team_power" | "target_power" | "min_duration_seconds" | "started_at" | "expires_at">>();
+  if (error) throw new Error(error.message);
+
+  return {
+    ok: true as const,
+    battleSessionId: data.id,
+    mode: "campaign",
+    stageId: data.stage_id,
+    teamHash: data.team_hash,
+    teamPower: data.team_power,
+    targetPower: data.target_power,
+    minDurationSeconds: data.min_duration_seconds,
+    startedAt: data.started_at,
+    expiresAt: data.expires_at,
+  };
+}
+
 export async function completeBattleDedicated(
   context: GodotAuthedRequestContext,
   input: CompleteBattleInput,
@@ -139,9 +230,10 @@ export async function completeBattleDedicated(
   if (input.result !== "win") {
     throw new HttpModuleError(400, "unsupported_battle_result", "battle_resolve", "Only win result is supported.");
   }
+  assertUuid(input.battleSessionId, "battle_resolve");
 
   const supabase = createServiceSupabaseClient();
-  const operation = `complete_battle_v1:${input.stageId}:${input.result}`;
+  const operation = `complete_battle_v2:${input.battleSessionId}:${input.stageId}:${input.result}`;
   const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId);
   if (replay.status === "replayed") {
     if (replay.response == null) {
@@ -159,6 +251,9 @@ export async function completeBattleDedicated(
   if (currentStage == null) {
     throw new HttpModuleError(404, "stage_not_found", "battle_resolve", "Stage not found.");
   }
+  const session = await lockBattleSession(supabase, context.userId, input.battleSessionId);
+  validateBattleSession(session, currentStage.stage_key, input.durationSeconds);
+  await consumeBattleSession(supabase, context.userId, input.battleSessionId);
 
   const save = await loadPlayerSave(supabase, context.userId);
   const progress = await loadPlayerProgressRow(supabase, context.userId, save);
@@ -267,6 +362,7 @@ export async function completeBattleDedicated(
   console.info("[battle_resolve] persisted", {
     userId: context.userId,
     stageId: input.stageId,
+    battleSessionId: input.battleSessionId,
     currentStage: nextSave.currentStage,
     highestStage: nextSave.highestStage,
     gold: nextSave.gold,
@@ -348,6 +444,184 @@ async function loadStageDefinitions(supabase: SupabaseClient) {
     .returns<StageDefinitionRow[]>();
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+async function buildBattleTeamSnapshot(
+  supabase: SupabaseClient,
+  userId: string,
+  teamSlots: StartBattleInput["teamSlots"],
+) {
+  const normalizedSlots = normalizeBattleTeamSlots(teamSlots);
+  if (normalizedSlots.length !== 3) {
+    throw new HttpModuleError(400, "invalid_battle_team", "battle_start", "La batalla requiere exactamente 3 cartas.");
+  }
+
+  const cardIds = normalizedSlots.map((slot) => slot.userCardId);
+  const { data, error } = await supabase
+    .from("user_cards")
+    .select("id,user_id,character_id,card_type,variant,rarity,level,stars,ascension,awakening")
+    .eq("user_id", userId)
+    .in("id", cardIds)
+    .returns<BattleStartCardRow[]>();
+  if (error) throw new Error(error.message);
+
+  const cardsById = new Map((data ?? []).map((row) => [row.id, row] as const));
+  if (cardsById.size !== cardIds.length) {
+    throw new HttpModuleError(404, "battle_team_card_not_found", "battle_start", "Una o mas cartas del equipo no pertenecen al jugador.");
+  }
+
+  const teamParts: string[] = [];
+  let teamPower = 0;
+  for (const slot of normalizedSlots) {
+    const card = cardsById.get(slot.userCardId);
+    if (card == null) {
+      throw new HttpModuleError(404, "battle_team_card_not_found", "battle_start", "Carta del equipo no encontrada.");
+    }
+    const cardType = resolveCatalogCardType(card.card_type, card.variant);
+    const rarity = normalizeCardRarity(card.rarity ?? "basic");
+    const level = Math.max(1, Math.floor(card.level || 1));
+    const stars = Math.max(1, Math.floor(card.stars || getCardStarsForLevel(cardType, rarity, level)));
+    const ascension = Math.max(0, Math.floor(card.ascension || 0));
+    const awakening = Math.max(0, Math.floor(card.awakening || 0));
+    teamPower += estimateBattleCardPower(card.character_id, cardType, rarity, level, stars, ascension, awakening);
+    teamParts.push([
+      slot.boardSlot,
+      card.id,
+      card.character_id,
+      cardType,
+      rarity,
+      level,
+      stars,
+      ascension,
+      awakening,
+    ].join(":"));
+  }
+
+  return {
+    teamHash: stableSha256(teamParts.join("|")),
+    teamPower,
+  };
+}
+
+function normalizeBattleTeamSlots(teamSlots: StartBattleInput["teamSlots"]) {
+  const seenCards = new Set<string>();
+  const seenBoardSlots = new Set<number>();
+  const normalized: Array<{ userCardId: string; boardSlot: number }> = [];
+  for (const rawSlot of teamSlots) {
+    const userCardId = String(rawSlot.userCardId ?? "").trim();
+    const boardSlot = Math.trunc(Number(rawSlot.boardSlot));
+    if (!userCardId || !Number.isInteger(boardSlot) || boardSlot < 0 || boardSlot > 8) {
+      throw new HttpModuleError(400, "invalid_battle_team", "battle_start", "Equipo de batalla invalido.");
+    }
+    if (seenCards.has(userCardId) || seenBoardSlots.has(boardSlot)) {
+      throw new HttpModuleError(400, "duplicate_battle_team_slot", "battle_start", "Equipo de batalla duplicado.");
+    }
+    seenCards.add(userCardId);
+    seenBoardSlots.add(boardSlot);
+    normalized.push({ userCardId, boardSlot });
+  }
+  return normalized.sort((left, right) => left.boardSlot - right.boardSlot);
+}
+
+function estimateBattleCardPower(
+  characterId: string,
+  cardType: CardCatalogType,
+  rarity: CardBalanceRarity,
+  level: number,
+  stars: number,
+  ascension: number,
+  awakening: number,
+) {
+  const stats = getCardFinalStats(characterId, cardType, level, ascension, { ad: 0, ap: 0, hp: 0 });
+  const rarityMultiplier: Record<CardBalanceRarity, number> = {
+    basic: 1,
+    epic: 1.18,
+    legendary: 1.38,
+    mythic: 1.65,
+  };
+  const basePower = stats.hp * 0.18 + Math.max(stats.ad, stats.ap) * 2.4 + Math.min(stats.ad, stats.ap) * 0.8;
+  return Math.max(1, Math.floor(basePower * rarityMultiplier[rarity] + stars * 55 + awakening * 120));
+}
+
+function stableSha256(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function resolveStageTargetPower(stage: StageDefinitionRow) {
+  return positiveIntFromKeys(stage, ["target_pm", "chapter_boss_pm"], 0);
+}
+
+function assertStageUnlocked(
+  stageDefinitions: StageDefinitionRow[],
+  stageId: string,
+  currentStage: string,
+  highestStage: string,
+  module: "battle_start" | "battle_resolve",
+) {
+  const orderedKeys = stageDefinitions.map((row) => row.stage_key).filter((key) => key.trim().length > 0);
+  const stageIndex = orderedKeys.indexOf(normalizeStageKey(stageId, stageId));
+  const currentIndex = orderedKeys.indexOf(normalizeStageKey(currentStage, currentStage));
+  const highestIndex = orderedKeys.indexOf(normalizeStageKey(highestStage, highestStage));
+  if (stageIndex < 0) {
+    throw new HttpModuleError(404, "stage_not_found", module, "Stage not found.");
+  }
+  if (stageIndex > Math.max(currentIndex, highestIndex, 0)) {
+    throw new HttpModuleError(409, "stage_locked", module, "Stage bloqueado por progreso.");
+  }
+}
+
+async function lockBattleSession(supabase: SupabaseClient, userId: string, battleSessionId: string) {
+  const { data, error } = await supabase
+    .from("battle_sessions")
+    .select("id,user_id,mode,stage_id,team_hash,team_power,target_power,min_duration_seconds,request_id,started_at,expires_at,consumed_at")
+    .eq("id", battleSessionId)
+    .eq("user_id", userId)
+    .maybeSingle<BattleSessionRow>();
+  if (error) throw new Error(error.message);
+  if (data == null) {
+    throw new HttpModuleError(404, "battle_session_not_found", "battle_resolve", "Sesion de batalla no encontrada.");
+  }
+  return data;
+}
+
+function validateBattleSession(session: BattleSessionRow, stageId: string, durationSeconds?: number) {
+  if (session.mode !== "campaign") {
+    throw new HttpModuleError(400, "battle_session_mode_mismatch", "battle_resolve", "Sesion de batalla invalida.");
+  }
+  if (session.stage_id !== stageId) {
+    throw new HttpModuleError(400, "battle_session_stage_mismatch", "battle_resolve", "La sesion no corresponde a este stage.");
+  }
+  if (session.consumed_at != null) {
+    throw new HttpModuleError(409, "battle_session_consumed", "battle_resolve", "Esta batalla ya fue cerrada.");
+  }
+  if (new Date(session.expires_at).getTime() <= Date.now()) {
+    throw new HttpModuleError(409, "battle_session_expired", "battle_resolve", "La sesion de batalla expiro.");
+  }
+  const measuredDuration = Number.isFinite(durationSeconds)
+    ? Math.max(0, Number(durationSeconds))
+    : Math.max(0, (Date.now() - new Date(session.started_at).getTime()) / 1000);
+  if (measuredDuration + 0.75 < Math.max(0, session.min_duration_seconds)) {
+    throw new HttpModuleError(409, "battle_duration_too_short", "battle_resolve", "La batalla se cerro demasiado rapido.");
+  }
+  const requiredPower = Math.max(1, Math.floor(Math.max(0, session.target_power) * 0.55));
+  if (session.target_power > 0 && session.team_power < requiredPower) {
+    throw new HttpModuleError(409, "battle_team_power_too_low", "battle_resolve", "El equipo no cumple el minimo de poder.");
+  }
+}
+
+async function consumeBattleSession(supabase: SupabaseClient, userId: string, battleSessionId: string) {
+  const { data, error } = await supabase
+    .from("battle_sessions")
+    .update({ consumed_at: new Date().toISOString() })
+    .eq("id", battleSessionId)
+    .eq("user_id", userId)
+    .is("consumed_at", null)
+    .select("id")
+    .maybeSingle<{ id: string }>();
+  if (error) throw new Error(error.message);
+  if (data == null) {
+    throw new HttpModuleError(409, "battle_session_consume_failed", "battle_resolve", "No se pudo consumir la sesion de batalla.");
+  }
 }
 
 function resolveStageDefinition(stageDefinitions: StageDefinitionRow[], stageId: string) {
@@ -779,7 +1053,7 @@ async function beginIdempotentOperation(
   operation: string,
   requestId: string,
 ) {
-  assertRequestId(requestId);
+  assertRequestId(requestId, "battle_resolve");
   const { error: insertError } = await supabase.from("idempotency_keys").insert({
     user_id: userId,
     request_id: requestId,
@@ -816,9 +1090,15 @@ async function completeIdempotentOperation(
   if (error) throw new Error(error.message);
 }
 
-function assertRequestId(requestId: string) {
+function assertRequestId(requestId: string, module: "battle_start" | "battle_resolve") {
   const value = requestId.trim();
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(value)) {
-    throw new HttpModuleError(400, "invalid_request_id", "battle_resolve", "Invalid requestId.");
+    throw new HttpModuleError(400, "invalid_request_id", module, "Invalid requestId.");
+  }
+}
+
+function assertUuid(value: string, module: "battle_start" | "battle_resolve") {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? "").trim())) {
+    throw new HttpModuleError(400, "invalid_battle_session_id", module, "Invalid battleSessionId.");
   }
 }

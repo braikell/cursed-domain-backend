@@ -16,6 +16,7 @@ import type {
   SocialSearchInput,
   SocialSendRequestInput,
   PurchasePackInput,
+  StartBattleInput,
   UnequipItemInput,
   UpgradeCardInput,
   UpgradeItemInput,
@@ -31,6 +32,7 @@ function notImplemented(
     | "afk_claim"
     | "missions_status"
     | "mission_claim"
+    | "battle_start"
     | "battle_resolve"
     | "cards_upgrade"
     | "cards_ascend"
@@ -78,6 +80,10 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async claimMission(_context: GodotAuthedRequestContext, _input: ClaimMissionInput): Promise<unknown> {
     return notImplemented("mission_claim", "Mission claim extraction not implemented yet.");
+  }
+
+  async startBattle(_context: GodotAuthedRequestContext, _input: StartBattleInput): Promise<unknown> {
+    return notImplemented("battle_start", "Battle start extraction not implemented yet.");
   }
 
   async completeBattle(_context: GodotAuthedRequestContext, _input: CompleteBattleInput): Promise<unknown> {

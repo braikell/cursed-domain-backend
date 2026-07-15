@@ -53,7 +53,7 @@ interface IdempotencyRow {
   response: unknown | null;
 }
 
-type InventoryMaterialKind = "equipment_material" | "card_element" | "card_fragment" | "material";
+type InventoryMaterialKind = "equipment_material" | "card_element" | "card_fragment";
 
 const EQUIPMENT_DEFINITIONS_BY_KEY = new Map(EQUIPMENT_ITEMS.map((item) => [item.key, item]));
 
@@ -318,12 +318,17 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
   const materialIds = new Set(equipmentMaterials.map((entry) => entry.materialId));
   const extraMaterials = Object.entries(save.fragments)
     .filter(([materialId, quantity]) => !materialIds.has(materialId) && Math.max(0, Math.floor(Number(quantity) || 0)) > 0)
-    .map(([materialId, quantity]) => ({
-      materialId,
-      slot: materialId.startsWith("element:") ? "card_element" : materialId.startsWith("fragment:") ? "card_fragment" : "material",
-      kind: resolveInventoryMaterialKind(materialId),
-      quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
-    }));
+    .map(([materialId, quantity]) => {
+      const kind = resolveInventoryMaterialKind(materialId);
+      if (kind == null) return null;
+      return {
+        materialId,
+        slot: kind,
+        kind,
+        quantity: Math.max(0, Math.floor(Number(quantity) || 0)),
+      };
+    })
+    .filter((entry): entry is { materialId: string; slot: InventoryMaterialKind; kind: InventoryMaterialKind; quantity: number } => entry != null);
 
   return {
     ok: true,
@@ -334,12 +339,12 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
   };
 }
 
-function resolveInventoryMaterialKind(materialId: string): InventoryMaterialKind {
+function resolveInventoryMaterialKind(materialId: string): InventoryMaterialKind | null {
   const normalized = String(materialId ?? "").trim().toLowerCase();
   if (normalized.startsWith("gear_mats:")) return "equipment_material";
   if (normalized.startsWith("element:")) return "card_element";
   if (normalized.startsWith("fragment:")) return "card_fragment";
-  return "material";
+  return null;
 }
 
 async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: string) {

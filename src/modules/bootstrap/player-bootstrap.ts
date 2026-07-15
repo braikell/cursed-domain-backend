@@ -191,7 +191,7 @@ async function ensureProfile(accessToken: string, userId: string, service: Supab
   if (profileMetadataColumnsAvailable) {
     profilePayload.profile_created_at = existingProfile?.profile_created_at ?? new Date().toISOString();
     profilePayload.display_name_changed_at = existingProfile?.display_name_changed_at ?? null;
-    profilePayload.profile_backdrop = existingProfile?.profile_backdrop ?? "abyss";
+    profilePayload.profile_backdrop = existingProfile?.profile_backdrop ?? "eclipse";
   }
 
   const { error } = await service.from("profiles").upsert(profilePayload, { onConflict: "id" });
