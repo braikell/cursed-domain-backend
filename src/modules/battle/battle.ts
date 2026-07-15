@@ -428,6 +428,8 @@ export async function completeBattleDedicated(
       highestStage: nextSave.highestStage,
       totalBattlesWon: nextSave.totalBattlesWon,
       schemaVersion: nextSave.schemaVersion,
+      levelUpRewards: progressionReward.levelUpRewards,
+      gemsGranted: progressionReward.gemsGranted,
     },
   };
 

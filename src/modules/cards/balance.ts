@@ -232,11 +232,11 @@ const ROLE_DESIRED_RANGES: Record<string, number> = {
   SOPORTE: 1087,
 };
 const ROLE_MOVE_SPEEDS: Record<string, number> = {
-  DPS_FISICO: 100,
-  DPS_MAGICO: 65,
-  DPS_DEBUFFER: 70,
-  INVOCADOR: 74,
-  SOPORTE: 60,
+  DPS_FISICO: 160,
+  DPS_MAGICO: 105,
+  DPS_DEBUFFER: 140,
+  INVOCADOR: 144,
+  SOPORTE: 80,
 };
 const MELEE_INVOCATOR_CHARACTER_KEYS = new Set(["yuta"]);
 const EXPLICIT_DEFINITIVE_STAT_CHARACTER_KEYS = new Set(["yuta", "sukuna", "gojo", "yuji", "nanami", "toji", "higuruma", "megumi", "kashimo", "panda", "naoya", "utahime"]);
