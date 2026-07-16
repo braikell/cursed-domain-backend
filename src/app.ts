@@ -6,6 +6,7 @@ import { requireAuthedGodotUser } from "./auth.js";
 import type { BackendModuleName } from "./contracts.js";
 import type { GodotDomainService } from "./domain-service.js";
 import { buildErrorEnvelope, HttpModuleError } from "./errors.js";
+import { checkRateLimit } from "./rate-limiter.js";
 import { resolveRequestId } from "./request-id.js";
 
 const purchasePackInputSchema = z.object({
@@ -151,7 +152,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.purchasePack(authed, parsed.data);
       return context.json(response);
-    }),
+    }, "purchase-pack-v1"),
   );
 
   app.get("/api/godot/afk/status", async (context) =>
@@ -206,7 +207,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.completeBattle(authed, parsed.data);
       return context.json(response);
-    }),
+    }, "complete-battle"),
   );
 
   app.post("/api/godot/start-battle", async (context) =>
@@ -219,7 +220,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.startBattle(authed, parsed.data);
       return context.json(response);
-    }),
+    }, "start-battle"),
   );
 
   app.get("/api/godot/tower/status", async (context) =>
@@ -240,7 +241,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.completeTowerFloor(authed, parsed.data);
       return context.json(response);
-    }),
+    }, "complete-tower-floor"),
   );
 
   app.get("/api/godot/pvp/status", async (context) =>
@@ -274,7 +275,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.startPvpMatch(authed, parsed.data);
       return context.json(response);
-    }),
+    }, "pvp-start-match"),
   );
 
   app.post("/api/godot/pvp/complete-match", async (context) =>
@@ -287,7 +288,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.completePvpMatch(authed, parsed.data);
       return context.json(response);
-    }),
+    }, "pvp-complete-match"),
   );
 
   app.get("/api/godot/social/status", async (context) =>
@@ -443,14 +444,48 @@ async function withModule(
   context: Context,
   module: BackendModuleName,
   action: () => Promise<Response>,
+  rateLimitKey?: string,
 ) {
   const requestId = resolveRequestId(context);
   context.header("x-request-id", requestId);
 
   try {
+    if (rateLimitKey) {
+      const token = await extractUserIdForRateLimit(context);
+      if (token) {
+        const limit = checkRateLimit(token, rateLimitKey);
+        if (!limit.allowed) {
+          context.header("Retry-After", String(Math.ceil(limit.retryAfterMs / 1000)));
+          return context.json(
+            {
+              ok: false,
+              code: "rate_limited",
+              message: "Demasiadas solicitudes. Intenta de nuevo en unos segundos.",
+              request_id: requestId,
+              module,
+              retry_after_ms: limit.retryAfterMs,
+            },
+            { status: 429 },
+          );
+        }
+      }
+    }
     return await action();
   } catch (error) {
     const built = buildErrorEnvelope(error, module, requestId);
     return context.json(built.body, { status: built.status as 200 | 400 | 401 | 500 | 501 });
+  }
+}
+
+async function extractUserIdForRateLimit(context: Context): Promise<string | null> {
+  try {
+    const authHeader = context.req.header("authorization") ?? "";
+    if (authHeader.startsWith("Bearer ")) {
+      const token = authHeader.slice("Bearer ".length).trim();
+      if (token.length > 32) return token.slice(0, 64);
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
