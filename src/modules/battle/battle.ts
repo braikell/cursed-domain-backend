@@ -46,7 +46,6 @@ import {
   type EquipmentSlot,
 } from "../equipment/balance.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
-import { logger } from "../../safe-logger.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -258,7 +257,7 @@ export async function completeBattleDedicated(
 
   const save = await loadPlayerSave(supabase, context.userId);
   const progress = await loadPlayerProgressRow(supabase, context.userId, save);
-  logger.debug("[battle_resolve] start", {
+  console.info("[battle_resolve] start", {
     userId: context.userId,
     stageId: input.stageId,
     requestId: input.requestId,
@@ -305,7 +304,7 @@ export async function completeBattleDedicated(
   const nextGold = progressionReward.save.gold;
   const nextGems = progressionReward.save.gems;
   const nextTotalBattlesWon = Math.max(progress.total_battles_won, save.totalBattlesWon) + 1;
-  logger.debug("[battle_resolve] computed", {
+  console.info("[battle_resolve] computed", {
     userId: context.userId,
     stageId: input.stageId,
     isReplay: stageFlow.isReplay,
@@ -360,7 +359,7 @@ export async function completeBattleDedicated(
   }
   const persistedProgress = await loadPlayerProgressDebugRow(supabase, context.userId);
   const persistedSave = await loadPlayerSaveDebugRow(supabase, context.userId);
-  logger.debug("[battle_resolve] persisted", {
+  console.info("[battle_resolve] persisted", {
     userId: context.userId,
     stageId: input.stageId,
     battleSessionId: input.battleSessionId,
