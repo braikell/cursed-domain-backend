@@ -22,6 +22,10 @@ import {
 } from "../cards/materials.js";
 import {
   adjustRatesForPity,
+  getHardPityLabel,
+  getHardThreshold,
+  getSoftThreshold,
+  isCardTypePremium,
   isLegendaryOrMythic,
   loadPityState,
   persistPityState,
@@ -245,8 +249,9 @@ export async function purchasePackDedicated(
     pityCounter: resolved.pitySnapshots.length > 0
       ? (resolved.pitySnapshots[resolved.pitySnapshots.length - 1]?.after ?? 0)
       : resolved.pityCounterStart,
-    pitySoftThreshold: 70,
-    pityHardThreshold: 90,
+    pitySoftThreshold: getSoftThreshold(),
+    pityHardThreshold: getHardThreshold(),
+    pityGuaranteeLabel: getHardPityLabel(input.packId),
   };
 
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
@@ -436,15 +441,17 @@ async function resolvePurchase(input: {
 
   for (let index = 0; index < totalPulls; index += 1) {
     const pityBefore = pityState.counter;
-    const adjusted = adjustRatesForPity(pack.rates, pityState);
+    const adjusted = adjustRatesForPity(pack.rates, pityState, input.input.packId);
     const cardType = rollCardType(adjusted.adjustedRates as Array<{ cardType: CardType; rate: number }>);
     const definition = pickCardDefinitionForCardType(cardType, definitionPools);
     if (definition == null) {
       throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
     }
 
-    const isPremium = isLegendaryOrMythic(cardType);
     const wasPity = adjusted.wasPity;
+    const shouldResetCounter = wasPity
+      ? isCardTypePremium(cardType, adjusted.guaranteeTier)
+      : isLegendaryOrMythic(cardType);
 
     results.push(
       applyPackCardToCollection({
@@ -456,14 +463,14 @@ async function resolvePurchase(input: {
       }),
     );
 
-    if (isPremium) {
+    if (shouldResetCounter) {
       pityState = { counter: 0, softPityActive: false, hardPityActive: false };
     } else {
       const nextCounter = pityState.counter + 1;
       pityState = {
         counter: nextCounter,
-        softPityActive: nextCounter >= 70,
-        hardPityActive: nextCounter >= 90,
+        softPityActive: nextCounter >= getSoftThreshold(),
+        hardPityActive: nextCounter >= getHardThreshold(),
       };
     }
 

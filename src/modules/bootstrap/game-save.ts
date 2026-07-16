@@ -3,8 +3,8 @@ export const MAX_TEAM_SIZE = 3;
 export const DEFAULT_UNLOCKED_TEAM_SLOTS = 3;
 export const FORMATION_GRID_SLOT_COUNT = 9;
 export const DEFAULT_STARTER_TEAM = ["yuji", "nobara", "megumi"] as const;
-export const TEST_INITIAL_GOLD = 5_000;
-export const TEST_INITIAL_GEMS = 200;
+export const TEST_INITIAL_GOLD = 200_000;
+export const TEST_INITIAL_GEMS = 10_000;
 
 export interface EquipmentItem {
   id: string;
