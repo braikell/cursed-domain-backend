@@ -3,6 +3,12 @@ import { randomInt } from "node:crypto";
 
 const PITY_CYCLE = 90;
 
+const _counterCache = new Map<string, number>();
+
+function cacheKey(userId: string, packId: string): string {
+  return `${userId}:${packId}`;
+}
+
 export type PityGuaranteeTier = "legendary" | "mythic" | "definitive_legendary" | "definitive_mythic";
 
 export interface PityState {
@@ -10,6 +16,8 @@ export interface PityState {
 }
 
 export async function loadPityState(supabase: SupabaseClient, userId: string, packId: string): Promise<PityState> {
+  const key = cacheKey(userId, packId);
+  const cached = _counterCache.get(key) ?? 0;
   try {
     const { data, error } = await supabase
       .from("user_pity")
@@ -17,11 +25,20 @@ export async function loadPityState(supabase: SupabaseClient, userId: string, pa
       .eq("user_id", userId)
       .eq("pack_id", packId)
       .maybeSingle<{ target_counter: number }>();
-    if (error || !data) return { counter: 0 };
-    return { counter: Math.max(0, Math.floor(data.target_counter ?? 0)) };
+    if (error || !data) {
+      return { counter: Math.max(0, cached) };
+    }
+    const dbCounter = Math.max(0, Math.floor(data.target_counter ?? 0));
+    const final = Math.max(dbCounter, cached);
+    _counterCache.set(key, final);
+    return { counter: final };
   } catch {
-    return { counter: 0 };
+    return { counter: Math.max(0, cached) };
   }
+}
+
+export function cacheCounter(userId: string, packId: string, counter: number): void {
+  _counterCache.set(cacheKey(userId, packId), Math.max(0, Math.floor(counter)));
 }
 
 export function getGuaranteeTier(packId: string): PityGuaranteeTier {

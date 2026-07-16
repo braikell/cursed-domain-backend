@@ -21,6 +21,7 @@ import {
   syncOwnedCardFragmentMirrors,
 } from "../cards/materials.js";
 import {
+  cacheCounter,
   displayCounter,
   getGuaranteeLabel,
   getPityCycle,
@@ -574,6 +575,12 @@ async function finalizePurchase(input: {
     })
     .single<FinalizePackPurchaseResultRow>();
   if (error) throw new Error(error.message);
+
+  const lastSnapshot = input.resolved.pitySnapshots.length > 0
+    ? (input.resolved.pitySnapshots[input.resolved.pitySnapshots.length - 1]?.after ?? input.resolved.pityCounterStart)
+    : input.resolved.pityCounterStart;
+  cacheCounter(input.userId, input.resolved.pack.id, lastSnapshot);
+
   await cleanupZeroQuantityMaterialRows(input.supabase, input.userId, input.resolved.materialRows);
   return {
     gold: data.gold,
