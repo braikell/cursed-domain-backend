@@ -73,12 +73,10 @@ export function displayCounter(totalCounter: number): number {
 
 function cardTypeMatchesTier(cardType: string, tier: PityGuaranteeTier): boolean {
   switch (tier) {
-    case "legendary": return cardType.includes("_legendary") || cardType.includes("_mythic");
-    case "mythic": return cardType.includes("_mythic");
-    case "definitive_legendary":
-      return cardType.startsWith("definitive_") && (cardType.includes("_legendary") || cardType.includes("_mythic"));
-    case "definitive_mythic":
-      return cardType.startsWith("definitive_") && cardType.includes("_mythic");
+    case "legendary": return cardType === "base_legendary";
+    case "mythic": return cardType === "base_mythic";
+    case "definitive_legendary": return cardType === "definitive_legendary";
+    case "definitive_mythic": return cardType === "definitive_mythic";
   }
 }
 

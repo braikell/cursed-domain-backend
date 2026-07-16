@@ -251,6 +251,9 @@ export async function purchasePackDedicated(
       : resolved.pityCounterStart),
     pityMax: getPityCycle(),
     pityGuaranteeLabel: getGuaranteeLabel(input.packId),
+    pityTriggered: resolved.pitySnapshots.some(
+      (snap) => snap.before > 0 && snap.before % getPityCycle() === 0,
+    ),
   };
 
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
@@ -450,10 +453,10 @@ async function resolvePurchase(input: {
     const hardActive = isHardPity(pityState.counter);
 
     for (let cardIndex = 0; cardIndex < PACK_CARDS_PER_PURCHASE; cardIndex += 1) {
+      const isGuaranteed = hardActive && cardIndex === 0;
       let cardType: CardType;
-      if (hardActive) {
-        const guaranteed = pickGuaranteedCardType(pack.rates, input.input.packId);
-        cardType = guaranteed as CardType;
+      if (isGuaranteed) {
+        cardType = pickGuaranteedCardType(pack.rates, input.input.packId) as CardType;
       } else {
         cardType = rollCardType(pack.rates);
       }
@@ -466,7 +469,7 @@ async function resolvePurchase(input: {
           save,
           definition,
           cardType,
-          wasPity: hardActive,
+          wasPity: isGuaranteed,
           duplicateRewardsByType: duplicateRewards,
         }),
       );
