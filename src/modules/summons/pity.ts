@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomInt } from "node:crypto";
 
-const PITY_CYCLE = 90;
+const PITY_CYCLE = 30; // TEST: cambiar a 90 para produccion
 
 const _counterCache = new Map<string, number>();
 
