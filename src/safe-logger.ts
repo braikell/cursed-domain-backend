@@ -1,71 +1,101 @@
-type LogLevel = "debug" | "info" | "warn" | "error";
+import { env } from "./env.js";
 
-const LEVEL_WEIGHT: Record<LogLevel, number> = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3,
-};
+const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
+type LogLevel = keyof typeof LOG_LEVELS;
 
-const CURRENT_LEVEL: LogLevel = (process.env.GODOT_BACKEND_LOG_LEVEL as LogLevel | undefined) ?? "info";
+const currentLevel = LOG_LEVELS[env.GODOT_BACKEND_LOG_LEVEL];
 
-function levelEnabled(level: LogLevel): boolean {
-  return LEVEL_WEIGHT[level] >= (LEVEL_WEIGHT[CURRENT_LEVEL] ?? 1);
-}
-
-const PII_FIELDS = new Set([
-  "userId",
+const PII_KEYS = new Set([
+  "userid",
   "user_id",
-  "accessToken",
-  "access_token",
   "email",
-  "display_name",
-  "displayName",
+  "accesstoken",
+  "access_token",
+  "password",
+  "pass",
+  "pwd",
+  "secret",
+  "apikey",
+  "api_key",
+  "authorization",
+  "auth",
+  "token",
+  "refreshtoken",
+  "refresh_token",
+  "supabasekey",
+  "supabase_key",
+  "service_role_key",
+  "credit_card",
+  "phone",
+  "ssn",
+  "passport",
+  "address",
 ]);
 
-function sanitize(value: unknown): unknown {
-  if (value == null) return value;
+function shouldLog(level: LogLevel): boolean {
+  return LOG_LEVELS[level] >= currentLevel;
+}
+
+function sanitize(value: unknown, depth: number = 0): unknown {
+  if (depth > 8) return "[MAX_DEPTH]";
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string") return sanitizeString(value);
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") return value;
+
   if (Array.isArray(value)) {
-    return value.map((entry) => sanitize(entry));
+    return value.map((item) => sanitize(item, depth + 1));
   }
+
   if (typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    const clean: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(record)) {
-      if (PII_FIELDS.has(key)) {
-        clean[key] = "[REDACTED]";
+    const result: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      if (PII_KEYS.has(key.toLowerCase())) {
+        result[key] = "[REDACTED]";
       } else {
-        clean[key] = sanitize(val);
+        result[key] = sanitize(val, depth + 1);
       }
     }
-    return clean;
+    return result;
   }
+
   return value;
 }
 
-function formatContext(context?: Record<string, unknown>): string {
-  if (!context || Object.keys(context).length === 0) return "";
-  try {
-    return " " + JSON.stringify(sanitize(context));
-  } catch {
-    return " [unserializable]";
+function sanitizeString(value: string): string {
+  if (value.length > 500) return value.slice(0, 500) + "...";
+  return value;
+}
+
+function format(level: LogLevel, message: string, meta?: unknown): void {
+  const timestamp = new Date().toISOString();
+  const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
+
+  if (meta !== undefined) {
+    const safe = sanitize(meta);
+    if (typeof safe === "object" && safe !== null) {
+      console.log(`${prefix} ${message}`, safe);
+    } else {
+      console.log(`${prefix} ${message} ${safe}`);
+    }
+  } else {
+    console.log(`${prefix} ${message}`);
   }
 }
 
 export const logger = {
-  debug(message: string, context?: Record<string, unknown>): void {
-    if (!levelEnabled("debug")) return;
-    console.debug(`[debug] ${message}${formatContext(context)}`);
+  debug(message: string, meta?: unknown) {
+    if (shouldLog("debug")) format("debug", message, meta);
   },
-  info(message: string, context?: Record<string, unknown>): void {
-    if (!levelEnabled("info")) return;
-    console.info(`[info] ${message}${formatContext(context)}`);
+
+  info(message: string, meta?: unknown) {
+    if (shouldLog("info")) format("info", message, meta);
   },
-  warn(message: string, context?: Record<string, unknown>): void {
-    if (!levelEnabled("warn")) return;
-    console.warn(`[warn] ${message}${formatContext(context)}`);
+
+  warn(message: string, meta?: unknown) {
+    if (shouldLog("warn")) format("warn", message, meta);
   },
-  error(message: string, context?: Record<string, unknown>): void {
-    console.error(`[error] ${message}${formatContext(context)}`);
+
+  error(message: string, meta?: unknown) {
+    if (shouldLog("error")) format("error", message, meta);
   },
 };

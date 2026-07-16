@@ -6,7 +6,9 @@ import { requireAuthedGodotUser } from "./auth.js";
 import type { BackendModuleName } from "./contracts.js";
 import type { GodotDomainService } from "./domain-service.js";
 import { buildErrorEnvelope, HttpModuleError } from "./errors.js";
+import { checkRateLimit } from "./rate-limiter.js";
 import { resolveRequestId } from "./request-id.js";
+import { logger } from "./safe-logger.js";
 
 const purchasePackInputSchema = z.object({
   packId: z.enum(["basicPack", "epicPack", "legendaryPack", "mythicPack"]),
@@ -144,6 +146,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/purchase-pack-v1", async (context) =>
     withModule(context, "summons", async () => {
       const authed = await requireAuthedGodotUser(context, "summons");
+      applyRateLimit(context, authed.userId, "summons");
       const body = await context.req.json().catch(() => null);
       const parsed = purchasePackInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -199,6 +202,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/complete-battle", async (context) =>
     withModule(context, "battle_resolve", async () => {
       const authed = await requireAuthedGodotUser(context, "battle_resolve");
+      applyRateLimit(context, authed.userId, "battle_resolve");
       const body = await context.req.json().catch(() => null);
       const parsed = completeBattleInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -212,6 +216,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/start-battle", async (context) =>
     withModule(context, "battle_start", async () => {
       const authed = await requireAuthedGodotUser(context, "battle_start");
+      applyRateLimit(context, authed.userId, "battle_start");
       const body = await context.req.json().catch(() => null);
       const parsed = startBattleInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -233,6 +238,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/tower/complete-floor", async (context) =>
     withModule(context, "tower_complete_floor", async () => {
       const authed = await requireAuthedGodotUser(context, "tower_complete_floor");
+      applyRateLimit(context, authed.userId, "tower_complete_floor");
       const body = await context.req.json().catch(() => null);
       const parsed = completeTowerFloorInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -254,6 +260,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/pvp/upsert-defense", async (context) =>
     withModule(context, "pvp_upsert_defense", async () => {
       const authed = await requireAuthedGodotUser(context, "pvp_upsert_defense");
+      applyRateLimit(context, authed.userId, "pvp_upsert_defense");
       const body = await context.req.json().catch(() => null);
       const parsed = pvpUpsertDefenseInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -267,6 +274,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/pvp/start-match", async (context) =>
     withModule(context, "pvp_start_match", async () => {
       const authed = await requireAuthedGodotUser(context, "pvp_start_match");
+      applyRateLimit(context, authed.userId, "pvp_start_match");
       const body = await context.req.json().catch(() => null);
       const parsed = pvpStartMatchInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -280,6 +288,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/pvp/complete-match", async (context) =>
     withModule(context, "pvp_complete_match", async () => {
       const authed = await requireAuthedGodotUser(context, "pvp_complete_match");
+      applyRateLimit(context, authed.userId, "pvp_complete_match");
       const body = await context.req.json().catch(() => null);
       const parsed = pvpCompleteMatchInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -439,6 +448,13 @@ export function createApp(domainService: GodotDomainService) {
   return app;
 }
 
+function applyRateLimit(context: Context, userId: string, module: BackendModuleName): void {
+  const result = checkRateLimit(userId, module);
+  context.header("x-ratelimit-limit", String(result.limit));
+  context.header("x-ratelimit-remaining", String(result.remaining));
+  context.header("x-ratelimit-reset", String(result.reset));
+}
+
 async function withModule(
   context: Context,
   module: BackendModuleName,
@@ -447,9 +463,37 @@ async function withModule(
   const requestId = resolveRequestId(context);
   context.header("x-request-id", requestId);
 
+  const start = Date.now();
+  logger.debug("request", { module, requestId, method: context.req.method, path: context.req.path });
+
   try {
-    return await action();
+    const response = await action();
+    logger.debug("response", { module, requestId, durationMs: Date.now() - start, status: response.status });
+    return response;
   } catch (error) {
+    const durationMs = Date.now() - start;
+    const status = error instanceof HttpModuleError ? error.status : 500;
+
+    if (status >= 500) {
+      logger.error("request_failed", {
+        module,
+        requestId,
+        durationMs,
+        status,
+        code: error instanceof HttpModuleError ? error.code : undefined,
+        message: error instanceof Error ? error.message : undefined,
+      });
+    } else {
+      logger.warn("request_failed", {
+        module,
+        requestId,
+        durationMs,
+        status,
+        code: error instanceof HttpModuleError ? error.code : undefined,
+        message: error instanceof Error ? error.message : undefined,
+      });
+    }
+
     const built = buildErrorEnvelope(error, module, requestId);
     return context.json(built.body, { status: built.status as 200 | 400 | 401 | 500 | 501 });
   }
