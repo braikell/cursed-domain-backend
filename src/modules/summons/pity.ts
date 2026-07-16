@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { randomInt } from "node:crypto";
 
 const PITY_CYCLE = 90;
 
@@ -64,28 +65,12 @@ function cardTypeMatchesTier(cardType: string, tier: PityGuaranteeTier): boolean
   }
 }
 
-export function guaranteedRates(
+export function pickGuaranteedCardType(
   rates: Array<{ cardType: string; rate: number }>,
   packId: string,
-): Array<{ cardType: string; rate: number }> {
+): string {
   const tier = getGuaranteeTier(packId);
-  const nonTarget = rates.filter((entry) => !cardTypeMatchesTier(entry.cardType, tier));
-  const targetEntries = rates.filter((entry) => cardTypeMatchesTier(entry.cardType, tier));
-  const nonTargetTotal = nonTarget.reduce((sum, entry) => sum + entry.rate, 0);
-  if (nonTargetTotal <= 0) return rates;
-
-  const boost = nonTargetTotal * 0.999;
-  const targetTotal = targetEntries.reduce((sum, entry) => sum + entry.rate, 0);
-
-  const adjusted: Array<{ cardType: string; rate: number }> = nonTarget.map((entry) => ({
-    cardType: entry.cardType,
-    rate: Math.max(0, entry.rate - (entry.rate / nonTargetTotal) * boost),
-  }));
-
-  for (const entry of targetEntries) {
-    const share = targetTotal > 0 ? entry.rate / targetTotal : 1 / targetEntries.length;
-    adjusted.push({ cardType: entry.cardType, rate: entry.rate + boost * share });
-  }
-
-  return adjusted;
+  const candidates = rates.filter((entry) => cardTypeMatchesTier(entry.cardType, tier));
+  if (candidates.length === 0) return rates[0]?.cardType ?? "base_basic";
+  return candidates[randomInt(0, candidates.length)]?.cardType ?? candidates[0]!.cardType;
 }

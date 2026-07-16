@@ -24,9 +24,9 @@ import {
   displayCounter,
   getGuaranteeLabel,
   getPityCycle,
-  guaranteedRates,
   isHardPity,
   loadPityState,
+  pickGuaranteedCardType,
   type PityState,
 } from "./pity.js";
 
@@ -431,7 +431,8 @@ async function resolvePurchase(input: {
   const duplicateRewards = new Map(input.config.duplicateRewards.map((entry) => [entry.cardType, entry]));
   const definitionPools = await loadCardDefinitionPools(input.supabase);
   const results: PackPullResult[] = [];
-  const totalPulls = input.input.count * PACK_CARDS_PER_PURCHASE;
+  const totalPacks = input.input.count;
+  const totalPulls = totalPacks * PACK_CARDS_PER_PURCHASE;
 
   let pityState: PityState = { counter: 0 };
   let pityCounterStart = 0;
@@ -443,25 +444,32 @@ async function resolvePurchase(input: {
     // Pity table missing — purchase continues without pity
   }
 
-  for (let index = 0; index < totalPulls; index += 1) {
+  for (let packIndex = 0; packIndex < totalPacks; packIndex += 1) {
     const pityBefore = pityState.counter;
     const hardActive = isHardPity(pityState.counter);
-    const rates = hardActive ? guaranteedRates(pack.rates, input.input.packId) : pack.rates;
-    const cardType = rollCardType(rates as Array<{ cardType: CardType; rate: number }>);
-    const definition = pickCardDefinitionForCardType(cardType, definitionPools);
-    if (definition == null) {
-      throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
-    }
 
-    results.push(
-      applyPackCardToCollection({
-        save,
-        definition,
-        cardType,
-        wasPity: hardActive,
-        duplicateRewardsByType: duplicateRewards,
-      }),
-    );
+    for (let cardIndex = 0; cardIndex < PACK_CARDS_PER_PURCHASE; cardIndex += 1) {
+      let cardType: CardType;
+      if (hardActive) {
+        const guaranteed = pickGuaranteedCardType(pack.rates, input.input.packId);
+        cardType = guaranteed as CardType;
+      } else {
+        cardType = rollCardType(pack.rates);
+      }
+      const definition = pickCardDefinitionForCardType(cardType, definitionPools);
+      if (definition == null) {
+        throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
+      }
+      results.push(
+        applyPackCardToCollection({
+          save,
+          definition,
+          cardType,
+          wasPity: hardActive,
+          duplicateRewardsByType: duplicateRewards,
+        }),
+      );
+    }
 
     const nextCounter = pityState.counter + 1;
     pityState = { counter: nextCounter };
