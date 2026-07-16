@@ -1,21 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const PITY_SOFT_THRESHOLD = 70;
-const PITY_HARD_THRESHOLD = 90;
-const PITY_SOFT_BOOST_MAX = 0.30;
+const PITY_CYCLE = 90;
 
-export type PityGuaranteeTier = "epic" | "legendary" | "mythic" | "definitive_legendary";
+export type PityGuaranteeTier = "legendary" | "mythic" | "definitive_legendary" | "definitive_mythic";
 
 export interface PityState {
   counter: number;
-  softPityActive: boolean;
-  hardPityActive: boolean;
-}
-
-export interface PityRollAdjustment {
-  adjustedRates: Array<{ cardType: string; rate: number }>;
-  wasPity: boolean;
-  guaranteeTier: PityGuaranteeTier | null;
 }
 
 export async function loadPityState(supabase: SupabaseClient, userId: string, packId: string): Promise<PityState> {
@@ -26,172 +16,75 @@ export async function loadPityState(supabase: SupabaseClient, userId: string, pa
       .eq("user_id", userId)
       .eq("pack_id", packId)
       .maybeSingle<{ target_counter: number }>();
-
-    if (error) return { counter: 0, softPityActive: false, hardPityActive: false };
-    if (!data) return { counter: 0, softPityActive: false, hardPityActive: false };
-
-    const counter = Math.max(0, Math.floor(data.target_counter ?? 0));
-    return {
-      counter,
-      softPityActive: counter >= PITY_SOFT_THRESHOLD,
-      hardPityActive: counter >= PITY_HARD_THRESHOLD,
-    };
+    if (error || !data) return { counter: 0 };
+    return { counter: Math.max(0, Math.floor(data.target_counter ?? 0)) };
   } catch {
-    return { counter: 0, softPityActive: false, hardPityActive: false };
+    return { counter: 0 };
   }
 }
 
-export async function persistPityState(
-  supabase: SupabaseClient,
-  userId: string,
-  packId: string,
-  counter: number,
-): Promise<boolean> {
-  try {
-    const { error } = await supabase.from("user_pity").upsert(
-      {
-        user_id: userId,
-        pack_id: packId,
-        target_counter: Math.max(0, Math.floor(counter)),
-        pity_legendary: 0,
-        pity_mythic: 0,
-        soft_pity_step: 0,
-        config_version: 1,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,pack_id" },
-    );
-    if (error) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// --- GARANTIA ESCALONADA ---
-
-export function getHardPityGuaranteeTier(packId: string): PityGuaranteeTier {
+export function getGuaranteeTier(packId: string): PityGuaranteeTier {
   switch (packId) {
-    case "basicPack": return "epic";
-    case "epicPack": return "legendary";
-    case "legendaryPack": return "mythic";
-    case "mythicPack": return "definitive_legendary";
-    default: return "epic";
+    case "basicPack": return "legendary";
+    case "epicPack": return "mythic";
+    case "legendaryPack": return "definitive_legendary";
+    case "mythicPack": return "definitive_mythic";
+    default: return "legendary";
   }
 }
 
-export function getHardPityLabel(packId: string): string {
+export function getGuaranteeLabel(packId: string): string {
   switch (packId) {
-    case "basicPack": return "EPICO+";
-    case "epicPack": return "LEGENDARIO+";
-    case "legendaryPack": return "MITICO";
-    case "mythicPack": return "DEFINITIVA L+";
-    default: return "EPICO+";
+    case "basicPack": return "LEGENDARIO";
+    case "epicPack": return "MITICO";
+    case "legendaryPack": return "DEF. LEGENDARIO";
+    case "mythicPack": return "DEF. MITICO";
+    default: return "LEGENDARIO";
   }
 }
 
-export function getSoftThreshold(): number { return PITY_SOFT_THRESHOLD; }
-export function getHardThreshold(): number { return PITY_HARD_THRESHOLD; }
+export function getPityCycle(): number { return PITY_CYCLE; }
 
-export function isCardTypePremium(cardType: string, tier: PityGuaranteeTier | null): boolean {
-  if (tier == null) return isLegendaryOrMythic(cardType);
-  return cardTypeMatchesTier(cardType, tier);
+export function isHardPity(totalCounter: number): boolean {
+  return totalCounter > 0 && totalCounter % PITY_CYCLE === 0;
 }
 
-export function isLegendaryOrMythic(cardType: string): boolean {
-  return cardType.includes("_legendary") || cardType.includes("_mythic");
+export function displayCounter(totalCounter: number): number {
+  return totalCounter % PITY_CYCLE;
 }
 
 function cardTypeMatchesTier(cardType: string, tier: PityGuaranteeTier): boolean {
   switch (tier) {
-    case "epic": return cardType.includes("_epic") || cardType.includes("_legendary") || cardType.includes("_mythic");
     case "legendary": return cardType.includes("_legendary") || cardType.includes("_mythic");
     case "mythic": return cardType.includes("_mythic");
     case "definitive_legendary":
       return cardType.startsWith("definitive_") && (cardType.includes("_legendary") || cardType.includes("_mythic"));
+    case "definitive_mythic":
+      return cardType.startsWith("definitive_") && cardType.includes("_mythic");
   }
 }
 
-function softPityTargetTier(guaranteeTier: PityGuaranteeTier): PityGuaranteeTier {
-  if (guaranteeTier === "epic") return "legendary";
-  return guaranteeTier;
-}
-
-// --- AJUSTE DE RATES ---
-
-export function adjustRatesForPity(
+export function guaranteedRates(
   rates: Array<{ cardType: string; rate: number }>,
-  pityState: PityState,
   packId: string,
-): PityRollAdjustment {
-  const guaranteeTier = getHardPityGuaranteeTier(packId);
-
-  if (!pityState.softPityActive && !pityState.hardPityActive) {
-    return { adjustedRates: rates, wasPity: false, guaranteeTier: null };
-  }
-
-  if (pityState.hardPityActive) {
-    return {
-      adjustedRates: boostToGuaranteedTier(rates, guaranteeTier),
-      wasPity: true,
-      guaranteeTier,
-    };
-  }
-
-  const stepsIntoSoft = pityState.counter - PITY_SOFT_THRESHOLD;
-  const softRange = PITY_HARD_THRESHOLD - PITY_SOFT_THRESHOLD;
-  const softProgress = Math.min(1, stepsIntoSoft / softRange);
-  const boostAmount = PITY_SOFT_BOOST_MAX * softProgress * 100;
-
-  const targetTier = softPityTargetTier(guaranteeTier);
-  const boost = Math.min(
-    rates.filter((entry) => !cardTypeMatchesTier(entry.cardType, targetTier))
-      .reduce((sum, entry) => sum + entry.rate, 0) * 0.99,
-    boostAmount,
-  );
-
-  return {
-    adjustedRates: redistributeRates(rates, targetTier, boost),
-    wasPity: false,
-    guaranteeTier: null,
-  };
-}
-
-function boostToGuaranteedTier(
-  rates: Array<{ cardType: string; rate: number }>,
-  tier: PityGuaranteeTier,
 ): Array<{ cardType: string; rate: number }> {
-  const nonGuaranteedTotal = rates
-    .filter((entry) => !cardTypeMatchesTier(entry.cardType, tier))
-    .reduce((sum, entry) => sum + entry.rate, 0);
-  return redistributeRates(rates, tier, nonGuaranteedTotal * 0.999);
-}
+  const tier = getGuaranteeTier(packId);
+  const nonTarget = rates.filter((entry) => !cardTypeMatchesTier(entry.cardType, tier));
+  const targetEntries = rates.filter((entry) => cardTypeMatchesTier(entry.cardType, tier));
+  const nonTargetTotal = nonTarget.reduce((sum, entry) => sum + entry.rate, 0);
+  if (nonTargetTotal <= 0) return rates;
 
-function redistributeRates(
-  rates: Array<{ cardType: string; rate: number }>,
-  tier: PityGuaranteeTier,
-  totalBoost: number,
-): Array<{ cardType: string; rate: number }> {
-  const premiumEntries = rates.filter((entry) => cardTypeMatchesTier(entry.cardType, tier));
-  const nonPremium = rates.filter((entry) => !cardTypeMatchesTier(entry.cardType, tier));
-  const nonPremiumTotal = nonPremium.reduce((sum, entry) => sum + entry.rate, 0);
+  const boost = nonTargetTotal * 0.999;
+  const targetTotal = targetEntries.reduce((sum, entry) => sum + entry.rate, 0);
 
-  if (nonPremiumTotal <= 0 || totalBoost <= 0) return rates;
-
-  const actualBoost = Math.min(totalBoost, nonPremiumTotal * 0.99);
-  const premiumTotal = premiumEntries.reduce((sum, entry) => sum + entry.rate, 0);
-
-  const adjusted: Array<{ cardType: string; rate: number }> = nonPremium.map((entry) => ({
+  const adjusted: Array<{ cardType: string; rate: number }> = nonTarget.map((entry) => ({
     cardType: entry.cardType,
-    rate: Math.max(0, entry.rate - (entry.rate / nonPremiumTotal) * actualBoost),
+    rate: Math.max(0, entry.rate - (entry.rate / nonTargetTotal) * boost),
   }));
 
-  for (const entry of premiumEntries) {
-    const share = premiumTotal > 0 ? entry.rate / premiumTotal : 1 / premiumEntries.length;
-    adjusted.push({
-      cardType: entry.cardType,
-      rate: entry.rate + actualBoost * share,
-    });
+  for (const entry of targetEntries) {
+    const share = targetTotal > 0 ? entry.rate / targetTotal : 1 / targetEntries.length;
+    adjusted.push({ cardType: entry.cardType, rate: entry.rate + boost * share });
   }
 
   return adjusted;
