@@ -1,5 +1,3 @@
-import { env } from "./env.js";
-
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 const LEVEL_WEIGHT: Record<LogLevel, number> = {
@@ -9,8 +7,10 @@ const LEVEL_WEIGHT: Record<LogLevel, number> = {
   error: 3,
 };
 
+const CURRENT_LEVEL: LogLevel = (process.env.GODOT_BACKEND_LOG_LEVEL as LogLevel | undefined) ?? "info";
+
 function levelEnabled(level: LogLevel): boolean {
-  return LEVEL_WEIGHT[level] >= LEVEL_WEIGHT[env.GODOT_BACKEND_LOG_LEVEL];
+  return LEVEL_WEIGHT[level] >= (LEVEL_WEIGHT[CURRENT_LEVEL] ?? 1);
 }
 
 const PII_FIELDS = new Set([

@@ -435,22 +435,37 @@ async function resolvePurchase(input: {
   const results: PackPullResult[] = [];
   const totalPulls = input.input.count * PACK_CARDS_PER_PURCHASE;
 
-  let pityState = await loadPityState(input.supabase, input.userId);
-  const pityCounterStart = pityState.counter;
+  let pityState: { counter: number; softPityActive: boolean; hardPityActive: boolean } = { counter: 0, softPityActive: false, hardPityActive: false };
+  let pityCounterStart = 0;
   const pitySnapshots: Array<{ before: number; after: number }> = [];
+  try {
+    pityState = await loadPityState(input.supabase, input.userId);
+    pityCounterStart = pityState.counter;
+  } catch (_err) {
+    // Pity table missing or broken — purchase continues without pity
+  }
 
   for (let index = 0; index < totalPulls; index += 1) {
     const pityBefore = pityState.counter;
-    const adjusted = adjustRatesForPity(pack.rates, pityState, input.input.packId);
-    const cardType = rollCardType(adjusted.adjustedRates as Array<{ cardType: CardType; rate: number }>);
+    let cardType: CardType;
+    let wasPity = false;
+    let guaranteeTier: import("./pity.js").PityGuaranteeTier | null = null;
+    try {
+      const adjusted = adjustRatesForPity(pack.rates, pityState, input.input.packId);
+      cardType = rollCardType(adjusted.adjustedRates as Array<{ cardType: CardType; rate: number }>);
+      wasPity = adjusted.wasPity;
+      guaranteeTier = adjusted.guaranteeTier;
+    } catch (_err) {
+      cardType = rollCardType(pack.rates);
+      wasPity = false;
+    }
     const definition = pickCardDefinitionForCardType(cardType, definitionPools);
     if (definition == null) {
       throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
     }
 
-    const wasPity = adjusted.wasPity;
     const shouldResetCounter = wasPity
-      ? isCardTypePremium(cardType, adjusted.guaranteeTier)
+      ? isCardTypePremium(cardType, guaranteeTier)
       : isLegendaryOrMythic(cardType);
 
     results.push(
@@ -477,7 +492,11 @@ async function resolvePurchase(input: {
     pitySnapshots.push({ before: pityBefore, after: pityState.counter });
   }
 
-  await persistPityState(input.supabase, input.userId, pityState.counter);
+  try {
+    await persistPityState(input.supabase, input.userId, pityState.counter);
+  } catch (_err) {
+    // Pity persistence failed silently — table may be missing
+  }
 
   save.totalSummons += totalPulls;
   save.pulls += totalPulls;
