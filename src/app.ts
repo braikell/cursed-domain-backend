@@ -152,7 +152,7 @@ export function createApp(domainService: GodotDomainService) {
       }
       const response = await domainService.purchasePack(authed, parsed.data);
       return context.json(response);
-    }, "purchase-pack-v1"),
+    }),
   );
 
   app.get("/api/godot/afk/status", async (context) =>
