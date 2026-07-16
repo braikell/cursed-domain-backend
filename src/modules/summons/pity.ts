@@ -6,12 +6,6 @@ const PITY_SOFT_BOOST_MAX = 0.30;
 
 export type PityGuaranteeTier = "epic" | "legendary" | "mythic" | "definitive_legendary";
 
-interface PityRow {
-  user_id: string;
-  pity_counter: number;
-  updated_at: string;
-}
-
 export interface PityState {
   counter: number;
   softPityActive: boolean;
@@ -24,35 +18,19 @@ export interface PityRollAdjustment {
   guaranteeTier: PityGuaranteeTier | null;
 }
 
-const _missingTableWarned = new Set<string>();
-
-function warnMissingTableOnce(userId: string): void {
-  if (_missingTableWarned.has(userId)) return;
-  _missingTableWarned.add(userId);
-  console.warn(
-    "[pity] ERROR: La tabla 'public.user_pity' no existe en Supabase. " +
-    "Ejecuta la migracion SQL: 2026-07-16_pity_system_and_launch_balances.sql."
-  );
-}
-
-export async function loadPityState(supabase: SupabaseClient, userId: string): Promise<PityState> {
+export async function loadPityState(supabase: SupabaseClient, userId: string, packId: string): Promise<PityState> {
   try {
     const { data, error } = await supabase
       .from("user_pity")
-      .select("pity_counter")
+      .select("target_counter")
       .eq("user_id", userId)
-      .maybeSingle<{ pity_counter: number }>();
+      .eq("pack_id", packId)
+      .maybeSingle<{ target_counter: number }>();
 
-    if (error) {
-      if (String(error.message).includes("does not exist") || String(error.code).includes("42P01")) {
-        warnMissingTableOnce(userId);
-      }
-      return { counter: 0, softPityActive: false, hardPityActive: false };
-    }
-
+    if (error) return { counter: 0, softPityActive: false, hardPityActive: false };
     if (!data) return { counter: 0, softPityActive: false, hardPityActive: false };
 
-    const counter = Math.max(0, Math.floor(data.pity_counter ?? 0));
+    const counter = Math.max(0, Math.floor(data.target_counter ?? 0));
     return {
       counter,
       softPityActive: counter >= PITY_SOFT_THRESHOLD,
@@ -66,23 +44,24 @@ export async function loadPityState(supabase: SupabaseClient, userId: string): P
 export async function persistPityState(
   supabase: SupabaseClient,
   userId: string,
+  packId: string,
   counter: number,
 ): Promise<boolean> {
   try {
     const { error } = await supabase.from("user_pity").upsert(
       {
         user_id: userId,
-        pity_counter: Math.max(0, Math.floor(counter)),
+        pack_id: packId,
+        target_counter: Math.max(0, Math.floor(counter)),
+        pity_legendary: 0,
+        pity_mythic: 0,
+        soft_pity_step: 0,
+        config_version: 1,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "user_id" },
+      { onConflict: "user_id,pack_id" },
     );
-    if (error) {
-      if (String(error.message).includes("does not exist") || String(error.code).includes("42P01")) {
-        warnMissingTableOnce(userId);
-      }
-      return false;
-    }
+    if (error) return false;
     return true;
   } catch {
     return false;

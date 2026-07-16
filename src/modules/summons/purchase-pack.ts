@@ -20,6 +20,17 @@ import {
   pruneOwnedCardUnlockElements,
   syncOwnedCardFragmentMirrors,
 } from "../cards/materials.js";
+import {
+  adjustRatesForPity,
+  getHardPityLabel,
+  getHardThreshold,
+  getSoftThreshold,
+  isCardTypePremium,
+  isLegendaryOrMythic,
+  loadPityState,
+  persistPityState,
+  type PityState,
+} from "./pity.js";
 
 type Rarity = "basic" | "epic" | "legendary" | "mythic";
 type CardVariant = "base" | "definitive";
@@ -170,6 +181,8 @@ interface ResolvedPurchase {
   save: GameSaveSnapshot;
   cardRows: PersistableUserCardRow[];
   materialRows: PersistableUserMaterialRow[];
+  pityCounterStart: number;
+  pitySnapshots: Array<{ before: number; after: number }>;
 }
 
 export async function purchasePackDedicated(
@@ -234,6 +247,12 @@ export async function purchasePackDedicated(
     save: resolved.save,
     configVersion: config.configVersion,
     probabilitiesVersion: config.probabilitiesVersion,
+    pityCounter: resolved.pitySnapshots.length > 0
+      ? (resolved.pitySnapshots[resolved.pitySnapshots.length - 1]?.after ?? 0)
+      : resolved.pityCounterStart,
+    pitySoftThreshold: getSoftThreshold(),
+    pityHardThreshold: getHardThreshold(),
+    pityGuaranteeLabel: getHardPityLabel(input.packId),
   };
 
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
@@ -417,22 +436,67 @@ async function resolvePurchase(input: {
   const results: PackPullResult[] = [];
   const totalPulls = input.input.count * PACK_CARDS_PER_PURCHASE;
 
+  let pityState: PityState = { counter: 0, softPityActive: false, hardPityActive: false };
+  let pityCounterStart = 0;
+  const pitySnapshots: Array<{ before: number; after: number }> = [];
+  try {
+    pityState = await loadPityState(input.supabase, input.userId, input.input.packId);
+    pityCounterStart = pityState.counter;
+  } catch (_err) {
+    // Pity table missing or broken — purchase continues without pity
+  }
+
   for (let index = 0; index < totalPulls; index += 1) {
-    const cardType = rollCardType(pack.rates);
+    const pityBefore = pityState.counter;
+    let cardType: CardType;
+    let wasPity = false;
+    let guaranteeTier: import("./pity.js").PityGuaranteeTier | null = null;
+    try {
+      const adjusted = adjustRatesForPity(pack.rates, pityState, input.input.packId);
+      cardType = rollCardType(adjusted.adjustedRates as Array<{ cardType: CardType; rate: number }>);
+      wasPity = adjusted.wasPity;
+      guaranteeTier = adjusted.guaranteeTier;
+    } catch (_err) {
+      cardType = rollCardType(pack.rates);
+      wasPity = false;
+    }
     const definition = pickCardDefinitionForCardType(cardType, definitionPools);
     if (definition == null) {
       throw new HttpModuleError(500, "missing_card_definition", "summons", `No hay definiciones disponibles para ${cardType}.`);
     }
+
+    const shouldResetCounter = wasPity
+      ? isCardTypePremium(cardType, guaranteeTier)
+      : isLegendaryOrMythic(cardType);
 
     results.push(
       applyPackCardToCollection({
         save,
         definition,
         cardType,
-        wasPity: false,
+        wasPity,
         duplicateRewardsByType: duplicateRewards,
       }),
     );
+
+    if (shouldResetCounter) {
+      pityState = { counter: 0, softPityActive: false, hardPityActive: false };
+    } else {
+      const nextCounter = pityState.counter + 1;
+      pityState = {
+        counter: nextCounter,
+        softPityActive: nextCounter >= getSoftThreshold(),
+        hardPityActive: nextCounter >= getHardThreshold(),
+      };
+    }
+
+    pitySnapshots.push({ before: pityBefore, after: pityState.counter });
+  }
+
+  try {
+    await persistPityState(input.supabase, input.userId, input.input.packId, pityState.counter);
+  } catch (_err) {
+    // Pity persistence failed silently
   }
 
   save.totalSummons += totalPulls;
@@ -452,6 +516,8 @@ async function resolvePurchase(input: {
     save,
     cardRows,
     materialRows,
+    pityCounterStart,
+    pitySnapshots,
   };
 }
 
@@ -462,7 +528,7 @@ async function finalizePurchase(input: {
   resolved: ResolvedPurchase;
 }) {
   const packLimit = input.resolved.pack.limits[input.resolved.cost.currency];
-  const packLogRows = input.resolved.results.map((result) => ({
+  const packLogRows = input.resolved.results.map((result, index) => ({
     user_id: input.userId,
     request_id: input.requestId,
     pack_id: input.resolved.pack.id,
@@ -477,8 +543,8 @@ async function finalizePurchase(input: {
     duplicate_fragment_material_id: result.duplicateFragmentMaterialId ?? null,
     duplicate_fragment_amount: result.duplicateFragmentAmount ?? null,
     was_pity: result.wasPity,
-    pity_state_before: {},
-    pity_state_after: {},
+    pity_state_before: { counter: input.resolved.pitySnapshots[index]?.before ?? 0 },
+    pity_state_after: { counter: input.resolved.pitySnapshots[index]?.after ?? 0 },
     probabilities_version: input.resolved.config.probabilitiesVersion,
     config_version: input.resolved.config.configVersion,
     server_date: input.resolved.serverNow.toISOString().slice(0, 10),
@@ -503,7 +569,9 @@ async function finalizePurchase(input: {
       unlocked_slots: input.resolved.save.unlockedSlots,
       total_summons: input.resolved.save.totalSummons,
       total_battles_won: input.resolved.save.totalBattlesWon,
-      pity_target_counter: 0,
+      pity_target_counter: input.resolved.pitySnapshots.length > 0
+        ? (input.resolved.pitySnapshots[input.resolved.pitySnapshots.length - 1]?.after ?? 0)
+        : 0,
       pity_soft_pity_step: 0,
       config_version: input.resolved.config.configVersion,
       probabilities_version: input.resolved.config.probabilitiesVersion,
