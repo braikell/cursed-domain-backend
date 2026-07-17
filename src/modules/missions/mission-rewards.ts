@@ -25,7 +25,19 @@ export async function getPackTokens(userId: string): Promise<Record<string, numb
     .maybeSingle<{ pack_tokens: Record<string, number> }>();
 
   if (error || !data?.pack_tokens) return {};
-  return data.pack_tokens;
+  return sanitizePackTokens(data.pack_tokens);
+}
+
+function sanitizePackTokens(tokens: unknown): Record<string, number> {
+  if (!tokens || typeof tokens !== "object" || Array.isArray(tokens)) return {};
+  const record = tokens as Record<string, number>;
+  const cleaned: Record<string, number> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof key === "string" && typeof value === "number" && Number.isFinite(value) && value > 0) {
+      cleaned[key] = Math.floor(value);
+    }
+  }
+  return cleaned;
 }
 
 export async function getChoiceTokens(userId: string): Promise<Array<unknown>> {
@@ -37,7 +49,14 @@ export async function getChoiceTokens(userId: string): Promise<Array<unknown>> {
     .maybeSingle<{ choice_tokens: Array<unknown> }>();
 
   if (error || !data?.choice_tokens) return [];
-  return data.choice_tokens;
+  return sanitizeChoiceTokens(data.choice_tokens);
+}
+
+function sanitizeChoiceTokens(tokens: unknown): Array<unknown> {
+  if (!Array.isArray(tokens)) return [];
+  return tokens.filter((t: any) =>
+    t && typeof t.tokenId === "string" && typeof t.choiceType === "string" && Array.isArray(t.options)
+  );
 }
 
 export async function addPackToken(userId: string, packId: string, amount = 1): Promise<Record<string, number>> {

@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
-    "check": "tsc --noEmit -p tsconfig.json"
+    "check": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.1",
@@ -19,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^22.10.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
   }
 }

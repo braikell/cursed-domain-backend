@@ -26,6 +26,8 @@ export interface MissionDefinition {
   target: number;
   sortOrder: number;
   isEnabled: boolean;
+  displayName: string;
+  displayDescription: string;
 }
 
 export interface ChestDefinition {
@@ -87,35 +89,36 @@ function m(
   rewardGold: number, rewardGems: number, rewardPoints: number,
   rewardType: RewardType, rewardConfig: Record<string, unknown> = {},
   target: number, sortOrder: number, isEnabled = true,
+  displayName: string, displayDescription: string,
 ): MissionDefinition {
-  return { missionId, eventKey, rewardGold, rewardGems, rewardPoints, rewardType, rewardConfig, target, sortOrder, isEnabled };
+  return { missionId, eventKey, rewardGold, rewardGems, rewardPoints, rewardType, rewardConfig, target, sortOrder, isEnabled, displayName, displayDescription };
 }
 
 const r = (config: Record<string, unknown> = {}) => config;
 
 const SEED_DAILY_MISSIONS: MissionDefinition[] = [
-  m("login", "login", 400, 5, 5, "gold_gems", {}, 1, 10),
-  m("claim_afk", "claim_afk", 600, 5, 5, "gold_gems", {}, 1, 20),
-  m("complete_5_campaign_battles", "campaign_battle_completed", 500, 0, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 5, 30),
-  m("win_3_battles", "battle_won", 700, 5, 5, "gold_gems", {}, 3, 40),
-  m("clear_3_tower_floors", "tower_floor_cleared", 800, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 3, 45),
-  m("clear_1_tower_boss", "tower_boss_cleared", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 46),
-  m("upgrade_1_card", "card_upgraded", 800, 8, 5, "gold_gems", {}, 1, 50),
-  m("upgrade_3_cards", "card_upgraded", 600, 5, 5, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 3, 60),
-  m("equip_or_upgrade_1_item", "item_equipped_or_upgraded", 700, 8, 5, "gold_gems", {}, 1, 70),
-  m("open_1_basic_pack", "basic_pack_opened", 500, 5, 5, "gold_gems", {}, 1, 80),
-  m("complete_1_daily_dungeon", "daily_dungeon_completed", 600, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 1, 90),
-  m("defeat_1_daily_boss", "daily_boss_defeated", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 100),
-  m("play_3_arena_pvp", "arena_pvp_played", 600, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3, 110),
-  m("use_friend_support", "friend_support_used", 500, 5, 5, "gold_gems", {}, 1, 120),
-  m("clan_participation", "clan_participation", 600, 8, 5, "gold_gems", {}, 1, 130),
-  m("clear_1_idle_stage", "idle_stage_cleared", 800, 8, 5, "gold_gems", {}, 1, 140),
-  m("sell_or_dismantle_1_item", "item_sold_or_dismantled", 600, 6, 5, "gold_gems", {}, 1, 150),
-  m("spend_3000_gold", "gold_spent", 500, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3000, 160),
-  m("claim_free_shop_reward", "free_shop_reward_claimed", 400, 5, 5, "gold_gems", {}, 1, 170),
-  m("use_ultimate_20_times", "ultimate_used", 400, 0, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 20, 180),
-  m("complete_1_expedition", "expedition_completed", 800, 8, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 190),
-  m("complete_10_daily_missions", "daily_mission_completed_other", 800, 12, 10, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 200),
+  m("login", "login", 400, 5, 5, "gold_gems", {}, 1, 10, true, "Iniciar Sesion", "Inicia sesion en el juego."),
+  m("claim_afk", "claim_afk", 600, 5, 5, "gold_gems", {}, 1, 20, true, "Reclamar Botin AFK", "Reclama el botin AFK una vez."),
+  m("complete_5_campaign_battles", "campaign_battle_completed", 500, 0, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 5, 30, true, "Batallas de Campana", "Completa 5 batalla(s) en la campana."),
+  m("win_3_battles", "battle_won", 700, 5, 5, "gold_gems", {}, 3, 40, true, "Victorias en Batalla", "Gana 3 batalla(s)."),
+  m("clear_3_tower_floors", "tower_floor_cleared", 800, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 3, 45, true, "Pisos de la Torre", "Supera 3 piso(s) de la torre."),
+  m("clear_1_tower_boss", "tower_boss_cleared", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 46, true, "Jefe de la Torre", "Derrota 1 jefe(s) de la torre."),
+  m("upgrade_1_card", "card_upgraded", 800, 8, 5, "gold_gems", {}, 1, 50, true, "Mejorar Heroe", "Mejora cualquier heroe 1 vez/veces."),
+  m("upgrade_3_cards", "card_upgraded", 600, 5, 5, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 3, 60, true, "Mejorar Heroes", "Mejora cualquier heroe 3 vez/veces."),
+  m("equip_or_upgrade_1_item", "item_equipped_or_upgraded", 700, 8, 5, "gold_gems", {}, 1, 70, true, "Equipar o Mejorar Objeto", "Equipa o mejora 1 objeto(s)."),
+  m("open_1_basic_pack", "basic_pack_opened", 500, 5, 5, "gold_gems", {}, 1, 80, true, "Abrir Sobre Basico", "Abre 1 sobre(s) basico(s)."),
+  m("complete_1_daily_dungeon", "daily_dungeon_completed", 600, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 1, 90, true, "Mazmorra Diaria", "Completa 1 mazmorra(s)."),
+  m("defeat_1_daily_boss", "daily_boss_defeated", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 100, true, "Derrotar Jefe Diario", "Derrota 1 jefe(s) diario(s)."),
+  m("play_3_arena_pvp", "arena_pvp_played", 600, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3, 110, true, "Combates en la Arena", "Participa en la Arena 3 vez/veces."),
+  m("use_friend_support", "friend_support_used", 500, 5, 5, "gold_gems", {}, 1, 120, true, "Usar Apoyo de Amigo", "Usa apoyo de amigo 1 vez/veces."),
+  m("clan_participation", "clan_participation", 600, 8, 5, "gold_gems", {}, 1, 130, true, "Participacion de Clan", "Participa en el clan 1 vez/veces."),
+  m("clear_1_idle_stage", "idle_stage_cleared", 800, 8, 5, "gold_gems", {}, 1, 140, true, "Completar Escenario", "Completa 1 escenario(s)."),
+  m("sell_or_dismantle_1_item", "item_sold_or_dismantled", 600, 6, 5, "gold_gems", {}, 1, 150, true, "Vender o Desmontar Objeto", "Vende o desmonta 1 objeto(s)."),
+  m("spend_3000_gold", "gold_spent", 500, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3000, 160, true, "Gastar Oro", "Gasta 3000 de oro."),
+  m("claim_free_shop_reward", "free_shop_reward_claimed", 400, 5, 5, "gold_gems", {}, 1, 170, true, "Recompensa de Tienda", "Reclama 1 recompensa(s) de tienda."),
+  m("use_ultimate_20_times", "ultimate_used", 400, 0, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 20, 180, true, "Usar Tecnica Definitiva", "Usa la tecnica definitiva 20 vez/veces."),
+  m("complete_1_expedition", "expedition_completed", 800, 8, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 190, true, "Completar Expedicion", "Completa 1 expedicion(es)."),
+  m("complete_10_daily_missions", "daily_mission_completed_other", 800, 12, 10, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 200, true, "Cadena de Misiones", "Completa 10 mision(es) diaria(s)."),
 ];
 
 const SEED_DAILY_CHESTS: ChestDefinition[] = [
@@ -127,17 +130,17 @@ const SEED_DAILY_CHESTS: ChestDefinition[] = [
 ];
 
 const SEED_WEEKLY_MISSIONS: MissionDefinition[] = [
-  m("weekly_complete_20_campaign", "campaign_battle_completed", 2000, 15, 15, "gold_gems", {}, 20, 10),
-  m("weekly_win_10_battles", "battle_won", 1800, 20, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 20),
-  m("weekly_clear_10_tower_floors", "tower_floor_cleared", 1500, 10, 15, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 10, 30),
-  m("weekly_clear_3_tower_bosses", "tower_boss_cleared", 2000, 15, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 3, 40),
-  m("weekly_upgrade_5_cards", "card_upgraded", 1500, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 5, 50),
-  m("weekly_open_5_packs", "basic_pack_opened", 1600, 10, 15, "gold_gems", {}, 5, 60),
-  m("weekly_play_10_pvp", "arena_pvp_played", 2500, 25, 15, "gold_gems", {}, 10, 70),
-  m("weekly_spend_15000_gold", "gold_spent", 2200, 18, 15, "gold_gems", {}, 15000, 80),
-  m("weekly_use_ultimate_60", "ultimate_used", 1600, 10, 15, "gold_gems", {}, 60, 90),
-  m("weekly_equip_or_upgrade_5_items", "item_equipped_or_upgraded", 1400, 12, 15, "gold_gems", {}, 5, 100),
-  m("weekly_complete_7_daily", "daily_mission_completed_other", 2500, 25, 20, "epic_pack", r({packId: "epicPack", packCount: 1}), 7, 110),
+  m("weekly_complete_20_campaign", "campaign_battle_completed", 2000, 15, 15, "gold_gems", {}, 20, 10, true, "Batallas de Campana", "Completa 20 batalla(s) en la campana."),
+  m("weekly_win_10_battles", "battle_won", 1800, 20, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 20, true, "Victorias en Batalla", "Gana 10 batalla(s)."),
+  m("weekly_clear_10_tower_floors", "tower_floor_cleared", 1500, 10, 15, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 10, 30, true, "Pisos de la Torre", "Supera 10 piso(s) de la torre."),
+  m("weekly_clear_3_tower_bosses", "tower_boss_cleared", 2000, 15, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 3, 40, true, "Jefes de la Torre", "Derrota 3 jefe(s) de la torre."),
+  m("weekly_upgrade_5_cards", "card_upgraded", 1500, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 5, 50, true, "Mejorar Heroes", "Mejora cualquier heroe 5 vez/veces."),
+  m("weekly_open_5_packs", "basic_pack_opened", 1600, 10, 15, "gold_gems", {}, 5, 60, true, "Abrir Sobres Basicos", "Abre 5 sobre(s) basico(s)."),
+  m("weekly_play_10_pvp", "arena_pvp_played", 2500, 25, 15, "gold_gems", {}, 10, 70, true, "Combates en la Arena", "Participa en la Arena 10 vez/veces."),
+  m("weekly_spend_15000_gold", "gold_spent", 2200, 18, 15, "gold_gems", {}, 15000, 80, true, "Gastar Oro", "Gasta 15000 de oro."),
+  m("weekly_use_ultimate_60", "ultimate_used", 1600, 10, 15, "gold_gems", {}, 60, 90, true, "Usar Tecnica Definitiva", "Usa la tecnica definitiva 60 vez/veces."),
+  m("weekly_equip_or_upgrade_5_items", "item_equipped_or_upgraded", 1400, 12, 15, "gold_gems", {}, 5, 100, true, "Equipar o Mejorar Objetos", "Equipa o mejora 5 objeto(s)."),
+  m("weekly_complete_7_daily", "daily_mission_completed_other", 2500, 25, 20, "epic_pack", r({packId: "epicPack", packCount: 1}), 7, 110, true, "Cadena de Misiones", "Completa 7 mision(es) diaria(s)."),
 ];
 
 const SEED_WEEKLY_CHESTS: ChestDefinition[] = [
@@ -146,18 +149,18 @@ const SEED_WEEKLY_CHESTS: ChestDefinition[] = [
 ];
 
 const SEED_SEASON_MISSIONS: MissionDefinition[] = [
-  m("season_complete_100_campaign", "campaign_battle_completed", 3000, 20, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 100, 10),
-  m("season_win_50_battles", "battle_won", 4000, 30, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 50, 20),
-  m("season_clear_30_tower_floors", "tower_floor_cleared", 4000, 30, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 30, 30),
-  m("season_upgrade_15_cards", "card_upgraded", 4500, 35, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 15, 40),
-  m("season_open_20_packs", "basic_pack_opened", 2500, 0, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 20, 50),
-  m("season_play_30_pvp", "arena_pvp_played", 5000, 45, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 30, 60),
-  m("season_spend_80k_gold", "gold_spent", 2000, 20, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 80000, 70),
-  m("season_use_ultimate_200", "ultimate_used", 3000, 0, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 200, 80),
-  m("season_equip_or_upgrade_15_items", "item_equipped_or_upgraded", 3000, 25, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 15, 90),
-  m("season_clear_15_tower_bosses", "tower_boss_cleared", 5000, 40, 30, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 15, 100),
-  m("season_complete_50_daily", "daily_mission_completed_other", 6000, 50, 40, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 50, 110),
-  m("season_complete_all", "season_all_missions_completed", 0, 0, 50, "choice_definitiva", r({choiceType: "definitiva", choiceCount: 1}), 1, 200),
+  m("season_complete_100_campaign", "campaign_battle_completed", 3000, 20, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 100, 10, true, "Batallas de Campana", "Completa 100 batalla(s) en la campana."),
+  m("season_win_50_battles", "battle_won", 4000, 30, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 50, 20, true, "Victorias en Batalla", "Gana 50 batalla(s)."),
+  m("season_clear_30_tower_floors", "tower_floor_cleared", 4000, 30, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 30, 30, true, "Pisos de la Torre", "Supera 30 piso(s) de la torre."),
+  m("season_upgrade_15_cards", "card_upgraded", 4500, 35, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 15, 40, true, "Mejorar Heroes", "Mejora cualquier heroe 15 vez/veces."),
+  m("season_open_20_packs", "basic_pack_opened", 2500, 0, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 20, 50, true, "Abrir Sobres", "Abre 20 sobre(s) basico(s)."),
+  m("season_play_30_pvp", "arena_pvp_played", 5000, 45, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 30, 60, true, "Combates en la Arena", "Participa en la Arena 30 vez/veces."),
+  m("season_spend_80k_gold", "gold_spent", 2000, 20, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 80000, 70, true, "Gastar Oro", "Gasta 80000 de oro."),
+  m("season_use_ultimate_200", "ultimate_used", 3000, 0, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 200, 80, true, "Usar Tecnica Definitiva", "Usa la tecnica definitiva 200 vez/veces."),
+  m("season_equip_or_upgrade_15_items", "item_equipped_or_upgraded", 3000, 25, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 15, 90, true, "Equipar o Mejorar Objetos", "Equipa o mejora 15 objeto(s)."),
+  m("season_clear_15_tower_bosses", "tower_boss_cleared", 5000, 40, 30, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 15, 100, true, "Jefes de la Torre", "Derrota 15 jefe(s) de la torre."),
+  m("season_complete_50_daily", "daily_mission_completed_other", 6000, 50, 40, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 50, 110, true, "Cadena de Misiones", "Completa 50 mision(es) diaria(s)."),
+  m("season_complete_all", "season_all_missions_completed", 0, 0, 50, "choice_definitiva", r({choiceType: "definitiva", choiceCount: 1}), 1, 200, true, "Completar Toda la Temporada", "Completa todas las misiones de temporada."),
 ];
 
 const SEED_SEASON_CHESTS: ChestDefinition[] = [
@@ -218,6 +221,8 @@ export async function getBootstrapMonetizationConfig(supabase: SupabaseClient): 
           target: row.target,
           sortOrder: row.sort_order,
           isEnabled: row.is_enabled,
+          displayName: fallback?.displayName ?? row.mission_id,
+          displayDescription: fallback?.displayDescription ?? "",
         };
       });
     };
@@ -373,8 +378,20 @@ export async function updateDailyMissionProgress(
     await applyMissionProgress(supabase, userId, definition.missionId, resetDate, "user_daily_mission_state", definition.target, increment, config.configVersion);
   }
 
-  try { await updateWeeklyMissionProgress(supabase, userId, config, eventKey, amount); } catch { /* weekly table may not exist yet */ }
-  try { await updateSeasonMissionProgress(supabase, userId, config, eventKey, amount); } catch { /* season table may not exist yet */ }
+  try { await updateWeeklyMissionProgress(supabase, userId, config, eventKey, amount); }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("does not exist")) {
+      console.warn("[monetization] weekly progress update failed:", msg);
+    }
+  }
+  try { await updateSeasonMissionProgress(supabase, userId, config, eventKey, amount); }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!msg.includes("does not exist")) {
+      console.warn("[monetization] season progress update failed:", msg);
+    }
+  }
 }
 
 export async function updateWeeklyMissionProgress(
@@ -484,14 +501,15 @@ async function ensureMissionSnapshotState(
   chestTable: string,
   configVersion: number,
 ) {
-  const { count: existCount, error: existError } = await supabase
+  const { data: existingRow, error: existError } = await supabase
     .from(missionTable)
-    .select("*", { count: "exact", head: true })
+    .select("mission_id")
     .eq("user_id", userId)
     .eq("reset_date", resetDate)
-    .limit(1);
+    .limit(1)
+    .maybeSingle();
 
-  if (!existError && existCount != null && existCount > 0) return;
+  if (!existError && existingRow) return;
 
   const missionRows = missions
     .filter((mission) => mission.isEnabled)

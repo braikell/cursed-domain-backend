@@ -18,7 +18,7 @@ import {
   updateDailyMissionProgress,
 } from "../bootstrap/monetization-foundation.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { getRewardLabel, addPackToken, addChoiceToken, getPackTokens, getChoiceTokens, consumePackToken, getChoiceCardOptions } from "./mission-rewards.js";
+import { getRewardLabel, addPackToken, addChoiceToken, getPackTokens, getChoiceTokens, consumePackToken, consumeChoiceToken, grantSpecificCard, getChoiceCardOptions } from "./mission-rewards.js";
 
 interface MissionStateRow {
   mission_id: string;
@@ -216,7 +216,7 @@ export async function claimMissionDedicated(
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", context.userId);
-  if (economyError) throw new Error(economyError.message);
+  if (economyError) throw new HttpModuleError(500, "economy_update_failed", "mission_claim", economyError.message);
 
   const stateUpdate: Record<string, unknown> = {
     claimed: true,
@@ -232,7 +232,7 @@ export async function claimMissionDedicated(
     .eq("user_id", context.userId)
     .eq("mission_id", input.missionId)
     .eq("reset_date", resetDate);
-  if (missionError) throw new Error(missionError.message);
+  if (missionError) throw new HttpModuleError(500, "mission_state_update_failed", "mission_claim", missionError.message);
 
   if (scope === "daily" && input.missionId !== "complete_10_daily_missions") {
     await updateDailyMissionProgress(supabase, context.userId, config, "daily_mission_completed_other", 1);
@@ -337,7 +337,7 @@ export async function claimChestDedicated(
     .from("user_economy")
     .update({ gold: nextGold, gems: nextGems, updated_at: new Date().toISOString() })
     .eq("user_id", context.userId);
-  if (economyError) throw new Error(economyError.message);
+  if (economyError) throw new HttpModuleError(500, "economy_update_failed", "chest_claim", economyError.message);
 
   const { error: chestError } = await supabase
     .from(tables.chestTable)
@@ -350,7 +350,7 @@ export async function claimChestDedicated(
     .eq("user_id", context.userId)
     .eq("chest_id", input.chestId)
     .eq("reset_date", resetDate);
-  if (chestError) throw new Error(chestError.message);
+  if (chestError) throw new HttpModuleError(500, "chest_state_update_failed", "chest_claim", chestError.message);
 
   const save = await updateLegacyPlayerSaveMirror(supabase, context.userId, { gold: nextGold, gems: nextGems });
   const snapshot = await buildChestSnapshotResponse(supabase, context.userId, config, scope);
@@ -421,10 +421,10 @@ export async function claimAllMissionsDedicated(
     .from("user_economy")
     .update({ gold: nextGold, gems: nextGems, updated_at: new Date().toISOString() })
     .eq("user_id", context.userId);
-  if (economyError) throw new Error(economyError.message);
+  if (economyError) throw new HttpModuleError(500, "economy_update_failed", "claim_all_missions", economyError.message);
 
-  for (const row of completableRows) {
-    const { error: updateError } = await supabase
+  const updatePromises = completableRows.map((row) =>
+    supabase
       .from(tables.missionTable)
       .update({
         claimed: true,
@@ -435,8 +435,14 @@ export async function claimAllMissionsDedicated(
       })
       .eq("user_id", context.userId)
       .eq("mission_id", row.mission_id)
-      .eq("reset_date", resetDate);
-    if (updateError) throw new Error(updateError.message);
+      .eq("reset_date", resetDate)
+  );
+
+  const batchResults = await Promise.all(updatePromises);
+  for (const result of batchResults) {
+    if (result.error) {
+      throw new HttpModuleError(500, "mission_state_update_failed", "claim_all_missions", result.error.message);
+    }
   }
 
   if (scope === "daily") {
@@ -486,6 +492,8 @@ async function buildMissionSnapshotResponse(
       return {
         missionId: mission.missionId,
         eventKey: mission.eventKey,
+        displayName: mission.displayName ?? mission.missionId,
+        displayDescription: mission.displayDescription ?? "",
         progress,
         target,
         claimed: row?.claimed ?? false,
@@ -594,7 +602,7 @@ async function loadMissionStateRows(supabase: SupabaseClient, userId: string, re
     .eq("user_id", userId)
     .eq("reset_date", resetDate)
     .returns<MissionStateRow[]>();
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "mission_state_load_failed", "missions_status", error.message);
   return data ?? [];
 }
 
@@ -605,7 +613,7 @@ async function loadChestStateRows(supabase: SupabaseClient, userId: string, rese
     .eq("user_id", userId)
     .eq("reset_date", resetDate)
     .returns<ChestStateRow[]>();
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "chest_state_load_failed", "chests_status", error.message);
   return data ?? [];
 }
 
@@ -629,7 +637,7 @@ async function loadMissionState(supabase: SupabaseClient, userId: string, missio
     .eq("mission_id", missionId)
     .eq("reset_date", resetDate)
     .maybeSingle<MissionStateRow>();
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "mission_state_load_failed", "mission_claim", error.message);
   return data;
 }
 
@@ -641,7 +649,7 @@ async function loadChestState(supabase: SupabaseClient, userId: string, chestId:
     .eq("chest_id", chestId)
     .eq("reset_date", resetDate)
     .maybeSingle<ChestStateRow>();
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "chest_state_load_failed", "chest_claim", error.message);
   return data;
 }
 
@@ -651,7 +659,7 @@ async function loadUserEconomyRow(supabase: SupabaseClient, userId: string) {
     .select("gold, gems")
     .eq("user_id", userId)
     .maybeSingle<UserEconomyRow>();
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "economy_load_failed", "mission_claim", error.message);
   return data ?? { gold: 0, gems: 0 };
 }
 
@@ -665,7 +673,7 @@ async function updateLegacyPlayerSaveMirror(
     .select("save")
     .eq("user_id", userId)
     .maybeSingle<PlayerSaveRow>();
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "player_save_load_failed", "mission_claim", error.message);
 
   const current = data?.save ? normalizeGameSave(data.save) : createInitialGameSave();
   const nextSave: GameSaveSnapshot = {
@@ -683,7 +691,7 @@ async function updateLegacyPlayerSaveMirror(
     },
     { onConflict: "user_id" },
   );
-  if (upsertError) throw new Error(upsertError.message);
+  if (upsertError) throw new HttpModuleError(500, "player_save_update_failed", "mission_claim", upsertError.message);
 
   return nextSave;
 }
@@ -710,7 +718,7 @@ async function beginIdempotentOperation(
     .eq("user_id", userId)
     .eq("request_id", requestId)
     .maybeSingle<IdempotencyRow>();
-  if (readError || !data) throw new Error(insertError.message);
+  if (readError || !data) throw new HttpModuleError(500, "idempotency_check_failed", "mission_claim", insertError.message);
   if (data.operation !== operation) {
     throw new HttpModuleError(400, "request_id_reused", "mission_claim", "requestId already used for another operation.");
   }
@@ -728,7 +736,7 @@ async function completeIdempotentOperation(
     .update({ response })
     .eq("user_id", userId)
     .eq("request_id", requestId);
-  if (error) throw new Error(error.message);
+  if (error) throw new HttpModuleError(500, "idempotency_complete_failed", "mission_claim", error.message);
 }
 
 function assertRequestId(requestId: string) {
@@ -774,13 +782,12 @@ export async function redeemChoiceTokenDedicated(
   input: { requestId: string; tokenId: string; characterId: string; cardType: string },
 ): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
-  const token = await import("./mission-rewards.js").then((m) => m.consumeChoiceToken(context.userId, input.tokenId));
+  const token = await consumeChoiceToken(context.userId, input.tokenId);
 
   if (!token) {
     throw new HttpModuleError(404, "choice_token_not_found", "mission_claim", "Token de eleccion no encontrado.");
   }
 
-  const { grantSpecificCard } = await import("./mission-rewards.js");
   const result = await grantSpecificCard(supabase, context.userId, input.characterId, input.cardType as "base" | "definitiva");
 
   return {

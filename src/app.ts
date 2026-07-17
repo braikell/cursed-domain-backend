@@ -101,6 +101,18 @@ const socialRemoveFriendInputSchema = z.object({
   friendUserId: z.string().uuid(),
 });
 
+const redeemPackTokenInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  packId: z.enum(["basicPack", "epicPack", "legendaryPack", "mythicPack"]),
+});
+
+const redeemChoiceTokenInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  tokenId: z.string().min(1).max(120),
+  characterId: z.string().min(1).max(120),
+  cardType: z.enum(["base", "definitiva"]),
+});
+
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -209,6 +221,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/claim-mission", async (context) =>
     withModule(context, "mission_claim", async () => {
       const authed = await requireAuthedGodotUser(context, "mission_claim");
+      applyRateLimit(context, authed.userId, "mission_claim");
       const body = await context.req.json().catch(() => null);
       const parsed = claimMissionInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -231,6 +244,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/claim-chest", async (context) =>
     withModule(context, "chest_claim", async () => {
       const authed = await requireAuthedGodotUser(context, "chest_claim");
+      applyRateLimit(context, authed.userId, "chest_claim");
       const body = await context.req.json().catch(() => null);
       const parsed = claimChestInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -244,6 +258,7 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/claim-all-missions", async (context) =>
     withModule(context, "claim_all_missions", async () => {
       const authed = await requireAuthedGodotUser(context, "claim_all_missions");
+      applyRateLimit(context, authed.userId, "claim_all_missions");
       const body = await context.req.json().catch(() => null);
       const parsed = claimAllMissionsInputSchema.safeParse(body);
       if (!parsed.success) {
@@ -265,11 +280,13 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/redeem-pack-token", async (context) =>
     withModule(context, "redeem_pack_token", async () => {
       const authed = await requireAuthedGodotUser(context, "redeem_pack_token");
+      applyRateLimit(context, authed.userId, "redeem_pack_token");
       const body = await context.req.json().catch(() => null);
-      if (!body?.packId || !body?.requestId) {
+      const parsed = redeemPackTokenInputSchema.safeParse(body);
+      if (!parsed.success) {
         throw new HttpModuleError(400, "invalid_request_payload", "redeem_pack_token", "Invalid request payload.");
       }
-      const response = await domainService.redeemPackToken(authed, body);
+      const response = await domainService.redeemPackToken(authed, parsed.data);
       return context.json(response);
     }),
   );
@@ -277,11 +294,13 @@ export function createApp(domainService: GodotDomainService) {
   app.post("/api/godot/redeem-choice-token", async (context) =>
     withModule(context, "redeem_choice_token", async () => {
       const authed = await requireAuthedGodotUser(context, "redeem_choice_token");
+      applyRateLimit(context, authed.userId, "redeem_choice_token");
       const body = await context.req.json().catch(() => null);
-      if (!body?.tokenId || !body?.characterId || !body?.requestId) {
+      const parsed = redeemChoiceTokenInputSchema.safeParse(body);
+      if (!parsed.success) {
         throw new HttpModuleError(400, "invalid_request_payload", "redeem_choice_token", "Invalid request payload.");
       }
-      const response = await domainService.redeemChoiceToken(authed, body);
+      const response = await domainService.redeemChoiceToken(authed, parsed.data);
       return context.json(response);
     }),
   );
