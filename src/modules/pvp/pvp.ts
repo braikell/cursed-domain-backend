@@ -9,6 +9,7 @@ import type {
 import { HttpModuleError } from "../../errors.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
+import { getBootstrapMonetizationConfig, updateDailyMissionProgress } from "../bootstrap/monetization-foundation.js";
 
 type PvpLeague = "bronze" | "silver" | "gold";
 
@@ -216,6 +217,10 @@ export async function completePvpMatchDedicated(
           xpAmount: rewardXp,
         })
       : null;
+
+  const pvpConfig = await getBootstrapMonetizationConfig(supabase);
+  await updateDailyMissionProgress(supabase, context.userId, pvpConfig, "arena_pvp_played", 1);
+
   const response = {
     ok: true as const,
     result: input.result,

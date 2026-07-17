@@ -5,6 +5,12 @@ export type BackendModuleName =
   | "afk_claim"
   | "missions_status"
   | "mission_claim"
+  | "chests_status"
+  | "chest_claim"
+  | "claim_all_missions"
+  | "mission_tokens"
+  | "redeem_pack_token"
+  | "redeem_choice_token"
   | "battle_start"
   | "battle_resolve"
   | "cards_upgrade"
@@ -58,7 +64,7 @@ export interface BootstrapResponse {
 
 export interface PurchasePackInput {
   packId: "basicPack" | "epicPack" | "legendaryPack" | "mythicPack";
-  purchaseCurrency: "gold" | "gems";
+  purchaseCurrency: "gold" | "gems" | "free_token";
   count: 1 | 10;
   requestId: string;
 }
@@ -70,6 +76,18 @@ export interface ClaimAfkInput {
 export interface ClaimMissionInput {
   requestId: string;
   missionId: string;
+  scope?: "daily" | "weekly" | "season";
+}
+
+export interface ClaimChestInput {
+  requestId: string;
+  chestId: string;
+  scope?: "daily" | "weekly" | "season";
+}
+
+export interface ClaimAllMissionsInput {
+  requestId: string;
+  scope?: "daily" | "weekly" | "season";
 }
 
 export interface StartBattleInput {

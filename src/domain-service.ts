@@ -2,6 +2,8 @@ import type {
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
+  ClaimAllMissionsInput,
+  ClaimChestInput,
   ClaimMissionInput,
   CompleteBattleInput,
   CompleteTowerFloorInput,
@@ -29,6 +31,12 @@ export interface GodotDomainService {
   claimAfk(context: GodotAuthedRequestContext, input: ClaimAfkInput): Promise<unknown>;
   getMissions(context: GodotAuthedRequestContext): Promise<unknown>;
   claimMission(context: GodotAuthedRequestContext, input: ClaimMissionInput): Promise<unknown>;
+  getChests(context: GodotAuthedRequestContext, scope?: string): Promise<unknown>;
+  claimChest(context: GodotAuthedRequestContext, input: ClaimChestInput): Promise<unknown>;
+  claimAllMissions(context: GodotAuthedRequestContext, input: ClaimAllMissionsInput): Promise<unknown>;
+  getMissionTokens(context: GodotAuthedRequestContext): Promise<unknown>;
+  redeemPackToken(context: GodotAuthedRequestContext, input: { requestId: string; packId: string }): Promise<unknown>;
+  redeemChoiceToken(context: GodotAuthedRequestContext, input: { requestId: string; tokenId: string; characterId: string; cardType: string }): Promise<unknown>;
   startBattle(context: GodotAuthedRequestContext, input: StartBattleInput): Promise<unknown>;
   completeBattle(context: GodotAuthedRequestContext, input: CompleteBattleInput): Promise<unknown>;
   getTowerStatus(context: GodotAuthedRequestContext): Promise<unknown>;

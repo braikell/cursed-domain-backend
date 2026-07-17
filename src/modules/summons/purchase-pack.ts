@@ -162,13 +162,13 @@ interface ResolvedPurchase {
   config: SummonMonetizationConfig;
   pack: PackConfig;
   cost: {
-    currency: "gold" | "gems";
+    currency: "gold" | "gems" | "free_token";
     amount: number;
   };
   serverNow: Date;
   limitWindow: {
     windowKey: string;
-    purchaseCurrency: "gold" | "gems";
+    purchaseCurrency: "gold" | "gems" | "free_token";
     purchasesBefore: number;
     purchasesAfter: number;
     windowType: "calendar_day_utc" | "rolling_hours";
@@ -419,14 +419,14 @@ async function resolvePurchase(input: {
     throw new HttpModuleError(400, "pack_unavailable", "summons", "Pack V1 no disponible.");
   }
 
-  const price = pack.prices[input.input.purchaseCurrency];
-  if (price == null) {
+  const price = input.input.purchaseCurrency === "free_token" ? 0 : pack.prices[input.input.purchaseCurrency];
+  if (price == null && input.input.purchaseCurrency !== "free_token") {
     throw new HttpModuleError(400, "invalid_currency", "summons", `El pack ${input.input.packId} no puede comprarse con ${input.input.purchaseCurrency}.`);
   }
 
   const serverNow = new Date();
-  const totalCost = calculatePackPurchaseCost(price, input.input.count);
-  const currentBalance = input.input.purchaseCurrency === "gold" ? save.gold : save.gems;
+  const totalCost = calculatePackPurchaseCost(price ?? 0, input.input.count);
+  const currentBalance = input.input.purchaseCurrency === "free_token" ? 999999999 : (input.input.purchaseCurrency === "gold" ? save.gold : save.gems);
   if (currentBalance < totalCost) {
     throw new HttpModuleError(400, "insufficient_funds", "summons", `No tienes ${input.input.purchaseCurrency === "gold" ? "oro" : "gemas"} suficientes.`);
   }
@@ -508,7 +508,8 @@ async function finalizePurchase(input: {
   requestId: string;
   resolved: ResolvedPurchase;
 }) {
-  const packLimit = input.resolved.pack.limits[input.resolved.cost.currency];
+  const limitCurrency = input.resolved.cost.currency === "free_token" ? "gold" : input.resolved.cost.currency;
+  const packLimit = input.resolved.pack.limits[limitCurrency];
   const packLogRows = input.resolved.results.map((result, index) => ({
     user_id: input.userId,
     request_id: input.requestId,
@@ -955,6 +956,19 @@ async function validatePackPurchaseLimit(
   pack: PackConfig,
   serverNow: Date,
 ) {
+  if (input.purchaseCurrency === "free_token") {
+    const nowIso = serverNow.toISOString();
+    return {
+      windowKey: "free_token:unlimited",
+      purchaseCurrency: "free_token" as const,
+      purchasesBefore: 0,
+      purchasesAfter: input.count,
+      windowType: "calendar_day_utc" as const,
+      windowStartedAt: nowIso,
+      windowEndsAt: nowIso,
+    };
+  }
+
   const limitConfig = pack.limits[input.purchaseCurrency];
   if (limitConfig.count == null || limitConfig.windowType == null || limitConfig.windowHours == null) {
     const nowIso = serverNow.toISOString();
@@ -996,7 +1010,7 @@ async function validatePackPurchaseLimit(
   };
 }
 
-function resolveLimitWindow(windowType: "calendar_day_utc" | "rolling_hours", windowHours: number, now: Date, purchaseCurrency: "gold" | "gems") {
+function resolveLimitWindow(windowType: "calendar_day_utc" | "rolling_hours", windowHours: number, now: Date, purchaseCurrency: "gold" | "gems" | "free_token") {
   if (windowType === "calendar_day_utc") {
     const key = `${purchaseCurrency}:${now.toISOString().slice(0, 10)}`;
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));

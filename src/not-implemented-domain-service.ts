@@ -2,6 +2,8 @@ import type {
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
+  ClaimAllMissionsInput,
+  ClaimChestInput,
   ClaimMissionInput,
   CompleteBattleInput,
   CompleteTowerFloorInput,
@@ -32,6 +34,12 @@ function notImplemented(
     | "afk_claim"
     | "missions_status"
     | "mission_claim"
+    | "chests_status"
+    | "chest_claim"
+    | "claim_all_missions"
+    | "mission_tokens"
+    | "redeem_pack_token"
+    | "redeem_choice_token"
     | "battle_start"
     | "battle_resolve"
     | "cards_upgrade"
@@ -80,6 +88,30 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async claimMission(_context: GodotAuthedRequestContext, _input: ClaimMissionInput): Promise<unknown> {
     return notImplemented("mission_claim", "Mission claim extraction not implemented yet.");
+  }
+
+  async getChests(_context: GodotAuthedRequestContext, _scope?: string): Promise<unknown> {
+    return notImplemented("chests_status", "Chest status extraction not implemented yet.");
+  }
+
+  async claimChest(_context: GodotAuthedRequestContext, _input: ClaimChestInput): Promise<unknown> {
+    return notImplemented("chest_claim", "Chest claim extraction not implemented yet.");
+  }
+
+  async claimAllMissions(_context: GodotAuthedRequestContext, _input: ClaimAllMissionsInput): Promise<unknown> {
+    return notImplemented("claim_all_missions", "Claim all missions extraction not implemented yet.");
+  }
+
+  async getMissionTokens(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("mission_tokens", "Mission tokens extraction not implemented yet.");
+  }
+
+  async redeemPackToken(_context: GodotAuthedRequestContext, _input: { requestId: string; packId: string }): Promise<unknown> {
+    return notImplemented("redeem_pack_token", "Pack token redemption not implemented yet.");
+  }
+
+  async redeemChoiceToken(_context: GodotAuthedRequestContext, _input: { requestId: string; tokenId: string; characterId: string; cardType: string }): Promise<unknown> {
+    return notImplemented("redeem_choice_token", "Choice token redemption not implemented yet.");
   }
 
   async startBattle(_context: GodotAuthedRequestContext, _input: StartBattleInput): Promise<unknown> {

@@ -12,7 +12,7 @@ import { logger } from "./safe-logger.js";
 
 const purchasePackInputSchema = z.object({
   packId: z.enum(["basicPack", "epicPack", "legendaryPack", "mythicPack"]),
-  purchaseCurrency: z.enum(["gold", "gems"]),
+  purchaseCurrency: z.enum(["gold", "gems", "free_token"]),
   count: z.union([z.literal(1), z.literal(10)]),
   requestId: z.string().min(8).max(80),
 });
@@ -24,6 +24,18 @@ const claimAfkInputSchema = z.object({
 const claimMissionInputSchema = z.object({
   requestId: z.string().min(8).max(80),
   missionId: z.string().min(1).max(120),
+  scope: z.enum(["daily", "weekly", "season"]).optional(),
+});
+
+const claimChestInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  chestId: z.string().min(1).max(120),
+  scope: z.enum(["daily", "weekly", "season"]).optional(),
+});
+
+const claimAllMissionsInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  scope: z.enum(["daily", "weekly", "season"]).optional(),
 });
 
 const completeBattleInputSchema = z.object({
@@ -195,6 +207,73 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "mission_claim", "Invalid request payload.");
       }
       const response = await domainService.claimMission(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.get("/api/godot/chests", async (context) =>
+    withModule(context, "chests_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "chests_status");
+      const scope = (context.req.query("scope") ?? "daily") as string;
+      const response = await domainService.getChests(authed, scope);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/claim-chest", async (context) =>
+    withModule(context, "chest_claim", async () => {
+      const authed = await requireAuthedGodotUser(context, "chest_claim");
+      const body = await context.req.json().catch(() => null);
+      const parsed = claimChestInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "chest_claim", "Invalid request payload.");
+      }
+      const response = await domainService.claimChest(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/claim-all-missions", async (context) =>
+    withModule(context, "claim_all_missions", async () => {
+      const authed = await requireAuthedGodotUser(context, "claim_all_missions");
+      const body = await context.req.json().catch(() => null);
+      const parsed = claimAllMissionsInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "claim_all_missions", "Invalid request payload.");
+      }
+      const response = await domainService.claimAllMissions(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.get("/api/godot/mission-tokens", async (context) =>
+    withModule(context, "mission_tokens", async () => {
+      const authed = await requireAuthedGodotUser(context, "mission_tokens");
+      const response = await domainService.getMissionTokens(authed);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/redeem-pack-token", async (context) =>
+    withModule(context, "redeem_pack_token", async () => {
+      const authed = await requireAuthedGodotUser(context, "redeem_pack_token");
+      const body = await context.req.json().catch(() => null);
+      if (!body?.packId || !body?.requestId) {
+        throw new HttpModuleError(400, "invalid_request_payload", "redeem_pack_token", "Invalid request payload.");
+      }
+      const response = await domainService.redeemPackToken(authed, body);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/redeem-choice-token", async (context) =>
+    withModule(context, "redeem_choice_token", async () => {
+      const authed = await requireAuthedGodotUser(context, "redeem_choice_token");
+      const body = await context.req.json().catch(() => null);
+      if (!body?.tokenId || !body?.characterId || !body?.requestId) {
+        throw new HttpModuleError(400, "invalid_request_payload", "redeem_choice_token", "Invalid request payload.");
+      }
+      const response = await domainService.redeemChoiceToken(authed, body);
       return context.json(response);
     }),
   );

@@ -6,7 +6,7 @@ import { NotImplementedGodotDomainService } from "./not-implemented-domain-servi
 import { bootstrapPlayer } from "./modules/bootstrap/player-bootstrap.js";
 import { purchasePackDedicated } from "./modules/summons/purchase-pack.js";
 import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
-import { claimMissionDedicated, getMissionsDedicated } from "./modules/missions/missions.js";
+import { claimMissionDedicated, getMissionsDedicated, getChestsDedicated, claimChestDedicated, claimAllMissionsDedicated, getMissionTokensDedicated, redeemPackTokenDedicated, redeemChoiceTokenDedicated } from "./modules/missions/missions.js";
 import { completeBattleDedicated, startBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
 import { completePvpMatchDedicated, getPvpStatusDedicated, startPvpMatchDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
@@ -29,6 +29,8 @@ import type {
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
+  ClaimAllMissionsInput,
+  ClaimChestInput,
   ClaimMissionInput,
   CompleteBattleInput,
   CompleteTowerFloorInput,
@@ -72,6 +74,30 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async claimMission(_context: GodotAuthedRequestContext, _input: ClaimMissionInput): Promise<unknown> {
     return await claimMissionDedicated(_context, _input);
+  }
+
+  override async getChests(_context: GodotAuthedRequestContext, _scope?: string): Promise<unknown> {
+    return await getChestsDedicated(_context, _scope as "daily" | "weekly" | "season" | undefined);
+  }
+
+  override async claimChest(_context: GodotAuthedRequestContext, _input: ClaimChestInput): Promise<unknown> {
+    return await claimChestDedicated(_context, _input);
+  }
+
+  override async claimAllMissions(_context: GodotAuthedRequestContext, _input: ClaimAllMissionsInput): Promise<unknown> {
+    return await claimAllMissionsDedicated(_context, _input);
+  }
+
+  override async getMissionTokens(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return await getMissionTokensDedicated(_context);
+  }
+
+  override async redeemPackToken(_context: GodotAuthedRequestContext, _input: { requestId: string; packId: string }): Promise<unknown> {
+    return await redeemPackTokenDedicated(_context, _input);
+  }
+
+  override async redeemChoiceToken(_context: GodotAuthedRequestContext, _input: { requestId: string; tokenId: string; characterId: string; cardType: string }): Promise<unknown> {
+    return await redeemChoiceTokenDedicated(_context, _input);
   }
 
   override async startBattle(_context: GodotAuthedRequestContext, _input: StartBattleInput): Promise<unknown> {
