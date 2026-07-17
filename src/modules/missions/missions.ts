@@ -492,6 +492,8 @@ async function buildMissionSnapshotResponse(
         rewardGemsGranted: row?.reward_gems_granted ?? 0,
         rewardPointsGranted: row?.reward_points_granted ?? 0,
         rewardCapped: row?.reward_capped ?? false,
+        rewardType: mission.rewardType ?? "gold_gems",
+        rewardConfig: mission.rewardConfig ?? {},
         sortOrder: mission.sortOrder,
       };
     })
