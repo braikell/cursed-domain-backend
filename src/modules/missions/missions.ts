@@ -126,13 +126,9 @@ export async function getMissionsDedicated(context: GodotAuthedRequestContext): 
   ]);
 
   if (daily.missions.length > 0) {
-    console.log("[MISSIONS] daily sample rewardType:", daily.missions[0].rewardType);
-  }
-  if (weekly.missions.length > 0) {
-    console.log("[MISSIONS] weekly sample rewardType:", weekly.missions[0].rewardType);
-  }
-  if (season.missions.length > 0) {
-    console.log("[MISSIONS] season sample rewardType:", season.missions[0].rewardType);
+    const tickets = daily.missions.filter((m: any) => m.rewardType !== "gold_gems");
+    console.log("[MISSIONS] daily total:", daily.missions.length, "with tickets:", tickets.length);
+    tickets.forEach((m: any) => console.log("[MISSIONS]   ticket:", m.missionId, "->", m.rewardType));
   }
 
   return {
