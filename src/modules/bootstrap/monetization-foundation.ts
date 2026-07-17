@@ -373,8 +373,8 @@ export async function updateDailyMissionProgress(
     await applyMissionProgress(supabase, userId, definition.missionId, resetDate, "user_daily_mission_state", definition.target, increment, config.configVersion);
   }
 
-  await updateWeeklyMissionProgress(supabase, userId, config, eventKey, amount);
-  await updateSeasonMissionProgress(supabase, userId, config, eventKey, amount);
+  try { await updateWeeklyMissionProgress(supabase, userId, config, eventKey, amount); } catch { /* weekly table may not exist yet */ }
+  try { await updateSeasonMissionProgress(supabase, userId, config, eventKey, amount); } catch { /* season table may not exist yet */ }
 }
 
 export async function updateWeeklyMissionProgress(
