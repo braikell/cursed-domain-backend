@@ -143,7 +143,7 @@ export async function claimMissionDedicated(
   const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId);
   if (replay.status === "replayed") {
     if (replay.response == null) {
-      throw new HttpModuleError(409, "operation_in_progress", "mission_claim", "El claim de mision todavia esta procesandose. Intenta otra vez en unos segundos.");
+      throw new HttpModuleError(409, "operation_in_progress", "mission_claim", "La mision todavia se esta procesando. Intenta de nuevo en unos segundos.");
     }
     return replay.response;
   }

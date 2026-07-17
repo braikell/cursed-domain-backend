@@ -105,7 +105,7 @@ const SEED_DAILY_MISSIONS: MissionDefinition[] = [
   m("equip_or_upgrade_1_item", "item_equipped_or_upgraded", 700, 8, 5, "gold_gems", {}, 1, 70),
   m("open_1_basic_pack", "basic_pack_opened", 500, 5, 5, "gold_gems", {}, 1, 80),
   m("complete_1_daily_dungeon", "daily_dungeon_completed", 600, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 1, 90),
-  m("defeat_1_daily_boss", "daily_boss_defeated", 800, 8, 5, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 1, 100),
+  m("defeat_1_daily_boss", "daily_boss_defeated", 1200, 12, 5, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 1, 100),
   m("play_3_arena_pvp", "arena_pvp_played", 600, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3, 110),
   m("use_friend_support", "friend_support_used", 500, 5, 5, "gold_gems", {}, 1, 120),
   m("clan_participation", "clan_participation", 600, 8, 5, "gold_gems", {}, 1, 130),
@@ -114,7 +114,7 @@ const SEED_DAILY_MISSIONS: MissionDefinition[] = [
   m("spend_3000_gold", "gold_spent", 500, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3000, 160),
   m("claim_free_shop_reward", "free_shop_reward_claimed", 400, 5, 5, "gold_gems", {}, 1, 170),
   m("use_ultimate_20_times", "ultimate_used", 400, 0, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 20, 180),
-  m("complete_1_expedition", "expedition_completed", 300, 0, 5, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 1, 190),
+  m("complete_1_expedition", "expedition_completed", 800, 8, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 190),
   m("complete_10_daily_missions", "daily_mission_completed_other", 500, 5, 10, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 10, 200),
 ];
 
@@ -133,11 +133,11 @@ const SEED_WEEKLY_MISSIONS: MissionDefinition[] = [
   m("weekly_clear_3_tower_bosses", "tower_boss_cleared", 2000, 15, 20, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 3, 40),
   m("weekly_upgrade_5_cards", "card_upgraded", 1200, 12, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 5, 50),
   m("weekly_open_5_packs", "basic_pack_opened", 800, 0, 15, "basic_pack", r({packId: "basicPack", packCount: 2}), 5, 60),
-  m("weekly_play_10_pvp", "arena_pvp_played", 1500, 15, 15, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 10, 70),
-  m("weekly_spend_15000_gold", "gold_spent", 1000, 10, 15, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 15000, 80),
+  m("weekly_play_10_pvp", "arena_pvp_played", 2000, 20, 15, "basic_pack", r({packId: "basicPack", packCount: 1}), 10, 70),
+  m("weekly_spend_15000_gold", "gold_spent", 1800, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 15000, 80),
   m("weekly_use_ultimate_60", "ultimate_used", 1000, 0, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 60, 90),
   m("weekly_equip_or_upgrade_5_items", "item_equipped_or_upgraded", 1000, 10, 15, "basic_pack", r({packId: "basicPack", packCount: 1}), 5, 100),
-  m("weekly_complete_7_daily", "daily_mission_completed_other", 1000, 10, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 7, 110),
+  m("weekly_complete_7_daily", "daily_mission_completed_other", 2000, 20, 20, "epic_pack", r({packId: "epicPack", packCount: 1}), 7, 110),
 ];
 
 const SEED_WEEKLY_CHESTS: ChestDefinition[] = [
@@ -149,14 +149,14 @@ const SEED_SEASON_MISSIONS: MissionDefinition[] = [
   m("season_complete_100_campaign", "campaign_battle_completed", 3000, 20, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 100, 10),
   m("season_win_50_battles", "battle_won", 4000, 30, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 50, 20),
   m("season_clear_30_tower_floors", "tower_floor_cleared", 4000, 30, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 30, 30),
-  m("season_upgrade_15_cards", "card_upgraded", 3500, 25, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 15, 40),
+  m("season_upgrade_15_cards", "card_upgraded", 4500, 35, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 15, 40),
   m("season_open_20_packs", "basic_pack_opened", 2500, 0, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 20, 50),
-  m("season_play_30_pvp", "arena_pvp_played", 4000, 35, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 30, 60),
+  m("season_play_30_pvp", "arena_pvp_played", 5000, 45, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 30, 60),
   m("season_spend_80k_gold", "gold_spent", 2000, 20, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 80000, 70),
   m("season_use_ultimate_200", "ultimate_used", 3000, 0, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 200, 80),
   m("season_equip_or_upgrade_15_items", "item_equipped_or_upgraded", 3000, 25, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 15, 90),
   m("season_clear_15_tower_bosses", "tower_boss_cleared", 5000, 40, 30, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 15, 100),
-  m("season_complete_50_daily", "daily_mission_completed_other", 4000, 35, 40, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 50, 110),
+  m("season_complete_50_daily", "daily_mission_completed_other", 6000, 50, 40, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 50, 110),
   m("season_complete_all", "season_all_missions_completed", 0, 0, 50, "choice_definitiva", r({choiceType: "definitiva", choiceCount: 1}), 1, 200),
 ];
 
