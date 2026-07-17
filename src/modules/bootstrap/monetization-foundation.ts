@@ -127,17 +127,17 @@ const SEED_DAILY_CHESTS: ChestDefinition[] = [
 ];
 
 const SEED_WEEKLY_MISSIONS: MissionDefinition[] = [
-  m("weekly_complete_20_campaign", "campaign_battle_completed", 1000, 10, 15, "basic_pack", r({packId: "basicPack", packCount: 2}), 20, 10),
-  m("weekly_win_10_battles", "battle_won", 1500, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 20),
+  m("weekly_complete_20_campaign", "campaign_battle_completed", 2000, 15, 15, "gold_gems", {}, 20, 10),
+  m("weekly_win_10_battles", "battle_won", 1800, 20, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 20),
   m("weekly_clear_10_tower_floors", "tower_floor_cleared", 1500, 10, 15, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 10, 30),
-  m("weekly_clear_3_tower_bosses", "tower_boss_cleared", 2000, 15, 20, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 3, 40),
-  m("weekly_upgrade_5_cards", "card_upgraded", 1200, 12, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 5, 50),
-  m("weekly_open_5_packs", "basic_pack_opened", 800, 0, 15, "basic_pack", r({packId: "basicPack", packCount: 2}), 5, 60),
-  m("weekly_play_10_pvp", "arena_pvp_played", 2000, 20, 15, "basic_pack", r({packId: "basicPack", packCount: 1}), 10, 70),
-  m("weekly_spend_15000_gold", "gold_spent", 1800, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 15000, 80),
-  m("weekly_use_ultimate_60", "ultimate_used", 1000, 0, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 60, 90),
-  m("weekly_equip_or_upgrade_5_items", "item_equipped_or_upgraded", 1000, 10, 15, "basic_pack", r({packId: "basicPack", packCount: 1}), 5, 100),
-  m("weekly_complete_7_daily", "daily_mission_completed_other", 2000, 20, 20, "epic_pack", r({packId: "epicPack", packCount: 1}), 7, 110),
+  m("weekly_clear_3_tower_bosses", "tower_boss_cleared", 2000, 15, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 3, 40),
+  m("weekly_upgrade_5_cards", "card_upgraded", 1500, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 5, 50),
+  m("weekly_open_5_packs", "basic_pack_opened", 1600, 10, 15, "gold_gems", {}, 5, 60),
+  m("weekly_play_10_pvp", "arena_pvp_played", 2500, 25, 15, "gold_gems", {}, 10, 70),
+  m("weekly_spend_15000_gold", "gold_spent", 2200, 18, 15, "gold_gems", {}, 15000, 80),
+  m("weekly_use_ultimate_60", "ultimate_used", 1600, 10, 15, "gold_gems", {}, 60, 90),
+  m("weekly_equip_or_upgrade_5_items", "item_equipped_or_upgraded", 1400, 12, 15, "gold_gems", {}, 5, 100),
+  m("weekly_complete_7_daily", "daily_mission_completed_other", 2500, 25, 20, "epic_pack", r({packId: "epicPack", packCount: 1}), 7, 110),
 ];
 
 const SEED_WEEKLY_CHESTS: ChestDefinition[] = [
