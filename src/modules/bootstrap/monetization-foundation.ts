@@ -484,6 +484,15 @@ async function ensureMissionSnapshotState(
   chestTable: string,
   configVersion: number,
 ) {
+  const { count: existCount, error: existError } = await supabase
+    .from(missionTable)
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("reset_date", resetDate)
+    .limit(1);
+
+  if (!existError && existCount != null && existCount > 0) return;
+
   const missionRows = missions
     .filter((mission) => mission.isEnabled)
     .map((mission) => ({

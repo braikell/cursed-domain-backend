@@ -106,7 +106,6 @@ async function ensureSnapshotForScope(supabase: SupabaseClient, userId: string, 
 
 export async function getMissionsDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
-  await ensureBootstrapMonetizationFoundation(supabase, context.userId);
   const config = await getBootstrapMonetizationConfig(supabase);
 
   const dailyDate = getUtcResetDate();

@@ -424,6 +424,14 @@ async function resolvePurchase(input: {
     throw new HttpModuleError(400, "invalid_currency", "summons", `El pack ${input.input.packId} no puede comprarse con ${input.input.purchaseCurrency}.`);
   }
 
+  if (input.input.purchaseCurrency === "free_token") {
+    const { consumePackToken } = await import("../missions/mission-rewards.js");
+    const consumed = await consumePackToken(input.userId, input.input.packId);
+    if (!consumed) {
+      throw new HttpModuleError(400, "no_free_tokens", "summons", "No tienes tokens gratuitos de este sobre.");
+    }
+  }
+
   const serverNow = new Date();
   const totalCost = calculatePackPurchaseCost(price ?? 0, input.input.count);
   const currentBalance = input.input.purchaseCurrency === "free_token" ? 999999999 : (input.input.purchaseCurrency === "gold" ? save.gold : save.gems);
