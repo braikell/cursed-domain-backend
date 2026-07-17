@@ -99,13 +99,13 @@ const SEED_DAILY_MISSIONS: MissionDefinition[] = [
   m("complete_5_campaign_battles", "campaign_battle_completed", 500, 0, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 5, 30),
   m("win_3_battles", "battle_won", 700, 5, 5, "gold_gems", {}, 3, 40),
   m("clear_3_tower_floors", "tower_floor_cleared", 800, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 3, 45),
-  m("clear_1_tower_boss", "tower_boss_cleared", 1000, 10, 5, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 1, 46),
+  m("clear_1_tower_boss", "tower_boss_cleared", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 46),
   m("upgrade_1_card", "card_upgraded", 800, 8, 5, "gold_gems", {}, 1, 50),
   m("upgrade_3_cards", "card_upgraded", 600, 5, 5, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 3, 60),
   m("equip_or_upgrade_1_item", "item_equipped_or_upgraded", 700, 8, 5, "gold_gems", {}, 1, 70),
   m("open_1_basic_pack", "basic_pack_opened", 500, 5, 5, "gold_gems", {}, 1, 80),
   m("complete_1_daily_dungeon", "daily_dungeon_completed", 600, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 1, 90),
-  m("defeat_1_daily_boss", "daily_boss_defeated", 1200, 12, 5, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 1, 100),
+  m("defeat_1_daily_boss", "daily_boss_defeated", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 100),
   m("play_3_arena_pvp", "arena_pvp_played", 600, 5, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 3, 110),
   m("use_friend_support", "friend_support_used", 500, 5, 5, "gold_gems", {}, 1, 120),
   m("clan_participation", "clan_participation", 600, 8, 5, "gold_gems", {}, 1, 130),
@@ -115,7 +115,7 @@ const SEED_DAILY_MISSIONS: MissionDefinition[] = [
   m("claim_free_shop_reward", "free_shop_reward_claimed", 400, 5, 5, "gold_gems", {}, 1, 170),
   m("use_ultimate_20_times", "ultimate_used", 400, 0, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 20, 180),
   m("complete_1_expedition", "expedition_completed", 800, 8, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 190),
-  m("complete_10_daily_missions", "daily_mission_completed_other", 500, 5, 10, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 10, 200),
+  m("complete_10_daily_missions", "daily_mission_completed_other", 800, 12, 10, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 200),
 ];
 
 const SEED_DAILY_CHESTS: ChestDefinition[] = [
