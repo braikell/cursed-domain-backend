@@ -204,18 +204,22 @@ export async function getBootstrapMonetizationConfig(supabase: SupabaseClient): 
 
     const resolveMissions = (rows: MissionDefinitionRow[] | null, seed: MissionDefinition[]): MissionDefinition[] => {
       if (!rows?.length) return seed;
-      return rows.map((row) => ({
-        missionId: row.mission_id,
-        eventKey: row.event_key,
-        rewardGold: row.reward_gold,
-        rewardGems: row.reward_gems,
-        rewardPoints: row.reward_points,
-        rewardType: row.reward_type ?? "gold_gems",
-        rewardConfig: row.reward_config ?? {},
-        target: row.target,
-        sortOrder: row.sort_order,
-        isEnabled: row.is_enabled,
-      }));
+      const seedById = new Map(seed.map((s) => [s.missionId, s]));
+      return rows.map((row) => {
+        const fallback = seedById.get(row.mission_id);
+        return {
+          missionId: row.mission_id,
+          eventKey: row.event_key,
+          rewardGold: row.reward_gold,
+          rewardGems: row.reward_gems,
+          rewardPoints: row.reward_points,
+          rewardType: row.reward_type ?? fallback?.rewardType ?? "gold_gems",
+          rewardConfig: row.reward_config ?? fallback?.rewardConfig ?? {},
+          target: row.target,
+          sortOrder: row.sort_order,
+          isEnabled: row.is_enabled,
+        };
+      });
     };
 
     const resolveChests = (rows: ChestDefinitionRow[] | null, seed: ChestDefinition[]): ChestDefinition[] => {

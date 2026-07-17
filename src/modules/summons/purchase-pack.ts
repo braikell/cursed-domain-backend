@@ -1118,6 +1118,23 @@ function mapCatalogRarity(rarity: string): Rarity {
   }
 }
 
+export async function getPityStatusDedicated(context: { userId: string }): Promise<unknown> {
+  const supabase = createServiceSupabaseClient();
+  const packIds = ["basicPack", "epicPack", "legendaryPack", "mythicPack"];
+  const results: Record<string, { counter: number; max: number; guaranteeLabel: string }> = {};
+
+  for (const packId of packIds) {
+    const state = await loadPityState(supabase, context.userId, packId);
+    results[packId] = {
+      counter: displayCounter(state.counter),
+      max: getPityCycle(),
+      guaranteeLabel: getGuaranteeLabel(packId),
+    };
+  }
+
+  return { ok: true, pity: results };
+}
+
 function isMissingPackSchemaError(message: string) {
   return (
     message.includes("pack_definitions") ||

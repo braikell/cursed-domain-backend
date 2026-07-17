@@ -30,6 +30,7 @@ function notImplemented(
   module:
     | "bootstrap"
     | "summons"
+    | "pity_status"
     | "afk_status"
     | "afk_claim"
     | "missions_status"
@@ -72,6 +73,10 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async purchasePack(_context: GodotAuthedRequestContext, _input: PurchasePackInput): Promise<unknown> {
     return notImplemented("summons", "Summon extraction not implemented yet.");
+  }
+
+  async getPityStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("pity_status", "Pity status extraction not implemented yet.");
   }
 
   async getAfkStatus(_context: GodotAuthedRequestContext): Promise<unknown> {

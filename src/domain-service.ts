@@ -27,6 +27,7 @@ import type {
 export interface GodotDomainService {
   bootstrap(context: GodotAuthedRequestContext): Promise<BootstrapResponse>;
   purchasePack(context: GodotAuthedRequestContext, input: PurchasePackInput): Promise<unknown>;
+  getPityStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   getAfkStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   claimAfk(context: GodotAuthedRequestContext, input: ClaimAfkInput): Promise<unknown>;
   getMissions(context: GodotAuthedRequestContext): Promise<unknown>;

@@ -169,6 +169,14 @@ export function createApp(domainService: GodotDomainService) {
     }),
   );
 
+  app.get("/api/godot/pity-status", async (context) =>
+    withModule(context, "pity_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "pity_status");
+      const response = await domainService.getPityStatus(authed);
+      return context.json(response);
+    }),
+  );
+
   app.get("/api/godot/afk/status", async (context) =>
     withModule(context, "afk_status", async () => {
       const authed = await requireAuthedGodotUser(context, "afk_status");

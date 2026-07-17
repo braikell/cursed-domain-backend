@@ -1,6 +1,7 @@
 export type BackendModuleName =
   | "bootstrap"
   | "summons"
+  | "pity_status"
   | "afk_status"
   | "afk_claim"
   | "missions_status"

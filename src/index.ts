@@ -4,7 +4,7 @@ import { createApp } from "./app.js";
 import { env } from "./env.js";
 import { NotImplementedGodotDomainService } from "./not-implemented-domain-service.js";
 import { bootstrapPlayer } from "./modules/bootstrap/player-bootstrap.js";
-import { purchasePackDedicated } from "./modules/summons/purchase-pack.js";
+import { getPityStatusDedicated, purchasePackDedicated } from "./modules/summons/purchase-pack.js";
 import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
 import { claimMissionDedicated, getMissionsDedicated, getChestsDedicated, claimChestDedicated, claimAllMissionsDedicated, getMissionTokensDedicated, redeemPackTokenDedicated, redeemChoiceTokenDedicated } from "./modules/missions/missions.js";
 import { completeBattleDedicated, startBattleDedicated } from "./modules/battle/battle.js";
@@ -58,6 +58,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async purchasePack(_context: GodotAuthedRequestContext, _input: PurchasePackInput): Promise<unknown> {
     return await purchasePackDedicated(_context, _input);
+  }
+
+  override async getPityStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return await getPityStatusDedicated(_context);
   }
 
   override async getAfkStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
