@@ -125,6 +125,16 @@ export async function getMissionsDedicated(context: GodotAuthedRequestContext): 
     buildMissionSnapshotResponse(supabase, context.userId, config, "season"),
   ]);
 
+  if (daily.missions.length > 0) {
+    console.log("[MISSIONS] daily sample rewardType:", daily.missions[0].rewardType);
+  }
+  if (weekly.missions.length > 0) {
+    console.log("[MISSIONS] weekly sample rewardType:", weekly.missions[0].rewardType);
+  }
+  if (season.missions.length > 0) {
+    console.log("[MISSIONS] season sample rewardType:", season.missions[0].rewardType);
+  }
+
   return {
     ok: true,
     daily,
