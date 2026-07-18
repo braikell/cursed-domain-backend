@@ -17,6 +17,7 @@ import {
   type MonetizationConfigLite,
   updateDailyMissionProgress,
 } from "../bootstrap/monetization-foundation.js";
+import { randomUUID } from "node:crypto";
 import { createServiceSupabaseClient } from "../../supabase.js";
 import { getRewardLabel, addPackToken, addChoiceToken, getPackTokens, getChoiceTokens, consumePackToken, consumeChoiceToken, grantSpecificCard, getChoiceCardOptions } from "./mission-rewards.js";
 
@@ -202,10 +203,18 @@ export async function claimMissionDedicated(
     specialReward = { type: "pack_token", packId, added: true };
   } else if (rewardType.startsWith("choice_")) {
     const choiceType = (rewardConfig.choiceType as string) ?? "legendary";
-    const cardOptions = getChoiceCardOptions(choiceType);
-    await addChoiceToken(context.userId, input.missionId, choiceType, cardOptions);
-    choiceOptions = { choiceType, count: (rewardConfig.choiceCount as number) ?? 1, options: cardOptions };
-    specialReward = { type: "choice_token", choiceType, pending: true };
+    const allOptions = getChoiceCardOptions(choiceType);
+    const ownedKeys = await getUserOwnedCardKeys(supabase, context.userId);
+    const filteredOptions = allOptions.filter((opt) => !ownedKeys.has(`${opt.characterId}_${opt.cardType}`));
+
+    if (filteredOptions.length === 0) {
+      throw new HttpModuleError(409, "no_available_cards", "mission_claim", "Ya posees todas las cartas de esta rareza.");
+    }
+
+    const grantToken = randomUUID();
+    await storeChoiceGrant(supabase, context.userId, grantToken, choiceType, filteredOptions);
+    choiceOptions = { choiceType, grantToken, options: filteredOptions };
+    specialReward = { type: "choice_token", choiceType, grantToken, pending: true };
   }
 
   const { error: economyError } = await supabase
@@ -810,4 +819,80 @@ export async function ultimateUsedDedicated(
   await updateDailyMissionProgress(supabase, context.userId, config, "ultimate_used", increment);
 
   return { ok: true, tracked: true, count: increment };
+}
+
+async function getUserOwnedCardKeys(supabase: SupabaseClient, userId: string): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("user_cards")
+    .select("character_id, card_type")
+    .eq("user_id", userId);
+
+  const owned = new Set<string>();
+  if (!error && data) {
+    for (const row of data) {
+      owned.add(`${row.character_id}_${(row.card_type ?? "base").toLowerCase()}`);
+    }
+  }
+  return owned;
+}
+
+async function storeChoiceGrant(
+  supabase: SupabaseClient,
+  userId: string,
+  grantToken: string,
+  choiceType: string,
+  options: Array<{ characterId: string; cardType: string; displayName?: string }>,
+): Promise<void> {
+  const { error } = await supabase.from("idempotency_keys").insert({
+    user_id: userId,
+    request_id: grantToken,
+    operation: `choice_grant_${choiceType}`,
+    response: { choiceType, options, used: false, grantedAt: null },
+  });
+  if (error) throw new HttpModuleError(500, "grant_store_failed", "mission_claim", error.message);
+}
+
+export async function grantChoiceCardDedicated(
+  context: GodotAuthedRequestContext,
+  input: { requestId: string; grantToken: string; characterId: string; cardType: string },
+): Promise<unknown> {
+  const supabase = createServiceSupabaseClient();
+
+  const { data: grantRow, error: grantError } = await supabase
+    .from("idempotency_keys")
+    .select("response")
+    .eq("user_id", context.userId)
+    .eq("request_id", input.grantToken)
+    .maybeSingle<{ response: { choiceType: string; options: Array<{ characterId: string; cardType: string }>; used: boolean; grantedAt: string | null } }>();
+
+  if (grantError || !grantRow) {
+    throw new HttpModuleError(404, "grant_not_found", "mission_claim", "Token de seleccion no encontrado o ya expirado.");
+  }
+
+  const grant = grantRow.response as Record<string, unknown>;
+  if (grant.used) {
+    throw new HttpModuleError(409, "grant_already_used", "mission_claim", "Ya usaste este ticket de seleccion.");
+  }
+
+  const options = grant.options as Array<{ characterId: string; cardType: string }> | undefined;
+  if (!options || !options.some((o) => o.characterId === input.characterId && o.cardType === input.cardType)) {
+    throw new HttpModuleError(400, "card_not_in_options", "mission_claim", "La carta seleccionada no esta entre las opciones disponibles.");
+  }
+
+  const result = await grantSpecificCard(supabase, context.userId, input.characterId, input.cardType as "base" | "definitiva");
+
+  await supabase
+    .from("idempotency_keys")
+    .update({
+      response: { ...grantRow.response, used: true, grantedAt: new Date().toISOString(), grantedCard: { characterId: input.characterId, cardType: input.cardType } },
+    })
+    .eq("user_id", context.userId)
+    .eq("request_id", input.grantToken);
+
+  return {
+    ok: true,
+    grantToken: input.grantToken,
+    card: result.card,
+    message: "Carta concedida exitosamente.",
+  };
 }

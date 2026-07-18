@@ -59,4 +59,5 @@ export interface GodotDomainService {
   upgradeItem(context: GodotAuthedRequestContext, input: UpgradeItemInput): Promise<unknown>;
   dismantleItem(context: GodotAuthedRequestContext, input: DismantleItemInput): Promise<unknown>;
   ultimateUsed(context: GodotAuthedRequestContext, input: { requestId: string; count?: number }): Promise<unknown>;
+  grantChoiceCard(context: GodotAuthedRequestContext, input: { requestId: string; grantToken: string; characterId: string; cardType: string }): Promise<unknown>;
 }

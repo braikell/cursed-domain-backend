@@ -61,7 +61,8 @@ function notImplemented(
     | "social_send_request"
     | "social_respond_request"
     | "social_remove_friend"
-    | "ultimate_used",
+    | "ultimate_used"
+    | "grant_choice_card",
   message: string,
 ): never {
   throw new HttpModuleError(501, "not_implemented", module, message);
@@ -202,5 +203,9 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async ultimateUsed(_context: GodotAuthedRequestContext, _input: { requestId: string; count?: number }): Promise<unknown> {
     return notImplemented("ultimate_used", "Ultimate used tracking not implemented yet.");
+  }
+
+  async grantChoiceCard(_context: GodotAuthedRequestContext, _input: { requestId: string; grantToken: string; characterId: string; cardType: string }): Promise<unknown> {
+    return notImplemented("grant_choice_card", "Grant choice card not implemented yet.");
   }
 }

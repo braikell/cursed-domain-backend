@@ -118,6 +118,13 @@ const ultimateUsedInputSchema = z.object({
   count: z.number().int().min(1).max(100).optional(),
 });
 
+const grantChoiceCardInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  grantToken: z.string().uuid(),
+  characterId: z.string().min(1).max(120),
+  cardType: z.enum(["base", "definitiva"]),
+});
+
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -319,6 +326,19 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "ultimate_used", "Invalid request payload.");
       }
       const response = await domainService.ultimateUsed(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/grant-choice-card", async (context) =>
+    withModule(context, "grant_choice_card", async () => {
+      const authed = await requireAuthedGodotUser(context, "grant_choice_card");
+      const body = await context.req.json().catch(() => null);
+      const parsed = grantChoiceCardInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "grant_choice_card", "Invalid request payload.");
+      }
+      const response = await domainService.grantChoiceCard(authed, parsed.data);
       return context.json(response);
     }),
   );
