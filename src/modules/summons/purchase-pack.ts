@@ -548,7 +548,7 @@ async function finalizePurchase(input: {
       target_pack_id: input.resolved.pack.id,
       purchase_currency: input.resolved.cost.currency,
       purchase_amount: input.resolved.purchaseCount,
-      price_amount: input.resolved.cost.amount,
+      price_amount: input.resolved.cost.amount > 0 ? input.resolved.cost.amount : 1,
       action: "purchase_pack_v1",
       save_payload: input.resolved.save,
       save_version: input.resolved.save.schemaVersion,
