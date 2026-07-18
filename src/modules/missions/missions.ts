@@ -461,6 +461,17 @@ export async function claimAllMissionsDedicated(
     }
   }
 
+  const missionDefById = new Map(missions.map((m) => [m.missionId, m]));
+  for (const row of completableRows) {
+    const def = missionDefById.get(row.mission_id);
+    if (!def) continue;
+    const rt = def.rewardType ?? "gold_gems";
+    if (rt.endsWith("_pack")) {
+      const packId = ((def.rewardConfig as Record<string, unknown>)?.packId as string) ?? "basicPack";
+      await addPackToken(context.userId, packId, 1);
+    }
+  }
+
   const save = await updateLegacyPlayerSaveMirror(supabase, context.userId, { gold: nextGold, gems: nextGems });
   const snapshot = await buildMissionSnapshotResponse(supabase, context.userId, config, scope);
 
