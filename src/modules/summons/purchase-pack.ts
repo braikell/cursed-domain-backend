@@ -546,7 +546,7 @@ async function finalizePurchase(input: {
       target_user_id: input.userId,
       request_id: input.requestId,
       target_pack_id: input.resolved.pack.id,
-      purchase_currency: input.resolved.cost.currency,
+      purchase_currency: input.resolved.cost.currency === "free_token" ? "gold" : input.resolved.cost.currency,
       purchase_amount: input.resolved.purchaseCount,
       price_amount: input.resolved.cost.amount > 0 ? input.resolved.cost.amount : 1,
       action: "purchase_pack_v1",
