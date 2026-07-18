@@ -797,3 +797,17 @@ export async function redeemChoiceTokenDedicated(
     message: "Carta concedida exitosamente.",
   };
 }
+
+export async function ultimateUsedDedicated(
+  context: GodotAuthedRequestContext,
+  input: { requestId: string; count?: number },
+): Promise<unknown> {
+  const supabase = createServiceSupabaseClient();
+  const config = await getBootstrapMonetizationConfig(supabase);
+  await ensureDailyMissionSnapshotState(supabase, context.userId, config, getUtcResetDate());
+
+  const increment = Math.max(1, Math.floor(input.count ?? 1));
+  await updateDailyMissionProgress(supabase, context.userId, config, "ultimate_used", increment);
+
+  return { ok: true, tracked: true, count: increment };
+}

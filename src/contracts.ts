@@ -12,6 +12,7 @@ export type BackendModuleName =
   | "mission_tokens"
   | "redeem_pack_token"
   | "redeem_choice_token"
+  | "ultimate_used"
   | "battle_start"
   | "battle_resolve"
   | "cards_upgrade"

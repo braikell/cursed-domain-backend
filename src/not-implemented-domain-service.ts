@@ -60,7 +60,8 @@ function notImplemented(
     | "social_search"
     | "social_send_request"
     | "social_respond_request"
-    | "social_remove_friend",
+    | "social_remove_friend"
+    | "ultimate_used",
   message: string,
 ): never {
   throw new HttpModuleError(501, "not_implemented", module, message);
@@ -197,5 +198,9 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async dismantleItem(_context: GodotAuthedRequestContext, _input: DismantleItemInput): Promise<unknown> {
     return notImplemented("equipment_dismantle", "Dismantle item extraction not implemented yet.");
+  }
+
+  async ultimateUsed(_context: GodotAuthedRequestContext, _input: { requestId: string; count?: number }): Promise<unknown> {
+    return notImplemented("ultimate_used", "Ultimate used tracking not implemented yet.");
   }
 }

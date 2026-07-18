@@ -147,6 +147,7 @@ export async function upgradeCardDedicated(
   });
 
   await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", upgradePlan.cost.gold);
+  await updateDailyMissionProgress(supabase, context.userId, config, "card_upgraded", upgradePlan.levelsApplied);
 
   const response = {
     ok: true,
@@ -297,6 +298,7 @@ export async function ascendCardDedicated(
   });
 
   await updateDailyMissionProgress(supabase, context.userId, config, "gold_spent", cost.gold);
+  await updateDailyMissionProgress(supabase, context.userId, config, "card_upgraded", 1);
 
   const response = {
     ok: true,

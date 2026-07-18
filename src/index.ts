@@ -6,7 +6,7 @@ import { NotImplementedGodotDomainService } from "./not-implemented-domain-servi
 import { bootstrapPlayer } from "./modules/bootstrap/player-bootstrap.js";
 import { getPityStatusDedicated, purchasePackDedicated } from "./modules/summons/purchase-pack.js";
 import { claimAfkDedicated, getAfkStatusDedicated } from "./modules/afk/afk.js";
-import { claimMissionDedicated, getMissionsDedicated, getChestsDedicated, claimChestDedicated, claimAllMissionsDedicated, getMissionTokensDedicated, redeemPackTokenDedicated, redeemChoiceTokenDedicated } from "./modules/missions/missions.js";
+import { claimMissionDedicated, getMissionsDedicated, getChestsDedicated, claimChestDedicated, claimAllMissionsDedicated, getMissionTokensDedicated, redeemPackTokenDedicated, redeemChoiceTokenDedicated, ultimateUsedDedicated } from "./modules/missions/missions.js";
 import { completeBattleDedicated, startBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
 import { completePvpMatchDedicated, getPvpStatusDedicated, startPvpMatchDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
@@ -182,6 +182,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async dismantleItem(_context: GodotAuthedRequestContext, _input: DismantleItemInput): Promise<unknown> {
     return await dismantleItemDedicated(_context, _input);
+  }
+
+  override async ultimateUsed(_context: GodotAuthedRequestContext, _input: { requestId: string; count?: number }): Promise<unknown> {
+    return await ultimateUsedDedicated(_context, _input);
   }
 }
 

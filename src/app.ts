@@ -113,6 +113,11 @@ const redeemChoiceTokenInputSchema = z.object({
   cardType: z.enum(["base", "definitiva"]),
 });
 
+const ultimateUsedInputSchema = z.object({
+  requestId: z.string().min(8).max(80),
+  count: z.number().int().min(1).max(100).optional(),
+});
+
 const upgradeCardInputSchema = z.object({
   userCardId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
@@ -301,6 +306,19 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "redeem_choice_token", "Invalid request payload.");
       }
       const response = await domainService.redeemChoiceToken(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/ultimate-used", async (context) =>
+    withModule(context, "ultimate_used", async () => {
+      const authed = await requireAuthedGodotUser(context, "ultimate_used");
+      const body = await context.req.json().catch(() => null);
+      const parsed = ultimateUsedInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "ultimate_used", "Invalid request payload.");
+      }
+      const response = await domainService.ultimateUsed(authed, parsed.data);
       return context.json(response);
     }),
   );

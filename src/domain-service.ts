@@ -58,4 +58,5 @@ export interface GodotDomainService {
   unequipItem(context: GodotAuthedRequestContext, input: UnequipItemInput): Promise<unknown>;
   upgradeItem(context: GodotAuthedRequestContext, input: UpgradeItemInput): Promise<unknown>;
   dismantleItem(context: GodotAuthedRequestContext, input: DismantleItemInput): Promise<unknown>;
+  ultimateUsed(context: GodotAuthedRequestContext, input: { requestId: string; count?: number }): Promise<unknown>;
 }
