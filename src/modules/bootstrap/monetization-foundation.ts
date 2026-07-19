@@ -105,6 +105,7 @@ const SEED_DAILY_MISSIONS: MissionDefinition[] = [
   m("clear_1_tower_boss", "tower_boss_cleared", 1400, 15, 5, "basic_pack", r({packId: "basicPack", packCount: 1}), 1, 46, true, "Jefe de la Torre", "Derrota 1 jefe(s) de la torre."),
   m("upgrade_1_card", "card_upgraded", 800, 8, 5, "gold_gems", {}, 1, 50, true, "Mejorar Heroe", "Mejora cualquier heroe 1 vez/veces."),
   m("upgrade_3_cards", "card_upgraded", 600, 5, 5, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 3, 60, true, "Mejorar Heroes", "Mejora cualquier heroe 3 vez/veces."),
+  m("complete_8_campaign_battles", "campaign_battle_completed", 700, 0, 5, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 8, 65, true, "Batallas de Campana II", "Completa 8 batalla(s) en la campana."),
   m("equip_or_upgrade_1_item", "item_equipped_or_upgraded", 700, 8, 5, "gold_gems", {}, 1, 70, true, "Equipar o Mejorar Objeto", "Equipa o mejora 1 objeto(s)."),
   m("open_1_basic_pack", "basic_pack_opened", 500, 5, 5, "gold_gems", {}, 1, 80, true, "Abrir Sobre Basico", "Abre 1 sobre(s) basico(s)."),
   m("complete_1_daily_dungeon", "daily_dungeon_completed", 600, 5, 5, "epic_pack", r({packId: "epicPack", packCount: 1}), 1, 90, true, "Mazmorra Diaria", "Completa 1 mazmorra(s)."),
@@ -132,29 +133,33 @@ const SEED_DAILY_CHESTS: ChestDefinition[] = [
 const SEED_WEEKLY_MISSIONS: MissionDefinition[] = [
   m("weekly_complete_20_campaign", "campaign_battle_completed", 2000, 15, 15, "gold_gems", {}, 20, 10, true, "Batallas de Campana", "Completa 20 batalla(s) en la campana."),
   m("weekly_win_10_battles", "battle_won", 1800, 20, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 10, 20, true, "Victorias en Batalla", "Gana 10 batalla(s)."),
+  m("weekly_upgrade_10_cards", "card_upgraded", 1800, 12, 15, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 10, 25, true, "Forja de Heroes", "Mejora cualquier heroe 10 vez/veces."),
   m("weekly_clear_10_tower_floors", "tower_floor_cleared", 1500, 10, 15, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 10, 30, true, "Pisos de la Torre", "Supera 10 piso(s) de la torre."),
   m("weekly_clear_3_tower_bosses", "tower_boss_cleared", 2000, 15, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 3, 40, true, "Jefes de la Torre", "Derrota 3 jefe(s) de la torre."),
+  m("weekly_complete_30_campaign", "campaign_battle_completed", 2200, 12, 15, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 30, 45, true, "Conquista de Campana", "Completa 30 batalla(s) en la campana."),
   m("weekly_upgrade_5_cards", "card_upgraded", 1500, 15, 15, "epic_pack", r({packId: "epicPack", packCount: 1}), 5, 50, true, "Mejorar Heroes", "Mejora cualquier heroe 5 vez/veces."),
   m("weekly_open_5_packs", "basic_pack_opened", 1600, 10, 15, "gold_gems", {}, 5, 60, true, "Abrir Sobres Basicos", "Abre 5 sobre(s) basico(s)."),
   m("weekly_play_10_pvp", "arena_pvp_played", 2500, 25, 15, "gold_gems", {}, 10, 70, true, "Combates en la Arena", "Participa en la Arena 10 vez/veces."),
   m("weekly_spend_15000_gold", "gold_spent", 2200, 18, 15, "gold_gems", {}, 15000, 80, true, "Gastar Oro", "Gasta 15000 de oro."),
+  m("weekly_win_15_battles", "battle_won", 3000, 20, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 15, 85, true, "Maestro del Combate", "Gana 15 batalla(s)."),
   m("weekly_use_ultimate_60", "ultimate_used", 1600, 10, 15, "gold_gems", {}, 60, 90, true, "Usar Tecnica Definitiva", "Usa la tecnica definitiva 60 vez/veces."),
   m("weekly_equip_or_upgrade_5_items", "item_equipped_or_upgraded", 1400, 12, 15, "gold_gems", {}, 5, 100, true, "Equipar o Mejorar Objetos", "Equipa o mejora 5 objeto(s)."),
+  m("weekly_clear_7_tower_bosses", "tower_boss_cleared", 3500, 25, 20, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 7, 105, true, "Cazador de Jefes", "Derrota 7 jefe(s) de la torre."),
   m("weekly_complete_7_daily", "daily_mission_completed_other", 2500, 25, 20, "epic_pack", r({packId: "epicPack", packCount: 1}), 7, 110, true, "Cadena de Misiones", "Completa 7 mision(es) diaria(s)."),
 ];
 
-const SEED_WEEKLY_CHESTS: ChestDefinition[] = [
-  { chestId: "weekly_chest_75", requiredPoints: 75, rewardGold: 3000, rewardGems: 40, sortOrder: 10, isEnabled: true },
-  { chestId: "weekly_chest_150", requiredPoints: 150, rewardGold: 4000, rewardGems: 60, sortOrder: 20, isEnabled: true },
-];
+const SEED_WEEKLY_CHESTS: ChestDefinition[] = [];
 
 const SEED_SEASON_MISSIONS: MissionDefinition[] = [
   m("season_complete_100_campaign", "campaign_battle_completed", 3000, 20, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 100, 10, true, "Batallas de Campana", "Completa 100 batalla(s) en la campana."),
   m("season_win_50_battles", "battle_won", 4000, 30, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 50, 20, true, "Victorias en Batalla", "Gana 50 batalla(s)."),
+  m("season_upgrade_25_cards", "card_upgraded", 4000, 30, 30, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 25, 25, true, "Artesania Suprema", "Mejora cualquier heroe 25 vez/veces."),
   m("season_clear_30_tower_floors", "tower_floor_cleared", 4000, 30, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 30, 30, true, "Pisos de la Torre", "Supera 30 piso(s) de la torre."),
   m("season_upgrade_15_cards", "card_upgraded", 4500, 35, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 15, 40, true, "Mejorar Heroes", "Mejora cualquier heroe 15 vez/veces."),
+  m("season_clear_80_tower_floors", "tower_floor_cleared", 5000, 35, 35, "choice_legendary", r({choiceType: "legendary", choiceCount: 1}), 80, 45, true, "Ascenso Infinito", "Supera 80 piso(s) de la torre."),
   m("season_open_20_packs", "basic_pack_opened", 2500, 0, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 20, 50, true, "Abrir Sobres", "Abre 20 sobre(s) basico(s)."),
   m("season_play_30_pvp", "arena_pvp_played", 5000, 45, 30, "basic_pack", r({packId: "basicPack", packCount: 1}), 30, 60, true, "Combates en la Arena", "Participa en la Arena 30 vez/veces."),
+  m("season_win_150_campaign", "battle_won", 4500, 30, 35, "choice_epic", r({choiceType: "epic", choiceCount: 1}), 150, 65, true, "Senor de la Guerra", "Gana 150 batalla(s)."),
   m("season_spend_80k_gold", "gold_spent", 2000, 20, 30, "mythic_pack", r({packId: "mythicPack", packCount: 1}), 80000, 70, true, "Gastar Oro", "Gasta 80000 de oro."),
   m("season_use_ultimate_200", "ultimate_used", 3000, 0, 30, "legendary_pack", r({packId: "legendaryPack", packCount: 1}), 200, 80, true, "Usar Tecnica Definitiva", "Usa la tecnica definitiva 200 vez/veces."),
   m("season_equip_or_upgrade_15_items", "item_equipped_or_upgraded", 3000, 25, 30, "epic_pack", r({packId: "epicPack", packCount: 1}), 15, 90, true, "Equipar o Mejorar Objetos", "Equipa o mejora 15 objeto(s)."),
@@ -163,10 +168,7 @@ const SEED_SEASON_MISSIONS: MissionDefinition[] = [
   m("season_complete_all", "season_all_missions_completed", 0, 0, 50, "choice_definitiva", r({choiceType: "definitiva", choiceCount: 1}), 1, 200, true, "Completar Toda la Temporada", "Completa todas las misiones de temporada."),
 ];
 
-const SEED_SEASON_CHESTS: ChestDefinition[] = [
-  { chestId: "season_chest_150", requiredPoints: 150, rewardGold: 8000, rewardGems: 100, sortOrder: 10, isEnabled: true },
-  { chestId: "season_chest_300", requiredPoints: 300, rewardGold: 12000, rewardGems: 160, sortOrder: 20, isEnabled: true },
-];
+const SEED_SEASON_CHESTS: ChestDefinition[] = [];
 
 const SEED_CONFIG: MonetizationConfigLite = {
   configVersion: 1,
