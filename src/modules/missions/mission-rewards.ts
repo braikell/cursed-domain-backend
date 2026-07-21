@@ -177,7 +177,7 @@ export function getChoiceCardOptions(choiceType: string): Array<{ characterId: s
       const key = `${card.characterKey}_${card.cardType}`;
       if (!seen.has(key)) {
         seen.add(key);
-        options.push({ characterId: card.characterKey, cardType: card.cardType, displayName: card.characterKey });
+        options.push({ characterId: card.characterKey, cardType: card.cardType.toLowerCase(), displayName: card.characterKey });
       }
     }
   } else if (choiceType === "legendary") {
@@ -186,7 +186,7 @@ export function getChoiceCardOptions(choiceType: string): Array<{ characterId: s
       const key = `${card.characterKey}_${card.cardType}`;
       if (!seen.has(key)) {
         seen.add(key);
-        options.push({ characterId: card.characterKey, cardType: card.cardType, displayName: card.characterKey });
+        options.push({ characterId: card.characterKey, cardType: card.cardType.toLowerCase(), displayName: card.characterKey });
       }
     }
   } else if (choiceType === "definitiva") {
@@ -196,7 +196,7 @@ export function getChoiceCardOptions(choiceType: string): Array<{ characterId: s
       const key = `${card.characterKey}_${card.cardType}`;
       if (!seen.has(key)) {
         seen.add(key);
-        options.push({ characterId: card.characterKey, cardType: card.cardType, displayName: card.characterKey });
+        options.push({ characterId: card.characterKey, cardType: card.cardType.toLowerCase(), displayName: card.characterKey });
       }
     }
   }
