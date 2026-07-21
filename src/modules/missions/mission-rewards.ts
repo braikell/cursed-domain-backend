@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { getBalancedCardsByRarityAndType } from "../cards/balance.js";
+import { getBalancedCardsByRarityAndType, getCardBalance } from "../cards/balance.js";
 
 type PackId = "basicPack" | "epicPack" | "legendaryPack" | "mythicPack";
 
@@ -138,6 +138,15 @@ export async function consumeChoiceToken(userId: string, tokenId: string): Promi
   };
 }
 
+function mapCardRarityToDefinitionRarity(rarity: string): number {
+  switch (rarity.toLowerCase()) {
+    case "epic": return 3;
+    case "legendary": return 4;
+    case "mythic": return 5;
+    default: return 1;
+  }
+}
+
 export async function grantSpecificCard(
   supabaseClient: SupabaseClient,
   userId: string,
@@ -146,13 +155,27 @@ export async function grantSpecificCard(
 ): Promise<{ card: { characterId: string; cardType: string } | null }> {
   const now = new Date().toISOString();
   const normalizedId = characterId.trim().toLowerCase();
+  const normalizedType = cardType.toLowerCase() === "definitiva" ? "DEFINITIVA" : "BASE";
+  const balance = getCardBalance(normalizedId, normalizedType);
+  const rarity = balance?.rarity ?? (normalizedType === "DEFINITIVA" ? "legendary" : "basic");
+  const cardKey = balance?.card_key ?? `${normalizedId}_${normalizedType.toLowerCase()}_${rarity}`;
 
   const { error } = await supabaseClient.from("user_cards").insert({
     user_id: userId,
+    card_definition_id: cardKey,
     character_id: normalizedId,
-    card_type: cardType,
+    character_key: normalizedId,
+    variant: normalizedType === "DEFINITIVA" ? "definitive" : "base",
+    card_type: normalizedType,
+    rarity,
+    definition_rarity: mapCardRarityToDefinitionRarity(rarity),
+    card_key: cardKey,
     level: 1,
+    xp: 0,
+    stars: 1,
     ascension: 0,
+    awakening: 0,
+    fragments: 0,
     acquired_at: now,
     updated_at: now,
   });
