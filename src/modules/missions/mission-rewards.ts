@@ -152,8 +152,8 @@ export async function grantSpecificCard(
     character_id: normalizedId,
     card_type: cardType,
     level: 1,
-    ascended: false,
-    obtained_at: now,
+    ascension: 0,
+    acquired_at: now,
     updated_at: now,
   });
 
