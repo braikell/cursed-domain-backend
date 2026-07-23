@@ -35,9 +35,9 @@ export async function completeIncursionDedicated(
       `incursion_complete:${requestId}`,
       requestId,
     );
-    if (idempotent !== "proceed") {
-      logger.info("incursion_idempotent_replay", { userId, requestId, operation: idempotent });
-      return idempotent;
+    if (idempotent.status === "replayed") {
+      logger.info("incursion_idempotent_replay", { userId, requestId });
+      return idempotent.response ?? { ok: true, replay: true };
     }
 
     const waveReached = Math.max(0, Math.min(input.waveReached, 10));
@@ -48,7 +48,7 @@ export async function completeIncursionDedicated(
 
     if (gold === 0 && gems === 0 && xp === 0) {
       const empty = { ok: true, waveReached, kills, save: null };
-      await completeIdempotentOperation(supabase, userId, `incursion_complete:${requestId}`, requestId, empty);
+      await completeIdempotentOperation(supabase, userId, requestId, empty);
       return empty;
     }
 
@@ -76,7 +76,7 @@ export async function completeIncursionDedicated(
       save: xpResult.save,
     };
 
-    await completeIdempotentOperation(supabase, userId, `incursion_complete:${requestId}`, requestId, response);
+    await completeIdempotentOperation(supabase, userId, requestId, response);
     return response;
   } catch (error) {
     logger.error("incursion_complete_failed", {
