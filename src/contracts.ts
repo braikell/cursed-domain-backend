@@ -197,7 +197,7 @@ export interface CompleteIncursionInput {
   waveReached: number;
   kills: number;
   requestId: string;
-  rewards: {
+  rewards?: {
     gold: number;
     gems: number;
     xp: number;

@@ -126,7 +126,7 @@ const completeIncursionInputSchema = z.object({
     gold: z.number().int().min(0).max(999999999),
     gems: z.number().int().min(0).max(999999),
     xp: z.number().int().min(0).max(9999999),
-  }),
+  }).optional(),
 });
 
 const grantChoiceCardInputSchema = z.object({
