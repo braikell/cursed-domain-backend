@@ -125,12 +125,6 @@ export async function getMissionsDedicated(context: GodotAuthedRequestContext): 
     buildMissionSnapshotResponse(supabase, context.userId, config, "season"),
   ]);
 
-  if (daily.missions.length > 0) {
-    const tickets = daily.missions.filter((m: any) => m.rewardType !== "gold_gems");
-    console.log("[MISSIONS] daily total:", daily.missions.length, "with tickets:", tickets.length);
-    tickets.forEach((m: any) => console.log("[MISSIONS]   ticket:", m.missionId, "->", m.rewardType));
-  }
-
   return {
     ok: true,
     daily,
@@ -173,7 +167,10 @@ export async function claimMissionDedicated(
   }
 
   const tables = SCOPE_TABLES[scope];
-  const state = await loadMissionState(supabase, context.userId, input.missionId, resetDate, tables.missionTable);
+  const [state, economy] = await Promise.all([
+    loadMissionState(supabase, context.userId, input.missionId, resetDate, tables.missionTable),
+    loadUserEconomyRow(supabase, context.userId),
+  ]);
   if (state == null) {
     throw new HttpModuleError(404, "mission_state_missing", "mission_claim", "Mission state not found.");
   }
@@ -184,7 +181,6 @@ export async function claimMissionDedicated(
     throw new HttpModuleError(409, "mission_not_completed", "mission_claim", "La mision todavia no esta completada.");
   }
 
-  const economy = await loadUserEconomyRow(supabase, context.userId);
   const grantedGold = Math.max(0, state.reward_gold_configured);
   const grantedGems = Math.max(0, state.reward_gems_configured);
   const grantedPoints = Math.max(0, state.reward_points_configured);
@@ -217,16 +213,6 @@ export async function claimMissionDedicated(
     specialReward = { type: "choice_token", choiceType, grantToken, pending: true };
   }
 
-  const { error: economyError } = await supabase
-    .from("user_economy")
-    .update({
-      gold: nextGold,
-      gems: nextGems,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", context.userId);
-  if (economyError) throw new HttpModuleError(500, "economy_update_failed", "mission_claim", economyError.message);
-
   const stateUpdate: Record<string, unknown> = {
     claimed: true,
     reward_gold_granted: grantedGold,
@@ -235,12 +221,25 @@ export async function claimMissionDedicated(
     reward_capped: false,
     reward_config: { rewardType, rewardConfig, grantedAt: new Date().toISOString() },
   };
-  const { error: missionError } = await supabase
-    .from(tables.missionTable)
-    .update(stateUpdate)
-    .eq("user_id", context.userId)
-    .eq("mission_id", input.missionId)
-    .eq("reset_date", resetDate);
+  const [economyUpdate, missionUpdate] = await Promise.all([
+    supabase
+      .from("user_economy")
+      .update({
+        gold: nextGold,
+        gems: nextGems,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", context.userId),
+    supabase
+      .from(tables.missionTable)
+      .update(stateUpdate)
+      .eq("user_id", context.userId)
+      .eq("mission_id", input.missionId)
+      .eq("reset_date", resetDate),
+  ]);
+  const economyError = economyUpdate.error;
+  const missionError = missionUpdate.error;
+  if (economyError) throw new HttpModuleError(500, "economy_update_failed", "mission_claim", economyError.message);
   if (missionError) throw new HttpModuleError(500, "mission_state_update_failed", "mission_claim", missionError.message);
 
   if (scope === "daily" && input.missionId !== "complete_10_daily_missions") {
@@ -254,12 +253,13 @@ export async function claimMissionDedicated(
     }
   }
 
-  const save = await updateLegacyPlayerSaveMirror(supabase, context.userId, {
-    gold: nextGold,
-    gems: nextGems,
-  });
-
-  const snapshot = await buildMissionSnapshotResponse(supabase, context.userId, config, scope);
+  const [save, snapshot] = await Promise.all([
+    updateLegacyPlayerSaveMirror(supabase, context.userId, {
+      gold: nextGold,
+      gems: nextGems,
+    }),
+    buildMissionSnapshotResponse(supabase, context.userId, config, scope),
+  ]);
   const response = {
     ok: true,
     missionId: input.missionId,

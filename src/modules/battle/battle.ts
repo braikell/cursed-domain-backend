@@ -227,9 +227,6 @@ export async function completeBattleDedicated(
   context: GodotAuthedRequestContext,
   input: CompleteBattleInput,
 ): Promise<unknown> {
-  if (input.result !== "win") {
-    throw new HttpModuleError(400, "unsupported_battle_result", "battle_resolve", "Only win result is supported.");
-  }
   assertUuid(input.battleSessionId, "battle_resolve");
 
   const supabase = createServiceSupabaseClient();
@@ -257,6 +254,11 @@ export async function completeBattleDedicated(
 
   const save = await loadPlayerSave(supabase, context.userId);
   const progress = await loadPlayerProgressRow(supabase, context.userId, save);
+  if (input.result === "loss") {
+    const response = buildCampaignLossResponse(input, save, progress, currentStage.stage_key);
+    await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
+    return response;
+  }
   console.info("[battle_resolve] start", {
     userId: context.userId,
     stageId: input.stageId,
@@ -435,6 +437,80 @@ export async function completeBattleDedicated(
 
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
   return response;
+}
+
+function buildCampaignLossResponse(
+  input: CompleteBattleInput,
+  save: GameSaveSnapshot,
+  progress: PlayerProgressRow,
+  stageKey: string,
+) {
+  const currentStage = progress.current_stage ?? save.currentStage;
+  const highestStage = progress.highest_stage ?? save.highestStage;
+  const xp = progress.xp ?? save.xp;
+  const playerLevel = progress.player_level ?? save.playerLevel;
+  const totalBattlesWon = Math.max(progress.total_battles_won, save.totalBattlesWon);
+  const zeroReward = {
+    gold: 0,
+    gems: 0,
+    xp: 0,
+    materials: 0,
+    materialId: null,
+    equipmentItems: [] as unknown[],
+  };
+
+  return {
+    ok: true as const,
+    success: true,
+    stageId: input.stageId,
+    result: input.result,
+    reward: zeroReward,
+    progressionReward: null,
+    heroProgress: {
+      updatedCards: [] as unknown[],
+      totalXpGranted: 0,
+    },
+    rewards_applied: {
+      gold: 0,
+      gems: 0,
+      xp: 0,
+      materials: 0,
+      material_id: null,
+      equipment_items: [] as unknown[],
+    },
+    gold_added: 0,
+    gems_added: 0,
+    xp_added: 0,
+    new_gold: save.gold,
+    new_gems: save.gems,
+    new_xp: xp,
+    new_level: playerLevel,
+    completed_stage: null,
+    attempted_stage: stageKey,
+    unlocked_next_stage: currentStage,
+    progression: {
+      previousPlayerLevel: playerLevel,
+      currentPlayerLevel: playerLevel,
+      currentXp: xp,
+      levelUpRewards: [] as unknown[],
+      gemsGranted: 0,
+      currentStage,
+      highestStage,
+      totalBattlesWon,
+    },
+    save: {
+      gold: save.gold,
+      gems: save.gems,
+      xp,
+      playerLevel,
+      currentStage,
+      highestStage,
+      totalBattlesWon,
+      schemaVersion: save.schemaVersion,
+      levelUpRewards: [] as unknown[],
+      gemsGranted: 0,
+    },
+  };
 }
 
 async function loadStageDefinitions(supabase: SupabaseClient) {

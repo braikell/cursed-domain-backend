@@ -14,6 +14,7 @@ export type PlayerXpRewardSource =
   | "afk_claim"
   | "tower_floor"
   | "pvp_win"
+  | "incursion"
   | "admin_adjustment";
 
 export interface GrantPlayerXpRewardInput {

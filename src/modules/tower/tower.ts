@@ -64,10 +64,6 @@ export async function completeTowerFloorDedicated(
   context: GodotAuthedRequestContext,
   input: CompleteTowerFloorInput,
 ): Promise<unknown> {
-  if (input.result !== "win") {
-    throw new HttpModuleError(400, "unsupported_tower_result", "tower_complete_floor", "Only win result is supported.");
-  }
-
   const supabase = createServiceSupabaseClient();
   const operation = `complete_tower_floor_v1:${input.floorNumber}:${input.result}`;
   const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId);
@@ -93,6 +89,12 @@ export async function completeTowerFloorDedicated(
   const unlockedFloor = Math.max(1, progress.highest_floor + 1);
   if (floor.floor_number > unlockedFloor) {
     throw new HttpModuleError(409, "tower_floor_locked", "tower_complete_floor", "Este piso de la Torre Infinita aun esta bloqueado.");
+  }
+
+  if (input.result === "loss") {
+    const response = buildTowerLossResponse(floor, progress);
+    await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
+    return response;
   }
 
   const isFirstClear = existingClear == null || existingClear.clear_count <= 0;
@@ -183,6 +185,35 @@ export async function completeTowerFloorDedicated(
 
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
   return response;
+}
+
+function buildTowerLossResponse(floor: TowerFloorDefinitionRow, progress: UserTowerProgressRow) {
+  return {
+    ok: true as const,
+    floorNumber: floor.floor_number,
+    floorKey: floor.floor_key,
+    result: "loss" as const,
+    isFirstClear: false,
+    isBoss: floor.is_boss,
+    reward: {
+      gold: 0,
+      gems: 0,
+      xp: 0,
+      equipmentItems: [] as unknown[],
+    },
+    progressionReward: null,
+    progression: {
+      previousHighestFloor: progress.highest_floor,
+      highestFloor: progress.highest_floor,
+      currentFloor: progress.current_floor,
+      totalClears: progress.total_clears,
+      currentXp: null,
+      currentPlayerLevel: null,
+      levelUpRewards: [] as unknown[],
+      gemsGranted: 0,
+    },
+    save: {},
+  };
 }
 
 async function loadTowerFloors(supabase: SupabaseClient) {

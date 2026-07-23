@@ -6,6 +6,7 @@ import type {
   ClaimChestInput,
   ClaimMissionInput,
   CompleteBattleInput,
+  CompleteIncursionInput,
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
@@ -61,8 +62,9 @@ function notImplemented(
     | "social_send_request"
     | "social_respond_request"
     | "social_remove_friend"
-    | "ultimate_used"
-    | "grant_choice_card",
+  | "ultimate_used"
+  | "grant_choice_card"
+  | "incursion_complete",
   message: string,
 ): never {
   throw new HttpModuleError(501, "not_implemented", module, message);
@@ -207,5 +209,9 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async grantChoiceCard(_context: GodotAuthedRequestContext, _input: { requestId: string; grantToken: string; characterId: string; cardType: string }): Promise<unknown> {
     return notImplemented("grant_choice_card", "Grant choice card not implemented yet.");
+  }
+
+  async completeIncursion(_context: GodotAuthedRequestContext, _input: CompleteIncursionInput): Promise<unknown> {
+    return notImplemented("incursion_complete", "Incursion complete not implemented yet.");
   }
 }

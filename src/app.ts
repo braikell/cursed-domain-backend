@@ -40,7 +40,7 @@ const claimAllMissionsInputSchema = z.object({
 
 const completeBattleInputSchema = z.object({
   stageId: z.string().min(1),
-  result: z.literal("win"),
+  result: z.enum(["win", "loss"]),
   requestId: z.string().min(8).max(80),
   battleSessionId: z.string().uuid(),
   durationSeconds: z.number().min(0).max(3600).optional(),
@@ -57,7 +57,7 @@ const startBattleInputSchema = z.object({
 
 const completeTowerFloorInputSchema = z.object({
   floorNumber: z.number().int().positive().max(5000),
-  result: z.literal("win"),
+  result: z.enum(["win", "loss"]),
   requestId: z.string().min(8).max(80),
 });
 
@@ -116,6 +116,17 @@ const redeemChoiceTokenInputSchema = z.object({
 const ultimateUsedInputSchema = z.object({
   requestId: z.string().min(8).max(80),
   count: z.number().int().min(1).max(100).optional(),
+});
+
+const completeIncursionInputSchema = z.object({
+  waveReached: z.number().int().min(0).max(10),
+  kills: z.number().int().min(0).max(99999),
+  requestId: z.string().min(8).max(80),
+  rewards: z.object({
+    gold: z.number().int().min(0).max(999999999),
+    gems: z.number().int().min(0).max(999999),
+    xp: z.number().int().min(0).max(9999999),
+  }),
 });
 
 const grantChoiceCardInputSchema = z.object({
@@ -585,6 +596,20 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "equipment_dismantle", "Invalid request payload.");
       }
       const response = await domainService.dismantleItem(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/incursion/complete", async (context) =>
+    withModule(context, "incursion_complete", async () => {
+      const authed = await requireAuthedGodotUser(context, "incursion_complete");
+      applyRateLimit(context, authed.userId, "incursion_complete");
+      const body = await context.req.json().catch(() => null);
+      const parsed = completeIncursionInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "incursion_complete", "Invalid request payload.");
+      }
+      const response = await domainService.completeIncursion(authed, parsed.data);
       return context.json(response);
     }),
   );

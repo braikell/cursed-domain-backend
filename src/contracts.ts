@@ -33,7 +33,8 @@ export type BackendModuleName =
   | "social_search"
   | "social_send_request"
   | "social_respond_request"
-  | "social_remove_friend";
+  | "social_remove_friend"
+  | "incursion_complete";
 
 export interface ErrorEnvelope {
   ok: false;
@@ -104,7 +105,7 @@ export interface StartBattleInput {
 
 export interface CompleteBattleInput {
   stageId: string;
-  result: "win";
+  result: "win" | "loss";
   requestId: string;
   battleSessionId: string;
   durationSeconds?: number;
@@ -112,7 +113,7 @@ export interface CompleteBattleInput {
 
 export interface CompleteTowerFloorInput {
   floorNumber: number;
-  result: "win";
+  result: "win" | "loss";
   requestId: string;
 }
 
@@ -190,4 +191,15 @@ export interface SocialRespondRequestInput {
 export interface SocialRemoveFriendInput {
   requestId: string;
   friendUserId: string;
+}
+
+export interface CompleteIncursionInput {
+  waveReached: number;
+  kills: number;
+  requestId: string;
+  rewards: {
+    gold: number;
+    gems: number;
+    xp: number;
+  };
 }

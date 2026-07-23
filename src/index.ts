@@ -10,6 +10,7 @@ import { claimMissionDedicated, getMissionsDedicated, getChestsDedicated, claimC
 import { completeBattleDedicated, startBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
 import { completePvpMatchDedicated, getPvpStatusDedicated, startPvpMatchDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
+import { completeIncursionDedicated } from "./modules/incursion/incursion.js";
 import {
   getSocialStatusDedicated,
   removeFriendDedicated,
@@ -33,6 +34,7 @@ import type {
   ClaimChestInput,
   ClaimMissionInput,
   CompleteBattleInput,
+  CompleteIncursionInput,
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
@@ -190,6 +192,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async grantChoiceCard(_context: GodotAuthedRequestContext, _input: { requestId: string; grantToken: string; characterId: string; cardType: string }): Promise<unknown> {
     return await grantChoiceCardDedicated(_context, _input);
+  }
+
+  override async completeIncursion(_context: GodotAuthedRequestContext, _input: CompleteIncursionInput): Promise<unknown> {
+    return await completeIncursionDedicated(_context, _input);
   }
 }
 

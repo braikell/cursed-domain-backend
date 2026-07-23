@@ -6,6 +6,7 @@ import type {
   ClaimChestInput,
   ClaimMissionInput,
   CompleteBattleInput,
+  CompleteIncursionInput,
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
@@ -60,4 +61,5 @@ export interface GodotDomainService {
   dismantleItem(context: GodotAuthedRequestContext, input: DismantleItemInput): Promise<unknown>;
   ultimateUsed(context: GodotAuthedRequestContext, input: { requestId: string; count?: number }): Promise<unknown>;
   grantChoiceCard(context: GodotAuthedRequestContext, input: { requestId: string; grantToken: string; characterId: string; cardType: string }): Promise<unknown>;
+  completeIncursion(context: GodotAuthedRequestContext, input: CompleteIncursionInput): Promise<unknown>;
 }
