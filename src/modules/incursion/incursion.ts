@@ -1,8 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 import type { CompleteIncursionInput, GodotAuthedRequestContext } from "../../contracts.js";
 import { HttpModuleError } from "../../errors.js";
 import { logger } from "../../safe-logger.js";
+import { createServiceSupabaseClient } from "../../supabase.js";
 import {
   beginIdempotentOperation,
   completeIdempotentOperation,
@@ -11,14 +10,6 @@ import {
   grantPlayerXpReward,
   type PlayerProgressionRewardResult,
 } from "../progression/player-progression.js";
-
-function createServiceSupabaseClient(): SupabaseClient {
-  const { createClient } = require("@supabase/supabase-js");
-  const { env } = require("../../env.js");
-  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
 
 export async function completeIncursionDedicated(
   context: GodotAuthedRequestContext,
