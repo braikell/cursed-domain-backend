@@ -1125,7 +1125,7 @@ async function loadPlayerSaveDebugRow(supabase: SupabaseClient, userId: string) 
   return data;
 }
 
-async function beginIdempotentOperation(
+export async function beginIdempotentOperation(
   supabase: SupabaseClient,
   userId: string,
   operation: string,
@@ -1154,7 +1154,7 @@ async function beginIdempotentOperation(
   return { status: "replayed" as const, response: data.response };
 }
 
-async function completeIdempotentOperation(
+export async function completeIdempotentOperation(
   supabase: SupabaseClient,
   userId: string,
   requestId: string,
