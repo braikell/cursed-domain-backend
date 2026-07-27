@@ -7,6 +7,7 @@ import type {
   ClaimMissionInput,
   CompleteBattleInput,
   CompleteIncursionInput,
+  StartIncursionInput,
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
@@ -60,8 +61,9 @@ function notImplemented(
     | "social_status"
     | "social_search"
     | "social_send_request"
-    | "social_respond_request"
-    | "social_remove_friend"
+  | "social_respond_request"
+  | "social_remove_friend"
+  | "incursion_entry"
   | "ultimate_used"
   | "grant_choice_card"
   | "incursion_complete",
@@ -213,5 +215,9 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async completeIncursion(_context: GodotAuthedRequestContext, _input: CompleteIncursionInput): Promise<unknown> {
     return notImplemented("incursion_complete", "Incursion complete not implemented yet.");
+  }
+
+  async startIncursion(_context: GodotAuthedRequestContext, _input: StartIncursionInput): Promise<unknown> {
+    return notImplemented("incursion_entry", "Incursion entry extraction not implemented yet.");
   }
 }

@@ -34,6 +34,7 @@ export type BackendModuleName =
   | "social_send_request"
   | "social_respond_request"
   | "social_remove_friend"
+  | "incursion_entry"
   | "incursion_complete";
 
 export interface ErrorEnvelope {
@@ -197,9 +198,12 @@ export interface CompleteIncursionInput {
   waveReached: number;
   kills: number;
   requestId: string;
-  rewards?: {
-    gold: number;
-    gems: number;
-    xp: number;
-  };
+  incursionSessionId: string;
+  survivalTime?: number;
+  resultType?: "defeat" | "extraction" | "victory";
+}
+
+export interface StartIncursionInput {
+  currency: "gold" | "gems";
+  requestId: string;
 }

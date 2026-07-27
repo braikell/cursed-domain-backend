@@ -122,11 +122,14 @@ const completeIncursionInputSchema = z.object({
   waveReached: z.number().int().min(0).max(10),
   kills: z.number().int().min(0).max(99999),
   requestId: z.string().min(8).max(80),
-  rewards: z.object({
-    gold: z.number().int().min(0).max(999999999),
-    gems: z.number().int().min(0).max(999999),
-    xp: z.number().int().min(0).max(9999999),
-  }).optional(),
+  incursionSessionId: z.string().uuid(),
+  survivalTime: z.number().min(0).max(1800).optional(),
+  resultType: z.enum(["defeat", "extraction", "victory"]).optional().default("defeat"),
+});
+
+const startIncursionInputSchema = z.object({
+  currency: z.enum(["gold", "gems"]),
+  requestId: z.string().min(8).max(80),
 });
 
 const grantChoiceCardInputSchema = z.object({
@@ -596,6 +599,20 @@ export function createApp(domainService: GodotDomainService) {
         throw new HttpModuleError(400, "invalid_request_payload", "equipment_dismantle", "Invalid request payload.");
       }
       const response = await domainService.dismantleItem(authed, parsed.data);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/incursion/entry", async (context) =>
+    withModule(context, "incursion_entry", async () => {
+      const authed = await requireAuthedGodotUser(context, "incursion_entry");
+      applyRateLimit(context, authed.userId, "incursion_entry");
+      const body = await context.req.json().catch(() => null);
+      const parsed = startIncursionInputSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new HttpModuleError(400, "invalid_request_payload", "incursion_entry", "Invalid request payload.");
+      }
+      const response = await domainService.startIncursion(authed, parsed.data);
       return context.json(response);
     }),
   );

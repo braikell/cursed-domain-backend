@@ -20,6 +20,8 @@ const RATE_LIMIT_CONFIGS: Partial<Record<BackendModuleName, RateLimitConfig>> = 
   pvp_complete_match: { max: 20, windowMs: 60_000 },
   pvp_upsert_defense: { max: 20, windowMs: 60_000 },
   tower_complete_floor: { max: 20, windowMs: 60_000 },
+  incursion_entry: { max: 6, windowMs: 60_000 },
+  incursion_complete: { max: 12, windowMs: 60_000 },
 };
 
 interface RateLimitWindow {

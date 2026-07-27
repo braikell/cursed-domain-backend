@@ -10,7 +10,7 @@ import { claimMissionDedicated, getMissionsDedicated, getChestsDedicated, claimC
 import { completeBattleDedicated, startBattleDedicated } from "./modules/battle/battle.js";
 import { completeTowerFloorDedicated, getTowerStatusDedicated } from "./modules/tower/tower.js";
 import { completePvpMatchDedicated, getPvpStatusDedicated, startPvpMatchDedicated, upsertPvpDefenseDedicated } from "./modules/pvp/pvp.js";
-import { completeIncursionDedicated } from "./modules/incursion/incursion.js";
+import { completeIncursionDedicated, startIncursionDedicated } from "./modules/incursion/incursion.js";
 import {
   getSocialStatusDedicated,
   removeFriendDedicated,
@@ -35,6 +35,7 @@ import type {
   ClaimMissionInput,
   CompleteBattleInput,
   CompleteIncursionInput,
+  StartIncursionInput,
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
@@ -196,6 +197,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async completeIncursion(_context: GodotAuthedRequestContext, _input: CompleteIncursionInput): Promise<unknown> {
     return await completeIncursionDedicated(_context, _input);
+  }
+
+  override async startIncursion(_context: GodotAuthedRequestContext, _input: StartIncursionInput): Promise<unknown> {
+    return await startIncursionDedicated(_context, _input);
   }
 }
 
