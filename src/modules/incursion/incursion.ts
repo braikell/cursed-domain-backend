@@ -64,6 +64,10 @@ export async function startIncursionDedicated(
       throw new HttpModuleError(400, "insufficient_funds", "incursion_entry", "No tienes recursos suficientes.");
     }
     if (message.includes("incursion_session_active")) {
+      const activeSession = await findActiveIncursionSession(supabase, context.userId, input.currency, cost);
+      if (activeSession != null) {
+        return activeSession;
+      }
       throw new HttpModuleError(409, "incursion_session_active", "incursion_entry", "Ya tienes una incursión activa.");
     }
     throw new Error(error.message);
@@ -82,6 +86,56 @@ export async function startIncursionDedicated(
       cost: Number(row.cost),
       save: { gold: Number(row.gold), gems: Number(row.gems) },
       replay: row.replay === true,
+    },
+  };
+}
+
+async function findActiveIncursionSession(
+  supabase: ReturnType<typeof createServiceSupabaseClient>,
+  userId: string,
+  fallbackCurrency: StartIncursionInput["currency"],
+  fallbackCost: number,
+): Promise<unknown | null> {
+  const { data: session, error: sessionError } = await supabase
+    .from("battle_sessions")
+    .select("id,started_at,expires_at,entry_currency,entry_cost")
+    .eq("user_id", userId)
+    .eq("mode", "incursion")
+    .is("consumed_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{
+      id: string;
+      started_at: string;
+      expires_at: string;
+      entry_currency: string | null;
+      entry_cost: number | null;
+    }>();
+  if (sessionError) throw new Error(sessionError.message);
+  if (session == null) return null;
+
+  const { data: economy, error: economyError } = await supabase
+    .from("user_economy")
+    .select("gold,gems")
+    .eq("user_id", userId)
+    .maybeSingle<{ gold: number; gems: number }>();
+  if (economyError) throw new Error(economyError.message);
+
+  return {
+    ok: true,
+    data: {
+      incursionSessionId: session.id,
+      startedAt: session.started_at,
+      expiresAt: session.expires_at,
+      currency: session.entry_currency ?? fallbackCurrency,
+      cost: Number(session.entry_cost ?? fallbackCost),
+      save: {
+        gold: Number(economy?.gold ?? 0),
+        gems: Number(economy?.gems ?? 0),
+      },
+      replay: true,
+      resumed: true,
     },
   };
 }
@@ -142,13 +196,14 @@ export async function completeIncursionDedicated(
 
     await consumeIncursionSession(supabase, userId, input.incursionSessionId);
 
-    const rewards = calculateIncursionRewards(waveReached);
+    const resultType = input.resultType ?? "defeat";
+    const rewards = calculateIncursionRewards(waveReached, resultType);
     const gold = rewards.gold;
     const gems = rewards.gems;
     const xp = rewards.xp;
 
     if (gold === 0 && gems === 0 && xp === 0) {
-      const empty = { ok: true, resultType: input.resultType ?? "defeat", waveReached, kills, save: null };
+      const empty = { ok: true, resultType, waveReached, kills, save: null };
       await completeIdempotentOperation(supabase, userId, requestId, empty);
       return empty;
     }
@@ -164,7 +219,7 @@ export async function completeIncursionDedicated(
 
     const response = {
       ok: true,
-      resultType: input.resultType ?? "defeat",
+      resultType,
       waveReached,
       kills,
       rewards: { gold, gems, xp },

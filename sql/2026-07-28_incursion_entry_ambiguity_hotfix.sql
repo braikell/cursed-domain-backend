@@ -1,45 +1,7 @@
--- INCURSIONES Fase 1: sesiones server-side y pago atómico de entrada.
--- Ejecutar en Supabase SQL Editor después de revisar el dry-run del limpiador.
+-- Hotfix Incursiones: evita la ambigüedad de expires_at en el RPC de entrada.
+-- Ejecutar una sola vez en Supabase SQL Editor.
 
 begin;
-
-alter table public.battle_sessions
-  drop constraint if exists battle_sessions_mode_check;
-
-alter table public.battle_sessions
-  drop constraint if exists battle_sessions_entry_currency_check,
-  drop constraint if exists battle_sessions_entry_cost_check,
-  drop constraint if exists battle_sessions_wave_limit_check;
-
-alter table public.battle_sessions
-  add constraint battle_sessions_mode_check
-  check (mode in ('campaign', 'tower', 'pvp', 'incursion'));
-
-alter table public.battle_sessions
-  add column if not exists entry_currency text,
-  add column if not exists entry_cost int,
-  add column if not exists wave_limit int;
-
-alter table public.battle_sessions
-  add constraint battle_sessions_entry_currency_check
-  check (entry_currency is null or entry_currency in ('gold', 'gems'));
-
-alter table public.battle_sessions
-  add constraint battle_sessions_entry_cost_check
-  check (entry_cost is null or entry_cost >= 0);
-
-alter table public.battle_sessions
-  add constraint battle_sessions_wave_limit_check
-  check (wave_limit is null or wave_limit between 1 and 10);
-
-create index if not exists battle_sessions_incursion_active_idx
-  on public.battle_sessions (user_id, mode, expires_at)
-  where mode = 'incursion' and consumed_at is null;
-
-alter table public.battle_sessions enable row level security;
-revoke all on table public.battle_sessions from anon;
-revoke all on table public.battle_sessions from authenticated;
-grant all on table public.battle_sessions to service_role;
 
 create or replace function public.start_incursion_session(
   target_user_id uuid,
@@ -171,7 +133,3 @@ revoke all on function public.start_incursion_session(uuid, text, text, int, int
 grant execute on function public.start_incursion_session(uuid, text, text, int, int, int) to service_role;
 
 commit;
-
--- Smoke checks:
--- select mode, count(*) from public.battle_sessions group by mode;
--- select public.daily_cleanup_free_plan(true);

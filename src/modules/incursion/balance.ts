@@ -7,6 +7,12 @@ export const INCURSION_ENTRY_COSTS = {
   gems: 750,
 } as const;
 
+export const INCURSION_DEFEAT_REWARD: IncursionReward = {
+  gold: 5000,
+  gems: 10,
+  xp: 0,
+};
+
 export interface IncursionReward {
   gold: number;
   gems: number;
@@ -27,7 +33,10 @@ export const INCURSION_WAVE_REWARDS: readonly IncursionReward[] = [
   { gold: 455000, gems: 1800, xp: 1080 },
 ];
 
-export function calculateIncursionRewards(waveReached: number): IncursionReward {
+export function calculateIncursionRewards(waveReached: number, resultType: "defeat" | "extraction" | "victory" = "extraction"): IncursionReward {
+  if (resultType === "defeat") {
+    return { ...INCURSION_DEFEAT_REWARD };
+  }
   const waveCount = Math.max(0, Math.min(Math.floor(waveReached), INCURSION_MAX_WAVES));
   return INCURSION_WAVE_REWARDS.slice(0, waveCount).reduce(
     (total, reward) => ({
