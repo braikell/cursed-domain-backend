@@ -107,11 +107,24 @@ const STARTER_CHARACTER_IDS = new Set(["yuji", "nobara"]);
 
 export async function bootstrapPlayer(accessToken: string, userId: string): Promise<BootstrapResponse> {
   const service = createServiceSupabaseClient();
+  const bootstrapStartedAt = performance.now();
+  const markBootstrapTiming = (stage: string, startedAt: number) => {
+    console.log("[bootstrap-timing] %s=%dms total=%dms", stage, Math.round(performance.now() - startedAt), Math.round(performance.now() - bootstrapStartedAt));
+  };
+
+  let stageStartedAt = performance.now();
   const profile = await ensureProfile(accessToken, userId, service);
+  markBootstrapTiming("ensure_profile", stageStartedAt);
 
+  stageStartedAt = performance.now();
   const ensured = await ensurePlayerSave(accessToken, userId, service);
-  const snapshot = await buildCanonicalBootstrapSnapshot(service, userId, ensured.save);
+  markBootstrapTiming("ensure_player_save", stageStartedAt);
 
+  stageStartedAt = performance.now();
+  const snapshot = await buildCanonicalBootstrapSnapshot(service, userId, ensured.save);
+  markBootstrapTiming("build_snapshot", stageStartedAt);
+
+  stageStartedAt = performance.now();
   try {
     const config = await ensureBootstrapMonetizationFoundation(service, userId);
     await updateLoginMissionProgress(service, userId, config);
@@ -121,6 +134,8 @@ export async function bootstrapPlayer(accessToken: string, userId: string): Prom
       error instanceof Error ? error.message : String(error),
     );
   }
+  markBootstrapTiming("login_mission_foundation", stageStartedAt);
+  markBootstrapTiming("complete", bootstrapStartedAt);
 
   return {
     ok: true,
@@ -205,6 +220,12 @@ async function ensurePlayerSave(
   userId: string,
   service: SupabaseClient,
 ): Promise<{ save: GameSaveSnapshot; updatedAt: string; saveVersion: number }> {
+  const saveStartedAt = performance.now();
+  const markSaveTiming = (stage: string, startedAt: number) => {
+    console.log("[bootstrap-timing] save.%s=%dms total=%dms", stage, Math.round(performance.now() - startedAt), Math.round(performance.now() - saveStartedAt));
+  };
+
+  let stageStartedAt = performance.now();
   const { data: existing, error: readError } = await service
     .from("player_saves")
     .select("save, save_version, updated_at")
@@ -212,15 +233,28 @@ async function ensurePlayerSave(
     .maybeSingle<PlayerSaveRow>();
 
   if (readError) throw new Error(readError.message);
+  markSaveTiming("read", stageStartedAt);
 
   if (existing != null) {
     const baseSave = normalizeGameSave(existing.save);
+    stageStartedAt = performance.now();
     const hydratedCardsSave = await hydrateDefinitiveCardsFromServer(service, userId, baseSave);
+    markSaveTiming("hydrate_definitive_cards", stageStartedAt);
+    stageStartedAt = performance.now();
     await tryEnsureBootstrapMonetizationFoundation(service, userId);
+    markSaveTiming("ensure_monetization", stageStartedAt);
+    stageStartedAt = performance.now();
     const canonicalSave = await hydrateCanonicalRuntimeState(service, userId, hydratedCardsSave);
+    markSaveTiming("hydrate_canonical", stageStartedAt);
+    stageStartedAt = performance.now();
     const save = await hydrateSaveFormationFromServer(service, userId, canonicalSave);
+    markSaveTiming("hydrate_formation", stageStartedAt);
+    stageStartedAt = performance.now();
     await tryEnsureServerGameFoundation(service, userId, save);
+    markSaveTiming("ensure_server_foundation", stageStartedAt);
+    stageStartedAt = performance.now();
     await persistCanonicalPlayerSave(service, userId, save);
+    markSaveTiming("persist", stageStartedAt);
     return {
       save,
       updatedAt: existing.updated_at,
