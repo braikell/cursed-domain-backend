@@ -107,7 +107,7 @@ const STARTER_CHARACTER_IDS = new Set(["yuji", "nobara"]);
 
 export async function bootstrapPlayer(accessToken: string, userId: string): Promise<BootstrapResponse> {
   const service = createServiceSupabaseClient();
-  await ensureProfile(accessToken, userId, service);
+  const profile = await ensureProfile(accessToken, userId, service);
 
   const ensured = await ensurePlayerSave(accessToken, userId, service);
   const snapshot = await buildCanonicalBootstrapSnapshot(service, userId, ensured.save);
@@ -127,12 +127,13 @@ export async function bootstrapPlayer(accessToken: string, userId: string): Prom
     userId,
     save: ensured.save,
     snapshot,
+    profile,
     updatedAt: ensured.updatedAt,
     saveVersion: ensured.saveVersion,
   };
 }
 
-async function ensureProfile(accessToken: string, userId: string, service: SupabaseClient) {
+async function ensureProfile(accessToken: string, userId: string, service: SupabaseClient): Promise<Record<string, unknown>> {
   const authClient = createAuthSupabaseClient();
   const authResult = await (authClient.auth as {
     getUser: (jwt: string) => Promise<{
@@ -196,6 +197,7 @@ async function ensureProfile(accessToken: string, userId: string, service: Supab
 
   const { error } = await service.from("profiles").upsert(profilePayload, { onConflict: "id" });
   if (error) throw new Error(error.message);
+  return profilePayload;
 }
 
 async function ensurePlayerSave(

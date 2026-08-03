@@ -63,6 +63,7 @@ export interface BootstrapResponse {
   userId: string;
   save: unknown;
   snapshot: unknown;
+  profile?: unknown;
   updatedAt?: string;
   saveVersion?: number;
 }

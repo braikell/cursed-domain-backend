@@ -462,6 +462,12 @@ export async function claimAllMissionsDedicated(
   }
 
   const missionDefById = new Map(missions.map((m) => [m.missionId, m]));
+  const choiceRewards: Array<{
+    missionId: string;
+    choiceType: string;
+    grantToken: string;
+    options: Array<{ characterId: string; cardType: string; displayName?: string }>;
+  }> = [];
   for (const row of completableRows) {
     const def = missionDefById.get(row.mission_id);
     if (!def) continue;
@@ -469,6 +475,21 @@ export async function claimAllMissionsDedicated(
     if (rt.endsWith("_pack")) {
       const packId = ((def.rewardConfig as Record<string, unknown>)?.packId as string) ?? "basicPack";
       await addPackToken(context.userId, packId, 1);
+    } else if (rt.startsWith("choice_")) {
+      const choiceType = ((def.rewardConfig as Record<string, unknown>)?.choiceType as string) ?? "legendary";
+      const allOptions = getChoiceCardOptions(choiceType);
+      const ownedKeys = await getUserOwnedCardKeys(supabase, context.userId);
+      const filteredOptions = allOptions.filter((opt) => !ownedKeys.has(`${opt.characterId}_${opt.cardType}`));
+      if (filteredOptions.length === 0) continue;
+
+      const grantToken = randomUUID();
+      await storeChoiceGrant(supabase, context.userId, grantToken, choiceType, filteredOptions);
+      choiceRewards.push({
+        missionId: row.mission_id,
+        choiceType,
+        grantToken,
+        options: filteredOptions,
+      });
     }
   }
 
@@ -481,6 +502,7 @@ export async function claimAllMissionsDedicated(
     totalGold,
     totalGems,
     totalPoints,
+    choiceRewards,
     save: { gold: save.gold, gems: save.gems, schemaVersion: save.schemaVersion },
     snapshot,
   };
