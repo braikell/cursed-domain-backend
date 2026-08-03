@@ -368,11 +368,32 @@ async function hydrateCanonicalRuntimeState(
 ): Promise<GameSaveSnapshot> {
   const nextSave = normalizeGameSave(save);
 
-  const { data: progress } = await service
-    .from("player_progress")
-    .select("player_level, xp, current_stage, highest_stage, unlocked_slots, total_summons, total_battles_won")
-    .eq("user_id", userId)
-    .maybeSingle<PlayerProgressRuntimeRow>();
+  // Estas lecturas no tienen dependencias entre si. Se mantienen las mismas
+  // consultas y el mismo procesamiento, pero se espera su red en paralelo.
+  const [progressResult, economyResult, materialsResult, afkResult] = await Promise.all([
+    service
+      .from("player_progress")
+      .select("player_level, xp, current_stage, highest_stage, unlocked_slots, total_summons, total_battles_won")
+      .eq("user_id", userId)
+      .maybeSingle<PlayerProgressRuntimeRow>(),
+    service
+      .from("user_economy")
+      .select("gold, gems")
+      .eq("user_id", userId)
+      .maybeSingle<{ gold: number; gems: number }>(),
+    service
+      .from("user_materials")
+      .select("material_id, quantity")
+      .eq("user_id", userId)
+      .returns<Array<{ material_id: string | null; quantity: number | null }>>(),
+    service
+      .from("user_afk")
+      .select("last_claimed_at")
+      .eq("user_id", userId)
+      .maybeSingle<{ last_claimed_at: string | null }>(),
+  ]);
+
+  const { data: progress } = progressResult;
   if (progress != null) {
     if (typeof progress.xp === "number") nextSave.xp = progress.xp;
     if (typeof progress.current_stage === "string" && progress.current_stage.trim().length > 0) {
@@ -393,21 +414,13 @@ async function hydrateCanonicalRuntimeState(
   }
   nextSave.playerLevel = resolvePlayerLevelFromXp(nextSave.xp);
 
-  const { data: economy } = await service
-    .from("user_economy")
-    .select("gold, gems")
-    .eq("user_id", userId)
-    .maybeSingle<{ gold: number; gems: number }>();
+  const { data: economy } = economyResult;
   if (economy != null) {
     nextSave.gold = economy.gold;
     nextSave.gems = economy.gems;
   }
 
-  const { data: materialRows, error: materialError } = await service
-    .from("user_materials")
-    .select("material_id, quantity")
-    .eq("user_id", userId)
-    .returns<Array<{ material_id: string | null; quantity: number | null }>>();
+  const { data: materialRows, error: materialError } = materialsResult;
   if (materialError) throw new Error(materialError.message);
   for (const row of materialRows ?? []) {
     const materialId = normalizeSaveMaterialId(String(row.material_id ?? ""));
@@ -419,11 +432,7 @@ async function hydrateCanonicalRuntimeState(
   await cleanupPrunedMaterialRows(service, userId, prunedOwnedElementMaterialIds);
   syncOwnedCardFragmentMirrors(nextSave);
 
-  const { data: afk } = await service
-    .from("user_afk")
-    .select("last_claimed_at")
-    .eq("user_id", userId)
-    .maybeSingle<{ last_claimed_at: string | null }>();
+  const { data: afk } = afkResult;
   if (afk?.last_claimed_at) {
     nextSave.lastAfkAt = new Date(afk.last_claimed_at).getTime();
   }
