@@ -18,6 +18,7 @@ import {
 import {
   ensureBootstrapMonetizationFoundation,
   updateLoginMissionProgress,
+  type MonetizationConfigLite,
 } from "./monetization-foundation.js";
 import { getCardBalance, normalizeCharacterKey } from "../cards/balance.js";
 import { normalizeCardMaterialId, pruneOwnedCardUnlockElements, syncOwnedCardFragmentMirrors } from "../cards/materials.js";
@@ -126,8 +127,9 @@ export async function bootstrapPlayer(accessToken: string, userId: string): Prom
 
   stageStartedAt = performance.now();
   try {
-    const config = await ensureBootstrapMonetizationFoundation(service, userId);
-    await updateLoginMissionProgress(service, userId, config);
+    if (ensured.monetizationConfig != null) {
+      await updateLoginMissionProgress(service, userId, ensured.monetizationConfig);
+    }
   } catch (error) {
     console.warn(
       "[godot-backend] bootstrap mission progress skipped:",
@@ -219,7 +221,7 @@ async function ensurePlayerSave(
   accessToken: string,
   userId: string,
   service: SupabaseClient,
-): Promise<{ save: GameSaveSnapshot; updatedAt: string; saveVersion: number }> {
+): Promise<{ save: GameSaveSnapshot; updatedAt: string; saveVersion: number; monetizationConfig: MonetizationConfigLite | null }> {
   const saveStartedAt = performance.now();
   const markSaveTiming = (stage: string, startedAt: number) => {
     console.log("[bootstrap-timing] save.%s=%dms total=%dms", stage, Math.round(performance.now() - startedAt), Math.round(performance.now() - saveStartedAt));
@@ -241,7 +243,7 @@ async function ensurePlayerSave(
     const hydratedCardsSave = await hydrateDefinitiveCardsFromServer(service, userId, baseSave);
     markSaveTiming("hydrate_definitive_cards", stageStartedAt);
     stageStartedAt = performance.now();
-    await tryEnsureBootstrapMonetizationFoundation(service, userId);
+    const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
     markSaveTiming("ensure_monetization", stageStartedAt);
     stageStartedAt = performance.now();
     const canonicalSave = await hydrateCanonicalRuntimeState(service, userId, hydratedCardsSave);
@@ -259,6 +261,7 @@ async function ensurePlayerSave(
       save,
       updatedAt: existing.updated_at,
       saveVersion: existing.save_version,
+      monetizationConfig,
     };
   }
 
@@ -283,7 +286,7 @@ async function ensurePlayerSave(
     if (retryError) throw new Error(insertError.message);
     const retrySave = normalizeGameSave(retry.save);
     const hydratedRetrySave = await hydrateDefinitiveCardsFromServer(service, userId, retrySave);
-    await tryEnsureBootstrapMonetizationFoundation(service, userId);
+    const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
     const canonicalRetrySave = await hydrateCanonicalRuntimeState(service, userId, hydratedRetrySave);
     const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalRetrySave);
     await tryEnsureServerGameFoundation(service, userId, hydratedFormationSave);
@@ -292,12 +295,13 @@ async function ensurePlayerSave(
       save: hydratedFormationSave,
       updatedAt: retry.updated_at,
       saveVersion: retry.save_version,
+      monetizationConfig,
     };
   }
 
   const createdSave = normalizeGameSave(created.save);
   await tryEnsureServerGameFoundation(service, userId, createdSave);
-  await tryEnsureBootstrapMonetizationFoundation(service, userId);
+  const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
   const canonicalCreatedSave = await hydrateCanonicalRuntimeState(service, userId, createdSave);
   const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalCreatedSave);
   await persistCanonicalPlayerSave(service, userId, hydratedFormationSave);
@@ -305,6 +309,7 @@ async function ensurePlayerSave(
     save: hydratedFormationSave,
     updatedAt: created.updated_at,
     saveVersion: created.save_version,
+    monetizationConfig,
   };
 }
 
@@ -376,9 +381,9 @@ function buildActiveTeamSlots(save: GameSaveSnapshot) {
     .filter(Boolean);
 }
 
-async function tryEnsureBootstrapMonetizationFoundation(service: SupabaseClient, userId: string) {
+async function tryEnsureBootstrapMonetizationFoundation(service: SupabaseClient, userId: string): Promise<MonetizationConfigLite | null> {
   try {
-    await ensureBootstrapMonetizationFoundation(service, userId);
+    return await ensureBootstrapMonetizationFoundation(service, userId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (
@@ -389,7 +394,7 @@ async function tryEnsureBootstrapMonetizationFoundation(service: SupabaseClient,
         message.includes("config_version")) &&
       (message.includes("does not exist") || message.includes("Could not find") || message.includes("column"))
     ) {
-      return;
+      return null;
     }
     throw error;
   }
