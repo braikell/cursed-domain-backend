@@ -522,13 +522,7 @@ async function tryEnsureServerGameFoundation(service: SupabaseClient, userId: st
 async function ensureServerGameFoundation(service: SupabaseClient, userId: string, save: GameSaveSnapshot) {
   const now = new Date().toISOString();
 
-  console.log("[bootstrap] ensureServerGameFoundation:start", {
-    userId,
-    characterCount: Object.keys(save.characters ?? {}).length,
-    definitiveCount: Object.keys(save.definitiveCards ?? {}).length,
-  });
-
-  await upsertOrThrow(service, "player_progress", {
+  const progressPromise = upsertOrThrow(service, "player_progress", {
     user_id: userId,
     player_level: save.playerLevel,
     xp: save.xp,
@@ -540,7 +534,7 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     updated_at: now,
   });
 
-  await upsertOrThrow(service, "user_economy", {
+  const economyPromise = upsertOrThrow(service, "user_economy", {
     user_id: userId,
     gold: save.gold,
     gems: save.gems,
@@ -605,31 +599,19 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
     };
   });
 
-  console.log("[bootstrap] ensureServerGameFoundation:user_cards_payload", {
-    userId,
-    rows: baseCardRows.length + definitiveCardRows.length,
-    cardDefinitionIds: [...baseCardRows, ...definitiveCardRows].map((row) => row.card_definition_id),
-  });
-
   const cardRows = [...baseCardRows, ...definitiveCardRows];
-  if (cardRows.length > 0) {
-    await upsertOrThrow(service, "user_cards", cardRows, "user_id,card_definition_id");
-    console.log("[bootstrap] ensureServerGameFoundation:user_cards_upsert_ok", {
-      userId,
-      rows: cardRows.length,
-    });
-  }
+  const cardsPromise = cardRows.length > 0
+    ? upsertOrThrow(service, "user_cards", cardRows, "user_id,card_definition_id")
+    : Promise.resolve();
 
-  await syncSaveFormationToServer(service, userId, save);
-
-  await upsertOrThrow(service, "user_afk", {
+  const afkPromise = upsertOrThrow(service, "user_afk", {
     user_id: userId,
     last_claimed_at: new Date(save.lastAfkAt).toISOString(),
     updated_at: now,
   });
 
-  if (save.inventory.length > 0) {
-    const inventoryRows = save.inventory.map((item) => ({
+  const inventoryPromise = save.inventory.length > 0
+    ? upsertOrThrow(service, "user_inventory", save.inventory.map((item) => ({
       user_id: userId,
       id: item.id,
       slot: normalizeEquipmentSlotForDatabase(item.slot),
@@ -642,17 +624,16 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
       equipment_tier: item.tier ?? 1,
       equipped_to_card_id: null,
       updated_at: now,
-    }));
-    await upsertOrThrow(service, "user_inventory", inventoryRows, "user_id,id");
-  }
+    })), "user_id,id")
+    : Promise.resolve();
 
   const materialRows = buildUserMaterialRows(userId, save.fragments, now);
-  if (materialRows.length > 0) {
-    await upsertOrThrow(service, "user_materials", materialRows, "user_id,material_id");
-  }
+  const materialsPromise = materialRows.length > 0
+    ? upsertOrThrow(service, "user_materials", materialRows, "user_id,material_id")
+    : Promise.resolve();
 
-  if (save.missions.length > 0) {
-    const missionRows = save.missions.map((mission) => ({
+  const missionsPromise = save.missions.length > 0
+    ? upsertOrThrow(service, "user_missions", save.missions.map((mission) => ({
       user_id: userId,
       mission_id: mission.id,
       mission_type: "static",
@@ -661,17 +642,30 @@ async function ensureServerGameFoundation(service: SupabaseClient, userId: strin
       claimed: mission.claimed,
       reward: mission.reward,
       updated_at: now,
-    }));
-    await upsertOrThrow(service, "user_missions", missionRows, "user_id,mission_id");
-  }
+    })), "user_id,mission_id")
+    : Promise.resolve();
 
-  await upsertOrThrow(service, "user_pity", {
+  const pityPromise = upsertOrThrow(service, "user_pity", {
     user_id: userId,
     pack_id: "standard",
     pity_legendary: save.pityLegendary,
     pity_mythic: save.pityMythic,
     updated_at: now,
   });
+
+  await Promise.all([
+    progressPromise,
+    economyPromise,
+    cardsPromise,
+    afkPromise,
+    inventoryPromise,
+    materialsPromise,
+    missionsPromise,
+    pityPromise,
+  ]);
+
+  // La formación lee user_cards, por eso conserva esta dependencia explícita.
+  await syncSaveFormationToServer(service, userId, save);
 }
 
 async function hydrateDefinitiveCardsFromServer(
