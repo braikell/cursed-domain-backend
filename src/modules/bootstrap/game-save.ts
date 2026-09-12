@@ -1,4 +1,5 @@
-export const GAME_SAVE_SCHEMA_VERSION = 3;
+export const GAME_SAVE_SCHEMA_VERSION = 4;
+export const DEFAULT_ARENA_ID = "arena_default";
 export const MAX_TEAM_SIZE = 3;
 export const DEFAULT_UNLOCKED_TEAM_SLOTS = 3;
 export const FORMATION_GRID_SLOT_COUNT = 9;
@@ -66,6 +67,11 @@ export interface OwnedDefinitiveCard {
   acquiredAt: number;
 }
 
+export interface ArenaCosmeticsState {
+  ownedArenaIds: string[];
+  equippedArenaId: string;
+}
+
 export interface GameSaveSnapshot {
   schemaVersion: typeof GAME_SAVE_SCHEMA_VERSION;
   gold: number;
@@ -90,6 +96,7 @@ export interface GameSaveSnapshot {
   totalSummons: number;
   totalBattlesWon: number;
   cardModelVersion: 1;
+  arenaCosmetics: ArenaCosmeticsState;
 }
 
 export function normalizeStageKey(value: unknown, fallback = "world_1_stage_1"): string {
@@ -159,6 +166,10 @@ export function createInitialGameSave(now = Date.now()): GameSaveSnapshot {
     totalSummons: 0,
     totalBattlesWon: 0,
     cardModelVersion: 1,
+    arenaCosmetics: {
+      ownedArenaIds: [DEFAULT_ARENA_ID],
+      equippedArenaId: DEFAULT_ARENA_ID,
+    },
   };
 }
 
@@ -191,6 +202,24 @@ export function normalizeGameSave(source: unknown): GameSaveSnapshot {
     missions: Array.isArray(save.missions) ? (save.missions as MissionEntry[]) : fallback.missions,
     schemaVersion: GAME_SAVE_SCHEMA_VERSION,
     cardModelVersion: 1,
+    arenaCosmetics: normalizeArenaCosmeticsState(save.arenaCosmetics),
+  };
+}
+
+export function normalizeArenaCosmeticsState(source: unknown): ArenaCosmeticsState {
+  const raw = source != null && typeof source === "object"
+    ? source as Partial<ArenaCosmeticsState>
+    : {};
+  const owned = new Set<string>([DEFAULT_ARENA_ID]);
+  for (const value of Array.isArray(raw.ownedArenaIds) ? raw.ownedArenaIds : []) {
+    const arenaId = String(value ?? "").trim().toLowerCase();
+    if (/^[a-z0-9_]{1,64}$/.test(arenaId)) owned.add(arenaId);
+    if (owned.size >= 128) break;
+  }
+  const requestedEquipped = String(raw.equippedArenaId ?? "").trim().toLowerCase();
+  return {
+    ownedArenaIds: [...owned],
+    equippedArenaId: owned.has(requestedEquipped) ? requestedEquipped : DEFAULT_ARENA_ID,
   };
 }
 

@@ -1,7 +1,12 @@
--- Hotfix Incursiones: evita la ambigüedad de expires_at en el RPC de entrada.
--- Ejecutar una sola vez en Supabase SQL Editor.
-
+-- Incursiones: fija 21 oleadas como límite canónico en sesiones existentes.
 begin;
+
+alter table public.battle_sessions
+  drop constraint if exists battle_sessions_wave_limit_check;
+
+alter table public.battle_sessions
+  add constraint battle_sessions_wave_limit_check
+  check (wave_limit is null or wave_limit between 1 and 21);
 
 create or replace function public.start_incursion_session(
   target_user_id uuid,
@@ -49,45 +54,31 @@ begin
 
   select bs.* into existing_session
   from public.battle_sessions as bs
-  where bs.user_id = target_user_id
-    and bs.request_id = target_request_id
+  where bs.user_id = target_user_id and bs.request_id = target_request_id
   limit 1;
 
   if existing_session.id is not null then
-    return query
-    select existing_session.id,
-      existing_session.started_at,
-      existing_session.expires_at,
-      coalesce(existing_session.entry_currency, target_currency),
-      coalesce(existing_session.entry_cost, target_cost),
+    return query select existing_session.id, existing_session.started_at, existing_session.expires_at,
+      coalesce(existing_session.entry_currency, target_currency), coalesce(existing_session.entry_cost, target_cost),
       coalesce((select ue.gold from public.user_economy as ue where ue.user_id = target_user_id), 0),
-      coalesce((select ue.gems from public.user_economy as ue where ue.user_id = target_user_id), 0),
-      true;
+      coalesce((select ue.gems from public.user_economy as ue where ue.user_id = target_user_id), 0), true;
     return;
   end if;
 
-  if exists (
-    select 1 from public.battle_sessions as bs
-    where bs.user_id = target_user_id
-      and bs.mode = 'incursion'
-      and bs.consumed_at is null
-      and bs.expires_at > now_value
-  ) then
+  if exists (select 1 from public.battle_sessions as bs
+    where bs.user_id = target_user_id and bs.mode = 'incursion'
+      and bs.consumed_at is null and bs.expires_at > now_value) then
     raise exception using errcode = '55000', message = 'incursion_session_active';
   end if;
 
-  select ue.* into economy_row
-  from public.user_economy as ue
-  where ue.user_id = target_user_id
-  for update;
-
+  select ue.* into economy_row from public.user_economy as ue
+    where ue.user_id = target_user_id for update;
   if economy_row.user_id is null then
     raise exception using errcode = 'P0002', message = 'economy_not_found';
   end if;
 
   next_gold := greatest(0, coalesce(economy_row.gold, 0));
   next_gems := greatest(0, coalesce(economy_row.gems, 0));
-
   if target_currency = 'gold' then
     if next_gold < target_cost then
       raise exception using errcode = 'P0001', message = 'insufficient_funds';
@@ -100,16 +91,12 @@ begin
     next_gems := next_gems - target_cost;
   end if;
 
-  update public.user_economy as ue
-  set gold = next_gold, gems = next_gems, updated_at = now_value
-  where ue.user_id = target_user_id;
-
-  update public.player_saves as ps
-  set save = jsonb_set(
-    jsonb_set(coalesce(ps.save, '{}'::jsonb), '{gold}', to_jsonb(next_gold), true),
-    '{gems}', to_jsonb(next_gems), true
-  ), updated_at = now_value
-  where ps.user_id = target_user_id;
+  update public.user_economy set gold = next_gold, gems = next_gems, updated_at = now_value
+    where user_id = target_user_id;
+  update public.player_saves set save = jsonb_set(
+    jsonb_set(coalesce(save, '{}'::jsonb), '{gold}', to_jsonb(next_gold), true),
+    '{gems}', to_jsonb(next_gems), true), updated_at = now_value
+    where user_id = target_user_id;
 
   insert into public.battle_sessions (
     user_id, mode, stage_id, team_hash, team_power, target_power,
@@ -121,8 +108,7 @@ begin
     target_currency, target_cost, target_wave_limit
   ) returning * into new_session;
 
-  return query
-  select new_session.id, new_session.started_at, new_session.expires_at,
+  return query select new_session.id, new_session.started_at, new_session.expires_at,
     target_currency, target_cost, next_gold, next_gems, false;
 end;
 $$;

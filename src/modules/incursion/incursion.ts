@@ -141,15 +141,11 @@ async function findActiveIncursionSession(
 }
 
 function validateInput(waveReached: number, kills: number): void {
-  if (waveReached < 0 || waveReached > 10) {
+  if (waveReached < 0 || waveReached > INCURSION_MAX_WAVES) {
     throw new HttpModuleError(400, "invalid_wave", "incursion_complete", "Invalid wave number.");
   }
   if (kills < 0) {
     throw new HttpModuleError(400, "invalid_kills", "incursion_complete", "Invalid kill count.");
-  }
-  const maxKills = (waveReached + 1) * MAX_POSSIBLE_KILLS_PER_WAVE;
-  if (kills > maxKills) {
-    logger.warn("suspicious_kill_count", { waveReached, kills, maxKills });
   }
 }
 
@@ -181,7 +177,6 @@ export async function completeIncursionDedicated(
       requestId,
     );
     if (idempotent.status === "replayed") {
-      logger.info("incursion_idempotent_replay", { userId, requestId });
       return idempotent.response ?? { ok: true, replay: true };
     }
 

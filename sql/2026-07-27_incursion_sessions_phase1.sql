@@ -30,7 +30,7 @@ alter table public.battle_sessions
 
 alter table public.battle_sessions
   add constraint battle_sessions_wave_limit_check
-  check (wave_limit is null or wave_limit between 1 and 10);
+  check (wave_limit is null or wave_limit between 1 and 21);
 
 create index if not exists battle_sessions_incursion_active_idx
   on public.battle_sessions (user_id, mode, expires_at)
@@ -47,7 +47,7 @@ create or replace function public.start_incursion_session(
   target_currency text,
   target_cost int,
   session_ttl_seconds int default 900,
-  target_wave_limit int default 10
+  target_wave_limit int default 21
 )
 returns table (
   session_id uuid,
@@ -81,7 +81,7 @@ begin
   if target_currency not in ('gold', 'gems') then
     raise exception using errcode = '22023', message = 'invalid_currency';
   end if;
-  if target_cost <= 0 or target_wave_limit not between 1 and 10 then
+  if target_cost <= 0 or target_wave_limit not between 1 and 21 then
     raise exception using errcode = '22023', message = 'invalid_incursion_config';
   end if;
 

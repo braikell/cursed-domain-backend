@@ -23,6 +23,10 @@ export type BackendModuleName =
   | "equipment_unequip"
   | "equipment_upgrade"
   | "equipment_dismantle"
+  | "arena_cosmetics_status"
+  | "arena_cosmetics_equip"
+  | "arena_cosmetics_purchase"
+  | "arena_cosmetics_claim"
   | "tower_status"
   | "tower_complete_floor"
   | "pvp_status"
@@ -152,6 +156,21 @@ export interface UpgradeItemInput {
 
 export interface DismantleItemInput {
   itemId: string;
+  requestId: string;
+}
+
+export interface EquipArenaInput {
+  arenaId: string;
+  requestId: string;
+}
+
+export interface PurchaseArenaInput {
+  arenaId: string;
+  requestId: string;
+}
+
+export interface ClaimArenaInput {
+  arenaId: string;
   requestId: string;
 }
 

@@ -26,6 +26,7 @@ import {
   unequipItemDedicated,
   upgradeItemDedicated,
 } from "./modules/equipment/service.js";
+import { claimArenaDedicated, equipArenaDedicated, getArenaCosmeticsDedicated, purchaseArenaDedicated } from "./modules/arena-cosmetics/service.js";
 import type {
   AscendCardInput,
   BootstrapResponse,
@@ -39,6 +40,7 @@ import type {
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
+  EquipArenaInput,
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
   PvpStartMatchInput,
@@ -48,6 +50,8 @@ import type {
   SocialSearchInput,
   SocialSendRequestInput,
   PurchasePackInput,
+  PurchaseArenaInput,
+  ClaimArenaInput,
   StartBattleInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -185,6 +189,22 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async dismantleItem(_context: GodotAuthedRequestContext, _input: DismantleItemInput): Promise<unknown> {
     return await dismantleItemDedicated(_context, _input);
+  }
+
+  override async getArenaCosmetics(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return await getArenaCosmeticsDedicated(_context);
+  }
+
+  override async equipArena(_context: GodotAuthedRequestContext, _input: EquipArenaInput): Promise<unknown> {
+    return await equipArenaDedicated(_context, _input);
+  }
+
+  override async purchaseArena(_context: GodotAuthedRequestContext, _input: PurchaseArenaInput): Promise<unknown> {
+    return await purchaseArenaDedicated(_context, _input);
+  }
+
+  override async claimArena(_context: GodotAuthedRequestContext, _input: ClaimArenaInput): Promise<unknown> {
+    return await claimArenaDedicated(_context, _input);
   }
 
   override async ultimateUsed(_context: GodotAuthedRequestContext, _input: { requestId: string; count?: number }): Promise<unknown> {

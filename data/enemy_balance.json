@@ -69,7 +69,6 @@
                                                               "target_rule":  "NEAREST_ENEMY",
                                                               "area_rule":  "SINGLE_TARGET",
                                                               "area_lanes":  0,
-                                                              "power":  1.65,
                                                               "energy_cost":  100,
                                                               "vfx_key":  "physical_ultimate_burst"
                                                           }
@@ -96,7 +95,6 @@
                                                               "target_rule":  "NEAREST_ENEMY",
                                                               "area_rule":  "LANES_AROUND_TARGET",
                                                               "area_lanes":  1,
-                                                              "power":  1.43,
                                                               "energy_cost":  100,
                                                               "vfx_key":  "magic_ultimate_area"
                                                           }
@@ -123,7 +121,6 @@
                                                                 "target_rule":  "NEAREST_ENEMY",
                                                                 "area_rule":  "SAME_LANE",
                                                                 "area_lanes":  0,
-                                                                "power":  1.1,
                                                                 "energy_cost":  100,
                                                                 "vfx_key":  "debuff_ultimate_curse"
                                                             }
@@ -150,7 +147,6 @@
                                                              "target_rule":  "SELF",
                                                              "area_rule":  "SELF",
                                                              "area_lanes":  0,
-                                                             "power":  1.1,
                                                              "energy_cost":  100,
                                                              "vfx_key":  "summoner_ultimate_ritual"
                                                          }
@@ -177,7 +173,6 @@
                                                            "target_rule":  "LOWEST_HP_ALLY",
                                                            "area_rule":  "SINGLE_TARGET",
                                                            "area_lanes":  0,
-                                                           "power":  1.1,
                                                            "energy_cost":  100,
                                                            "vfx_key":  "support_ultimate_heal"
                                                        }

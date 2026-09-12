@@ -119,7 +119,7 @@ const ultimateUsedInputSchema = z.object({
 });
 
 const completeIncursionInputSchema = z.object({
-  waveReached: z.number().int().min(0).max(10),
+  waveReached: z.number().int().min(0).max(21),
   kills: z.number().int().min(0).max(99999),
   requestId: z.string().min(8).max(80),
   incursionSessionId: z.string().uuid(),
@@ -155,6 +155,11 @@ const equipItemInputSchema = z.object({
   itemId: z.string().min(1).max(120),
   requestId: z.string().min(8).max(80),
   targetCharacterId: z.string().min(1).max(120).optional(),
+});
+
+const arenaMutationInputSchema = z.object({
+  arenaId: z.string().regex(/^[a-zA-Z0-9_]{1,64}$/),
+  requestId: z.string().regex(/^[a-zA-Z0-9_-]{8,80}$/),
 });
 
 const unequipItemInputSchema = z.object({
@@ -548,6 +553,44 @@ export function createApp(domainService: GodotDomainService) {
       const authed = await requireAuthedGodotUser(context, "equipment_status");
       const response = await domainService.getEquipment(authed);
       return context.json(response);
+    }),
+  );
+
+  app.get("/api/godot/arena-cosmetics", async (context) =>
+    withModule(context, "arena_cosmetics_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "arena_cosmetics_status");
+      const response = await domainService.getArenaCosmetics(authed);
+      return context.json(response);
+    }),
+  );
+
+  app.post("/api/godot/arena-cosmetics/equip", async (context) =>
+    withModule(context, "arena_cosmetics_equip", async () => {
+      const authed = await requireAuthedGodotUser(context, "arena_cosmetics_equip");
+      applyRateLimit(context, authed.userId, "arena_cosmetics_equip");
+      const parsed = arenaMutationInputSchema.safeParse(await context.req.json().catch(() => null));
+      if (!parsed.success) throw new HttpModuleError(400, "invalid_request_payload", "arena_cosmetics_equip", "Invalid request payload.");
+      return context.json(await domainService.equipArena(authed, parsed.data));
+    }),
+  );
+
+  app.post("/api/godot/arena-cosmetics/purchase", async (context) =>
+    withModule(context, "arena_cosmetics_purchase", async () => {
+      const authed = await requireAuthedGodotUser(context, "arena_cosmetics_purchase");
+      applyRateLimit(context, authed.userId, "arena_cosmetics_purchase");
+      const parsed = arenaMutationInputSchema.safeParse(await context.req.json().catch(() => null));
+      if (!parsed.success) throw new HttpModuleError(400, "invalid_request_payload", "arena_cosmetics_purchase", "Invalid request payload.");
+      return context.json(await domainService.purchaseArena(authed, parsed.data));
+    }),
+  );
+
+  app.post("/api/godot/arena-cosmetics/claim", async (context) =>
+    withModule(context, "arena_cosmetics_claim", async () => {
+      const authed = await requireAuthedGodotUser(context, "arena_cosmetics_claim");
+      applyRateLimit(context, authed.userId, "arena_cosmetics_claim");
+      const parsed = arenaMutationInputSchema.safeParse(await context.req.json().catch(() => null));
+      if (!parsed.success) throw new HttpModuleError(400, "invalid_request_payload", "arena_cosmetics_claim", "Invalid request payload.");
+      return context.json(await domainService.claimArena(authed, parsed.data));
     }),
   );
 

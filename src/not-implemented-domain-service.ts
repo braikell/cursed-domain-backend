@@ -11,6 +11,7 @@ import type {
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
+  EquipArenaInput,
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
   PvpStartMatchInput,
@@ -20,6 +21,8 @@ import type {
   SocialSearchInput,
   SocialSendRequestInput,
   PurchasePackInput,
+  PurchaseArenaInput,
+  ClaimArenaInput,
   StartBattleInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -52,6 +55,10 @@ function notImplemented(
     | "equipment_unequip"
     | "equipment_upgrade"
     | "equipment_dismantle"
+    | "arena_cosmetics_status"
+    | "arena_cosmetics_equip"
+    | "arena_cosmetics_purchase"
+    | "arena_cosmetics_claim"
     | "tower_status"
     | "tower_complete_floor"
     | "pvp_status"
@@ -203,6 +210,22 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async dismantleItem(_context: GodotAuthedRequestContext, _input: DismantleItemInput): Promise<unknown> {
     return notImplemented("equipment_dismantle", "Dismantle item extraction not implemented yet.");
+  }
+
+  async getArenaCosmetics(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("arena_cosmetics_status", "Arena cosmetics status extraction not implemented yet.");
+  }
+
+  async equipArena(_context: GodotAuthedRequestContext, _input: EquipArenaInput): Promise<unknown> {
+    return notImplemented("arena_cosmetics_equip", "Arena cosmetics equip extraction not implemented yet.");
+  }
+
+  async purchaseArena(_context: GodotAuthedRequestContext, _input: PurchaseArenaInput): Promise<unknown> {
+    return notImplemented("arena_cosmetics_purchase", "Arena cosmetics purchase extraction not implemented yet.");
+  }
+
+  async claimArena(_context: GodotAuthedRequestContext, _input: ClaimArenaInput): Promise<unknown> {
+    return notImplemented("arena_cosmetics_claim", "Arena cosmetics claim extraction not implemented yet.");
   }
 
   async ultimateUsed(_context: GodotAuthedRequestContext, _input: { requestId: string; count?: number }): Promise<unknown> {

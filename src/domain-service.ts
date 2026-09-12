@@ -11,6 +11,7 @@ import type {
   CompleteTowerFloorInput,
   DismantleItemInput,
   EquipItemInput,
+  EquipArenaInput,
   GodotAuthedRequestContext,
   PvpCompleteMatchInput,
   PvpStartMatchInput,
@@ -20,6 +21,8 @@ import type {
   SocialSearchInput,
   SocialSendRequestInput,
   PurchasePackInput,
+  PurchaseArenaInput,
+  ClaimArenaInput,
   StartBattleInput,
   UnequipItemInput,
   UpgradeCardInput,
@@ -60,6 +63,10 @@ export interface GodotDomainService {
   unequipItem(context: GodotAuthedRequestContext, input: UnequipItemInput): Promise<unknown>;
   upgradeItem(context: GodotAuthedRequestContext, input: UpgradeItemInput): Promise<unknown>;
   dismantleItem(context: GodotAuthedRequestContext, input: DismantleItemInput): Promise<unknown>;
+  getArenaCosmetics(context: GodotAuthedRequestContext): Promise<unknown>;
+  equipArena(context: GodotAuthedRequestContext, input: EquipArenaInput): Promise<unknown>;
+  purchaseArena(context: GodotAuthedRequestContext, input: PurchaseArenaInput): Promise<unknown>;
+  claimArena(context: GodotAuthedRequestContext, input: ClaimArenaInput): Promise<unknown>;
   ultimateUsed(context: GodotAuthedRequestContext, input: { requestId: string; count?: number }): Promise<unknown>;
   grantChoiceCard(context: GodotAuthedRequestContext, input: { requestId: string; grantToken: string; characterId: string; cardType: string }): Promise<unknown>;
   startIncursion(context: GodotAuthedRequestContext, input: StartIncursionInput): Promise<unknown>;

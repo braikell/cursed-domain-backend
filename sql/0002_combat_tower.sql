@@ -195,7 +195,7 @@ select
   floor_number,
   format('tower_floor_%s', lpad(floor_number::text, 3, '0')) as floor_key,
   case
-    when floor_number % 5 = 0 then format('Piso %s - Guardian de la Torre', floor_number)
+    when floor_number % 5 = 0 then format('Piso %s - Jefe de la Torre', floor_number)
     else format('Piso %s', floor_number)
   end as display_name,
   floor_number % 5 = 0 as is_boss,
