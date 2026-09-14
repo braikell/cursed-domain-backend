@@ -59,6 +59,7 @@ export interface GodotDomainService {
   upgradeCard(context: GodotAuthedRequestContext, input: UpgradeCardInput): Promise<unknown>;
   ascendCard(context: GodotAuthedRequestContext, input: AscendCardInput): Promise<unknown>;
   getEquipment(context: GodotAuthedRequestContext): Promise<unknown>;
+  getInventoryHub(context: GodotAuthedRequestContext): Promise<unknown>;
   equipItem(context: GodotAuthedRequestContext, input: EquipItemInput): Promise<unknown>;
   unequipItem(context: GodotAuthedRequestContext, input: UnequipItemInput): Promise<unknown>;
   upgradeItem(context: GodotAuthedRequestContext, input: UpgradeItemInput): Promise<unknown>;

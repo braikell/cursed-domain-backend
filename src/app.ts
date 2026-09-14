@@ -556,6 +556,13 @@ export function createApp(domainService: GodotDomainService) {
     }),
   );
 
+  app.get("/api/godot/inventory/v2", async (context) =>
+    withModule(context, "inventory_status", async () => {
+      const authed = await requireAuthedGodotUser(context, "inventory_status");
+      return context.json(await domainService.getInventoryHub(authed));
+    }),
+  );
+
   app.get("/api/godot/arena-cosmetics", async (context) =>
     withModule(context, "arena_cosmetics_status", async () => {
       const authed = await requireAuthedGodotUser(context, "arena_cosmetics_status");

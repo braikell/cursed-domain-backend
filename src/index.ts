@@ -27,6 +27,7 @@ import {
   upgradeItemDedicated,
 } from "./modules/equipment/service.js";
 import { claimArenaDedicated, equipArenaDedicated, getArenaCosmeticsDedicated, purchaseArenaDedicated } from "./modules/arena-cosmetics/service.js";
+import { getInventoryHubDedicated } from "./modules/inventory/service.js";
 import type {
   AscendCardInput,
   BootstrapResponse,
@@ -173,6 +174,10 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
 
   override async getEquipment(_context: GodotAuthedRequestContext): Promise<unknown> {
     return await getEquipmentDedicated(_context);
+  }
+
+  override async getInventoryHub(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return await getInventoryHubDedicated(_context);
   }
 
   override async equipItem(_context: GodotAuthedRequestContext, _input: EquipItemInput): Promise<unknown> {

@@ -55,6 +55,7 @@ function notImplemented(
     | "equipment_unequip"
     | "equipment_upgrade"
     | "equipment_dismantle"
+    | "inventory_status"
     | "arena_cosmetics_status"
     | "arena_cosmetics_equip"
     | "arena_cosmetics_purchase"
@@ -194,6 +195,10 @@ export class NotImplementedGodotDomainService implements GodotDomainService {
 
   async getEquipment(_context: GodotAuthedRequestContext): Promise<unknown> {
     return notImplemented("equipment_status", "Equipment snapshot extraction not implemented yet.");
+  }
+
+  async getInventoryHub(_context: GodotAuthedRequestContext): Promise<unknown> {
+    return notImplemented("inventory_status", "Inventory hub snapshot extraction not implemented yet.");
   }
 
   async equipItem(_context: GodotAuthedRequestContext, _input: EquipItemInput): Promise<unknown> {

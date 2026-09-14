@@ -23,6 +23,7 @@ export type BackendModuleName =
   | "equipment_unequip"
   | "equipment_upgrade"
   | "equipment_dismantle"
+  | "inventory_status"
   | "arena_cosmetics_status"
   | "arena_cosmetics_equip"
   | "arena_cosmetics_purchase"
