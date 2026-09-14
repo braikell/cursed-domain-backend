@@ -218,6 +218,7 @@ const DEFINITIVE_RARITY_BONUS: Record<CardBalanceRarity, number> = {
   mythic: 5,
 };
 const ROLE_ATTACK_RANGES: Record<string, number> = {
+  VANGUARDIA: 125,
   DPS_FISICO: 125,
   DPS_MAGICO: 950,
   DPS_DEBUFFER: 480,
@@ -225,6 +226,7 @@ const ROLE_ATTACK_RANGES: Record<string, number> = {
   SOPORTE: 1100,
 };
 const ROLE_DESIRED_RANGES: Record<string, number> = {
+  VANGUARDIA: 119,
   DPS_FISICO: 119,
   DPS_MAGICO: 940,
   DPS_DEBUFFER: 432,
@@ -232,6 +234,7 @@ const ROLE_DESIRED_RANGES: Record<string, number> = {
   SOPORTE: 1087,
 };
 const ROLE_MOVE_SPEEDS: Record<string, number> = {
+  VANGUARDIA: 160,
   DPS_FISICO: 160,
   DPS_MAGICO: 105,
   DPS_DEBUFFER: 140,
@@ -650,7 +653,7 @@ export function normalizeCharacterKey(characterKey: string) {
   return CHARACTER_KEY_ALIASES[normalized] ?? normalized;
 }
 
-function getCombatRangeRole(characterKey: string, role: string) {
+export function getCombatRangeRole(characterKey: string, role: string) {
   return MELEE_INVOCATOR_CHARACTER_KEYS.has(normalizeCharacterKey(characterKey))
     ? "DPS_FISICO"
     : String(role ?? "").trim().toUpperCase();

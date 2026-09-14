@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "pmFormula": {
     "hpWeight": 0.1,
     "velWeight": 80,
@@ -10,15 +10,15 @@
       "characterKey": "yuji",
       "cardType": "BASE",
       "rarity": "basic",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
         "ad": 185,
         "ap": 0,
-        "hp": 3250,
+        "hp": 3450,
         "vel": 1,
-        "pm": 590
+        "pm": 610
       },
       "ultimate": {
         "key": "yuji_base_ultimate",
@@ -60,11 +60,11 @@
       "damageType": "TRUE",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 130,
-        "ap": 130,
-        "hp": 2150,
+        "ad": 170,
+        "ap": 170,
+        "hp": 2550,
         "vel": 1,
-        "pm": 575
+        "pm": 675
       },
       "ultimate": {
         "key": "nobara_base_ultimate",
@@ -80,7 +80,7 @@
         "hit_count": 3,
         "hit_interval_sec": 0.725,
         "debuff_key": "nobara_resonance_curse",
-        "damage_taken_multiplier": 2,
+        "damage_taken_multiplier": 1.25,
         "debuff_duration_sec": 3,
         "debuff_apply_hit_index": 2,
         "vfx_key": "nobara_resonance"
@@ -94,11 +94,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 140,
-        "ap": 140,
-        "hp": 2500,
+        "ad": 145,
+        "ap": 145,
+        "hp": 2600,
         "vel": 0.8,
-        "pm": 574
+        "pm": 614
       },
       "ultimate": {
         "key": "megumi_base_ultimate",
@@ -125,10 +125,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 375,
-        "hp": 2200,
+        "ap": 385,
+        "hp": 2050,
         "vel": 0.88,
-        "pm": 665
+        "pm": 660
       },
       "ultimate": {
         "key": "gojo_base_ultimate",
@@ -155,10 +155,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 370,
-        "hp": 2200,
+        "ap": 380,
+        "hp": 2050,
         "vel": 0.85,
-        "pm": 658
+        "pm": 653
       },
       "ultimate": {
         "key": "sukuna_base_ultimate",
@@ -184,11 +184,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 185,
+        "ad": 215,
         "ap": 0,
-        "hp": 3200,
+        "hp": 2850,
         "vel": 0.94,
-        "pm": 580
+        "pm": 575
       },
       "ultimate": {
         "key": "nanami_base_ultimate",
@@ -214,11 +214,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 124,
-        "ap": 124,
-        "hp": 3200,
+        "ad": 140,
+        "ap": 140,
+        "hp": 2850,
         "vel": 0.91,
-        "pm": 641
+        "pm": 638
       },
       "ultimate": {
         "key": "yuta_base_ultimate",
@@ -244,11 +244,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 235,
+        "ad": 255,
         "ap": 0,
-        "hp": 3200,
-        "vel": 0.95,
-        "pm": 631
+        "hp": 2450,
+        "vel": 0.98,
+        "pm": 578
       },
       "ultimate": {
         "key": "toji_base_ultimate",
@@ -283,11 +283,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 180,
+        "ad": 220,
         "ap": 0,
-        "hp": 3150,
-        "vel": 1,
-        "pm": 575
+        "hp": 2650,
+        "vel": 1.05,
+        "pm": 569
       },
       "ultimate": {
         "key": "maki_base_ultimate",
@@ -309,15 +309,15 @@
       "characterKey": "panda",
       "cardType": "BASE",
       "rarity": "basic",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 165,
+        "ad": 150,
         "ap": 0,
-        "hp": 3500,
+        "hp": 3800,
         "vel": 0.75,
-        "pm": 575
+        "pm": 590
       },
       "ultimate": {
         "key": "panda_base_ultimate",
@@ -343,11 +343,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 205,
+        "ad": 215,
         "ap": 0,
-        "hp": 3150,
+        "hp": 2800,
         "vel": 1,
-        "pm": 600
+        "pm": 575
       },
       "ultimate": {
         "key": "mahito_base_ultimate",
@@ -375,9 +375,9 @@
       "stats": {
         "ad": 150,
         "ap": 150,
-        "hp": 2400,
+        "hp": 2650,
         "vel": 0.95,
-        "pm": 616
+        "pm": 641
       },
       "ultimate": {
         "key": "geto_base_ultimate",
@@ -399,15 +399,15 @@
       "characterKey": "todo",
       "cardType": "BASE",
       "rarity": "epic",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 200,
+        "ad": 180,
         "ap": 0,
-        "hp": 3200,
-        "vel": 1,
-        "pm": 600
+        "hp": 3500,
+        "vel": 0.95,
+        "pm": 606
       },
       "ultimate": {
         "key": "todo_base_ultimate",
@@ -434,10 +434,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 300,
-        "hp": 2350,
+        "ap": 325,
+        "hp": 2150,
         "vel": 1,
-        "pm": 615
+        "pm": 620
       },
       "ultimate": {
         "key": "jogo_base_ultimate",
@@ -466,8 +466,8 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 295,
-        "hp": 2450,
+        "ap": 310,
+        "hp": 2300,
         "vel": 0.85,
         "pm": 608
       },
@@ -500,11 +500,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 210,
+        "ad": 215,
         "ap": 0,
-        "hp": 3050,
+        "hp": 2850,
         "vel": 1,
-        "pm": 595
+        "pm": 580
       },
       "ultimate": {
         "key": "higuruma_base_ultimate",
@@ -530,11 +530,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 240,
+        "ad": 250,
         "ap": 0,
-        "hp": 3150,
+        "hp": 2450,
         "vel": 1,
-        "pm": 635
+        "pm": 575
       },
       "ultimate": {
         "key": "kashimo_base_ultimate",
@@ -561,10 +561,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 295,
-        "hp": 2350,
+        "ap": 315,
+        "hp": 2200,
         "vel": 0.9,
-        "pm": 602
+        "pm": 607
       },
       "ultimate": {
         "key": "choso_base_ultimate",
@@ -586,15 +586,15 @@
       "characterKey": "mahoraga",
       "cardType": "BASE",
       "rarity": "mythic",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 240,
+        "ad": 185,
         "ap": 0,
-        "hp": 3600,
+        "hp": 4000,
         "vel": 0.72,
-        "pm": 658
+        "pm": 643
       },
       "ultimate": {
         "key": "mahoraga_base_ultimate",
@@ -626,10 +626,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 270,
-        "hp": 2200,
+        "ap": 290,
+        "hp": 2100,
         "vel": 0.9,
-        "pm": 562
+        "pm": 572
       },
       "ultimate": {
         "key": "toge_base_ultimate",
@@ -660,11 +660,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 210,
+        "ad": 205,
         "ap": 0,
-        "hp": 3000,
-        "vel": 1,
-        "pm": 590
+        "hp": 2400,
+        "vel": 1.16,
+        "pm": 538
       },
       "ultimate": {
         "key": "naoya_base_ultimate",
@@ -686,15 +686,15 @@
       "characterKey": "hakari",
       "cardType": "BASE",
       "rarity": "epic",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 205,
+        "ad": 180,
         "ap": 0,
-        "hp": 3450,
+        "hp": 3650,
         "vel": 0.9,
-        "pm": 622
+        "pm": 617
       },
       "ultimate": {
         "key": "hakari_base_ultimate",
@@ -722,11 +722,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 215,
+        "ad": 225,
         "ap": 0,
-        "hp": 3000,
+        "hp": 2700,
         "vel": 0.9,
-        "pm": 587
+        "pm": 567
       },
       "ultimate": {
         "key": "meimei_base_ultimate",
@@ -752,11 +752,11 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 90,
-        "ap": 120,
-        "hp": 2200,
+        "ad": 65,
+        "ap": 100,
+        "hp": 2700,
         "vel": 0.85,
-        "pm": 548
+        "pm": 553
       },
       "ultimate": {
         "key": "utahime_base_ultimate",
@@ -784,11 +784,11 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 95,
-        "ap": 130,
-        "hp": 2400,
+        "ad": 70,
+        "ap": 105,
+        "hp": 2800,
         "vel": 0.8,
-        "pm": 582
+        "pm": 571
       },
       "ultimate": {
         "key": "shoko_base_ultimate",
@@ -814,15 +814,15 @@
       "characterKey": "yuji",
       "cardType": "DEFINITIVA",
       "rarity": "legendary",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 193,
+        "ad": 195,
         "ap": 4,
-        "hp": 3490,
+        "hp": 3650,
         "vel": 1,
-        "pm": 626
+        "pm": 644
       },
       "ultimate": {
         "key": "yuji_definitiva_ultimate",
@@ -864,11 +864,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 150,
-        "ap": 150,
-        "hp": 2504,
+        "ad": 153,
+        "ap": 153,
+        "hp": 2800,
         "vel": 0.8,
-        "pm": 614
+        "pm": 650
       },
       "ultimate": {
         "key": "megumi_definitiva_ultimate",
@@ -895,10 +895,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 5,
-        "ap": 383,
-        "hp": 2300,
+        "ap": 397,
+        "hp": 2200,
         "vel": 0.88,
-        "pm": 688
+        "pm": 692
       },
       "ultimate": {
         "key": "gojo_definitiva_ultimate",
@@ -925,10 +925,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 5,
-        "ap": 380,
-        "hp": 2280,
+        "ap": 392,
+        "hp": 2200,
         "vel": 0.85,
-        "pm": 681
+        "pm": 685
       },
       "ultimate": {
         "key": "sukuna_definitiva_ultimate",
@@ -954,11 +954,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 190,
+        "ad": 225,
         "ap": 4,
-        "hp": 3400,
+        "hp": 3000,
         "vel": 0.94,
-        "pm": 609
+        "pm": 604
       },
       "ultimate": {
         "key": "nanami_definitiva_ultimate",
@@ -984,11 +984,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 132,
-        "ap": 132,
-        "hp": 3350,
+        "ad": 148,
+        "ap": 148,
+        "hp": 3050,
         "vel": 0.91,
-        "pm": 672
+        "pm": 674
       },
       "ultimate": {
         "key": "yuta_definitiva_ultimate",
@@ -1014,11 +1014,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 240,
+        "ad": 265,
         "ap": 5,
-        "hp": 3300,
-        "vel": 0.95,
-        "pm": 651
+        "hp": 2600,
+        "vel": 0.98,
+        "pm": 608
       },
       "ultimate": {
         "key": "toji_definitiva_ultimate",
@@ -1049,15 +1049,15 @@
       "characterKey": "panda",
       "cardType": "DEFINITIVA",
       "rarity": "epic",
-      "role": "DPS_FISICO",
+      "role": "VANGUARDIA",
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 166,
+        "ad": 160,
         "ap": 3,
-        "hp": 3700,
+        "hp": 4000,
         "vel": 0.75,
-        "pm": 599
+        "pm": 623
       },
       "ultimate": {
         "key": "panda_definitiva_ultimate",
@@ -1083,11 +1083,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 214,
+        "ad": 225,
         "ap": 4,
-        "hp": 3200,
+        "hp": 3000,
         "vel": 1,
-        "pm": 618
+        "pm": 609
       },
       "ultimate": {
         "key": "higuruma_definitiva_ultimate",
@@ -1113,11 +1113,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 244,
+        "ad": 260,
         "ap": 4,
-        "hp": 3240,
+        "hp": 2600,
         "vel": 1,
-        "pm": 652
+        "pm": 604
       },
       "ultimate": {
         "key": "kashimo_definitiva_ultimate",
@@ -1143,11 +1143,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 214,
+        "ad": 215,
         "ap": 4,
-        "hp": 3080,
-        "vel": 1,
-        "pm": 606
+        "hp": 2550,
+        "vel": 1.16,
+        "pm": 567
       },
       "ultimate": {
         "key": "naoya_definitiva_ultimate",
@@ -1173,11 +1173,11 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 98,
-        "ap": 122,
-        "hp": 2400,
+        "ad": 73,
+        "ap": 108,
+        "hp": 2900,
         "vel": 0.85,
-        "pm": 581
+        "pm": 593
       },
       "ultimate": {
         "key": "utahime_definitiva_ultimate",
