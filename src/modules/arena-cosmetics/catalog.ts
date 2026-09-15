@@ -25,14 +25,14 @@ export interface ArenaCatalogEntry {
 export const ARENA_COSMETICS_CATALOG: readonly ArenaCatalogEntry[] = Object.freeze([
   Object.freeze({
     id: DEFAULT_ARENA_ID,
-    displayName: "Distrito Maldito",
+    displayName: "Patio de Ceniza",
     acquisitionType: "free" as const,
     price: 0,
     available: true,
   }),
   Object.freeze({
     id: "arena_relicario_obsidiana",
-    displayName: "Relicario de Obsidiana",
+    displayName: "Atrio de Obsidiana",
     acquisitionType: "gold" as const,
     price: 105000,
     available: true,
@@ -63,7 +63,7 @@ export const ARENA_COSMETICS_CATALOG: readonly ArenaCatalogEntry[] = Object.free
   }),
   Object.freeze({
     id: "arena_trono_invierno",
-    displayName: "Trono del Invierno Hueco",
+    displayName: "Santuario Lunar",
     acquisitionType: "gems" as const,
     price: 2200,
     available: true,
