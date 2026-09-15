@@ -10,6 +10,7 @@ import { HttpModuleError } from "../../errors.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
 import { getBootstrapMonetizationConfig, updateDailyMissionProgress } from "../bootstrap/monetization-foundation.js";
+import { PM_V2_RUNTIME_POLICY } from "../cards/power-rating-v2/pm-runtime-policy.js";
 
 type PvpLeague = "bronze" | "silver" | "gold";
 
@@ -136,7 +137,7 @@ export async function startPvpMatchDedicated(
     ensurePvpProfile(supabase, context.userId),
     loadPvpProfile(supabase, input.defenderUserId),
   ]);
-  if (defender == null || defender.defense_power <= 0) {
+  if (defender == null || defender.defense_power <= 0 || !isCurrentPmDefenseSnapshot(defender.defense_snapshot)) {
     throw new HttpModuleError(404, "pvp_defender_not_found", "pvp_start_match", "El rival ya no tiene defensa PvP disponible.");
   }
 
@@ -303,11 +304,13 @@ async function loadRivals(supabase: SupabaseClient, userId: string, self: PvpPro
     .order("rating", { ascending: false })
     .order("defense_power", { ascending: false })
     .order("updated_at", { ascending: false })
-    .limit(MATCHMAKING_LIMIT)
+    .limit(MATCHMAKING_LIMIT * 5)
     .returns<PvpProfileRow[]>();
   if (error) throw new Error(error.message);
-  const rows = data ?? [];
-  if (rows.some((row) => row.user_id === userId) || self.defense_power <= 0) return rows;
+  const rows = (data ?? [])
+    .filter((row) => isCurrentPmDefenseSnapshot(row.defense_snapshot))
+    .slice(0, MATCHMAKING_LIMIT);
+  if (rows.some((row) => row.user_id === userId) || self.defense_power <= 0 || !isCurrentPmDefenseSnapshot(self.defense_snapshot)) return rows;
   return [self, ...rows].slice(0, MATCHMAKING_LIMIT);
 }
 
@@ -317,10 +320,10 @@ async function loadLeaderboard(supabase: SupabaseClient) {
     .select(PVP_PROFILE_SELECT)
     .gt("defense_power", 0)
     .order("rating", { ascending: false })
-    .limit(LEADERBOARD_LIMIT)
+    .limit(LEADERBOARD_LIMIT * 5)
     .returns<PvpProfileRow[]>();
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (data ?? []).filter((row) => isCurrentPmDefenseSnapshot(row.defense_snapshot)).slice(0, LEADERBOARD_LIMIT);
 }
 
 async function expireOldStartedMatches(supabase: SupabaseClient, userId: string) {
@@ -416,7 +419,16 @@ function normalizeDefenseSnapshot(value: unknown) {
   if (units.length !== 3) {
     throw new HttpModuleError(400, "invalid_defense_snapshot", "pvp_upsert_defense", "La defensa PvP necesita exactamente 3 cartas.");
   }
+  if (!isCurrentPmDefenseSnapshot(snapshot)) {
+    throw new HttpModuleError(409, "pvp_pm_version_mismatch", "pvp_upsert_defense", "La defensa PvP debe republicarse con la version de PM activa.");
+  }
   return snapshot;
+}
+
+export function isCurrentPmDefenseSnapshot(value: unknown): boolean {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) return false;
+  const expectedVersion = PM_V2_RUNTIME_POLICY.mode === "v2" ? "v2" : "legacy";
+  return String((value as Record<string, unknown>).pmVersion ?? "legacy") === expectedVersion;
 }
 
 function toClientProfile(row: PvpProfileRow) {
@@ -436,6 +448,9 @@ function toClientProfile(row: PvpProfileRow) {
     wins: row.wins,
     losses: row.losses,
     defensePower: row.defense_power,
+    defensePowerVersion: isCurrentPmDefenseSnapshot(row.defense_snapshot)
+      ? (PM_V2_RUNTIME_POLICY.mode === "v2" ? "v2" : "legacy")
+      : "stale",
     defenseSnapshot: row.defense_snapshot,
     defenseUpdatedAt: row.defense_updated_at,
     updatedAt: row.updated_at,

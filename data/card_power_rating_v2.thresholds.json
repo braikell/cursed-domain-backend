@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "contractId": "card-pm-v2-statistical",
+  "status": "certified",
+  "runtimeEnabled": true,
+  "authoritativeVersion": "v2",
+  "teamSize": 3,
+  "method": "median-of-all-distinct-character-formations",
+  "equipment": "NONE",
+  "anchors": [
+    {
+      "level": 1,
+      "ascension": 0,
+      "legacyPm": 2008,
+      "v2Pm": 2073,
+      "medianRatio": 1.0352,
+      "p10Ratio": 0.9832,
+      "p90Ratio": 1.0874,
+      "formationSamples": 7350
+    },
+    {
+      "level": 20,
+      "ascension": 0,
+      "legacyPm": 2342,
+      "v2Pm": 2448,
+      "medianRatio": 1.0485,
+      "p10Ratio": 0.9965,
+      "p90Ratio": 1.102,
+      "formationSamples": 7350
+    },
+    {
+      "level": 40,
+      "ascension": 1,
+      "legacyPm": 2771,
+      "v2Pm": 2936,
+      "medianRatio": 1.0616,
+      "p10Ratio": 1.0091,
+      "p90Ratio": 1.1165,
+      "formationSamples": 7350
+    },
+    {
+      "level": 60,
+      "ascension": 2,
+      "legacyPm": 3220,
+      "v2Pm": 3445,
+      "medianRatio": 1.0716,
+      "p10Ratio": 1.0191,
+      "p90Ratio": 1.1277,
+      "formationSamples": 7350
+    },
+    {
+      "level": 80,
+      "ascension": 3,
+      "legacyPm": 3690,
+      "v2Pm": 3980,
+      "medianRatio": 1.0795,
+      "p10Ratio": 1.0268,
+      "p90Ratio": 1.1371,
+      "formationSamples": 7350
+    }
+  ],
+  "conversionVectors": [
+    {
+      "legacyPm": 400,
+      "v2Pm": 413
+    },
+    {
+      "legacyPm": 500,
+      "v2Pm": 516
+    },
+    {
+      "legacyPm": 999,
+      "v2Pm": 1031
+    },
+    {
+      "legacyPm": 2004,
+      "v2Pm": 2069
+    },
+    {
+      "legacyPm": 2765,
+      "v2Pm": 2929
+    },
+    {
+      "legacyPm": 3687,
+      "v2Pm": 3977
+    },
+    {
+      "legacyPm": 7000,
+      "v2Pm": 7550
+    },
+    {
+      "legacyPm": 12000,
+      "v2Pm": 12943
+    }
+  ],
+  "domains": {
+    "campaign": {
+      "legacyMinimum": 400,
+      "legacyMaximum": 7000,
+      "mode": "v2"
+    },
+    "tower": {
+      "legacyMinimum": 500,
+      "legacyMaximum": 12000,
+      "mode": "v2"
+    },
+    "pvp": {
+      "strategy": "require-v2-defense-republish",
+      "mode": "v2"
+    }
+  },
+  "rules": {
+    "interpolation": "linear-between-anchors",
+    "belowFirstAnchor": "first-anchor-ratio",
+    "aboveLastAnchor": "last-anchor-ratio",
+    "monotonic": true,
+    "unknownVersionIsError": true,
+    "rollbackVersion": "legacy"
+  }
+}

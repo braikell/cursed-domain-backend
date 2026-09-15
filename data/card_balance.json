@@ -1,9 +1,18 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 7,
   "pmFormula": {
     "hpWeight": 0.1,
     "velWeight": 80,
     "supportMultiplier": 1.1
+  },
+  "supportBasicAttackFormula": {
+    "adWeight": 1,
+    "apWeight": 1,
+    "hpWeight": 0.1,
+    "attackSpeedWeight": 80,
+    "weightedMultiplier": 1.1,
+    "outputMultiplier": 0.28,
+    "roundWeightedBeforeOutput": true
   },
   "definitions": [
     {
@@ -14,11 +23,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 185,
+        "ad": 187,
         "ap": 0,
-        "hp": 3450,
+        "hp": 3497,
         "vel": 1,
-        "pm": 610
+        "pm": 617
       },
       "ultimate": {
         "key": "yuji_base_ultimate",
@@ -62,9 +71,9 @@
       "stats": {
         "ad": 170,
         "ap": 170,
-        "hp": 2550,
+        "hp": 2540,
         "vel": 1,
-        "pm": 675
+        "pm": 674
       },
       "ultimate": {
         "key": "nobara_base_ultimate",
@@ -94,11 +103,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 145,
-        "ap": 145,
-        "hp": 2600,
+        "ad": 171,
+        "ap": 171,
+        "hp": 3084,
         "vel": 0.8,
-        "pm": 614
+        "pm": 714
       },
       "ultimate": {
         "key": "megumi_base_ultimate",
@@ -125,10 +134,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 385,
-        "hp": 2050,
+        "ap": 426,
+        "hp": 2153,
         "vel": 0.88,
-        "pm": 660
+        "pm": 712
       },
       "ultimate": {
         "key": "gojo_base_ultimate",
@@ -155,10 +164,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 380,
-        "hp": 2050,
+        "ap": 435,
+        "hp": 2238,
         "vel": 0.85,
-        "pm": 653
+        "pm": 727
       },
       "ultimate": {
         "key": "sukuna_base_ultimate",
@@ -184,11 +193,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 215,
+        "ad": 230,
         "ap": 0,
-        "hp": 2850,
+        "hp": 2857,
         "vel": 0.94,
-        "pm": 575
+        "pm": 591
       },
       "ultimate": {
         "key": "nanami_base_ultimate",
@@ -214,11 +223,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 140,
-        "ap": 140,
-        "hp": 2850,
+        "ad": 170,
+        "ap": 170,
+        "hp": 3442,
         "vel": 0.91,
-        "pm": 638
+        "pm": 757
       },
       "ultimate": {
         "key": "yuta_base_ultimate",
@@ -244,11 +253,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 255,
+        "ad": 289,
         "ap": 0,
-        "hp": 2450,
+        "hp": 2769,
         "vel": 0.98,
-        "pm": 578
+        "pm": 644
       },
       "ultimate": {
         "key": "toji_base_ultimate",
@@ -285,9 +294,9 @@
       "stats": {
         "ad": 220,
         "ap": 0,
-        "hp": 2650,
+        "hp": 2573,
         "vel": 1.05,
-        "pm": 569
+        "pm": 561
       },
       "ultimate": {
         "key": "maki_base_ultimate",
@@ -313,11 +322,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 150,
+        "ad": 158,
         "ap": 0,
-        "hp": 3800,
+        "hp": 4084,
         "vel": 0.75,
-        "pm": 590
+        "pm": 626
       },
       "ultimate": {
         "key": "panda_base_ultimate",
@@ -343,11 +352,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 215,
+        "ad": 237,
         "ap": 0,
-        "hp": 2800,
+        "hp": 2989,
         "vel": 1,
-        "pm": 575
+        "pm": 616
       },
       "ultimate": {
         "key": "mahito_base_ultimate",
@@ -373,11 +382,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 150,
-        "ap": 150,
-        "hp": 2650,
+        "ad": 165,
+        "ap": 165,
+        "hp": 2921,
         "vel": 0.95,
-        "pm": 641
+        "pm": 698
       },
       "ultimate": {
         "key": "geto_base_ultimate",
@@ -403,11 +412,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 180,
+        "ad": 196,
         "ap": 0,
-        "hp": 3500,
+        "hp": 3834,
         "vel": 0.95,
-        "pm": 606
+        "pm": 655
       },
       "ultimate": {
         "key": "todo_base_ultimate",
@@ -434,10 +443,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 325,
-        "hp": 2150,
+        "ap": 319,
+        "hp": 2141,
         "vel": 1,
-        "pm": 620
+        "pm": 613
       },
       "ultimate": {
         "key": "jogo_base_ultimate",
@@ -466,10 +475,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 310,
-        "hp": 2300,
+        "ap": 343,
+        "hp": 2674,
         "vel": 0.85,
-        "pm": 608
+        "pm": 678
       },
       "ultimate": {
         "key": "hanami_base_ultimate",
@@ -500,11 +509,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 215,
+        "ad": 233,
         "ap": 0,
-        "hp": 2850,
+        "hp": 3029,
         "vel": 1,
-        "pm": 580
+        "pm": 616
       },
       "ultimate": {
         "key": "higuruma_base_ultimate",
@@ -530,11 +539,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 250,
+        "ad": 270,
         "ap": 0,
-        "hp": 2450,
+        "hp": 2467,
         "vel": 1,
-        "pm": 575
+        "pm": 597
       },
       "ultimate": {
         "key": "kashimo_base_ultimate",
@@ -561,10 +570,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 315,
-        "hp": 2200,
+        "ap": 339,
+        "hp": 2329,
         "vel": 0.9,
-        "pm": 607
+        "pm": 644
       },
       "ultimate": {
         "key": "choso_base_ultimate",
@@ -590,11 +599,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 185,
+        "ad": 251,
         "ap": 0,
-        "hp": 4000,
+        "hp": 5056,
         "vel": 0.72,
-        "pm": 643
+        "pm": 814
       },
       "ultimate": {
         "key": "mahoraga_base_ultimate",
@@ -626,10 +635,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 0,
-        "ap": 290,
-        "hp": 2100,
+        "ap": 303,
+        "hp": 2137,
         "vel": 0.9,
-        "pm": 572
+        "pm": 589
       },
       "ultimate": {
         "key": "toge_base_ultimate",
@@ -660,11 +669,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 205,
+        "ad": 217,
         "ap": 0,
-        "hp": 2400,
+        "hp": 2552,
         "vel": 1.16,
-        "pm": 538
+        "pm": 565
       },
       "ultimate": {
         "key": "naoya_base_ultimate",
@@ -690,11 +699,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 180,
+        "ad": 195,
         "ap": 0,
-        "hp": 3650,
+        "hp": 4218,
         "vel": 0.9,
-        "pm": 617
+        "pm": 689
       },
       "ultimate": {
         "key": "hakari_base_ultimate",
@@ -722,11 +731,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 225,
+        "ad": 253,
         "ap": 0,
-        "hp": 2700,
+        "hp": 3036,
         "vel": 0.9,
-        "pm": 567
+        "pm": 629
       },
       "ultimate": {
         "key": "meimei_base_ultimate",
@@ -752,11 +761,12 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 65,
-        "ap": 100,
-        "hp": 2700,
+        "ad": 64,
+        "ap": 99,
+        "hp": 2624,
         "vel": 0.85,
-        "pm": 553
+        "pm": 543,
+        "basicAttackPower": 152
       },
       "ultimate": {
         "key": "utahime_base_ultimate",
@@ -784,11 +794,12 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 70,
-        "ap": 105,
-        "hp": 2800,
+        "ad": 73,
+        "ap": 110,
+        "hp": 2938,
         "vel": 0.8,
-        "pm": 571
+        "pm": 595,
+        "basicAttackPower": 167
       },
       "ultimate": {
         "key": "shoko_base_ultimate",
@@ -818,11 +829,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 195,
+        "ad": 220,
         "ap": 4,
-        "hp": 3650,
+        "hp": 4106,
         "vel": 1,
-        "pm": 644
+        "pm": 715
       },
       "ultimate": {
         "key": "yuji_definitiva_ultimate",
@@ -864,11 +875,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 153,
-        "ap": 153,
-        "hp": 2800,
+        "ad": 190,
+        "ap": 190,
+        "hp": 3453,
         "vel": 0.8,
-        "pm": 650
+        "pm": 789
       },
       "ultimate": {
         "key": "megumi_definitiva_ultimate",
@@ -895,10 +906,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 5,
-        "ap": 397,
-        "hp": 2200,
+        "ap": 495,
+        "hp": 2585,
         "vel": 0.88,
-        "pm": 692
+        "pm": 829
       },
       "ultimate": {
         "key": "gojo_definitiva_ultimate",
@@ -925,10 +936,10 @@
       "scaling": "MAGICAL",
       "stats": {
         "ad": 5,
-        "ap": 392,
-        "hp": 2200,
+        "ap": 494,
+        "hp": 2676,
         "vel": 0.85,
-        "pm": 685
+        "pm": 835
       },
       "ultimate": {
         "key": "sukuna_definitiva_ultimate",
@@ -954,11 +965,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 225,
+        "ad": 250,
         "ap": 4,
-        "hp": 3000,
+        "hp": 3655,
         "vel": 0.94,
-        "pm": 604
+        "pm": 695
       },
       "ultimate": {
         "key": "nanami_definitiva_ultimate",
@@ -984,11 +995,11 @@
       "damageType": "MAGICAL",
       "scaling": "HYBRID",
       "stats": {
-        "ad": 148,
-        "ap": 148,
-        "hp": 3050,
+        "ad": 195,
+        "ap": 195,
+        "hp": 4008,
         "vel": 0.91,
-        "pm": 674
+        "pm": 864
       },
       "ultimate": {
         "key": "yuta_definitiva_ultimate",
@@ -1014,11 +1025,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 265,
+        "ad": 329,
         "ap": 5,
-        "hp": 2600,
+        "hp": 3264,
         "vel": 0.98,
-        "pm": 608
+        "pm": 739
       },
       "ultimate": {
         "key": "toji_definitiva_ultimate",
@@ -1053,11 +1064,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 160,
+        "ad": 186,
         "ap": 3,
-        "hp": 4000,
+        "hp": 4513,
         "vel": 0.75,
-        "pm": 623
+        "pm": 700
       },
       "ultimate": {
         "key": "panda_definitiva_ultimate",
@@ -1083,11 +1094,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 225,
+        "ad": 246,
         "ap": 4,
-        "hp": 3000,
+        "hp": 3519,
         "vel": 1,
-        "pm": 609
+        "pm": 682
       },
       "ultimate": {
         "key": "higuruma_definitiva_ultimate",
@@ -1113,11 +1124,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 260,
+        "ad": 289,
         "ap": 4,
-        "hp": 2600,
+        "hp": 2905,
         "vel": 1,
-        "pm": 604
+        "pm": 664
       },
       "ultimate": {
         "key": "kashimo_definitiva_ultimate",
@@ -1143,11 +1154,11 @@
       "damageType": "PHYSICAL",
       "scaling": "PHYSICAL",
       "stats": {
-        "ad": 215,
+        "ad": 231,
         "ap": 4,
-        "hp": 2550,
+        "hp": 2955,
         "vel": 1.16,
-        "pm": 567
+        "pm": 623
       },
       "ultimate": {
         "key": "naoya_definitiva_ultimate",
@@ -1173,11 +1184,12 @@
       "damageType": "HYBRID",
       "scaling": "SUPPORT",
       "stats": {
-        "ad": 73,
-        "ap": 108,
-        "hp": 2900,
+        "ad": 71,
+        "ap": 106,
+        "hp": 2935,
         "vel": 0.85,
-        "pm": 593
+        "pm": 592,
+        "basicAttackPower": 166
       },
       "ultimate": {
         "key": "utahime_definitiva_ultimate",

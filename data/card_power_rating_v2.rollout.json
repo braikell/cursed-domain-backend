@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractId": "card-pm-v2-statistical",
+  "mode": "v2",
+  "fallbackMode": "legacy",
+  "thresholdMigrationStatus": "certified",
+  "requireGodotParity": true,
+  "requireRollback": true
+}

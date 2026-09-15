@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "contractId": "card-pm-v2-statistical",
+  "status": "active",
+  "runtimeEnabled": true,
+  "scope": {
+    "name": "STATISTICAL_POWER",
+    "levelOneCalibration": true,
+    "includes": [
+      "ad",
+      "ap",
+      "hp",
+      "attackSpeedMultiplier",
+      "scaling",
+      "role",
+      "rarity",
+      "cardType",
+      "critChance",
+      "critDamageMultiplier"
+    ],
+    "excludes": [
+      "ultimate",
+      "summons",
+      "healing",
+      "shields",
+      "buffs",
+      "debuffs",
+      "targetCount",
+      "movementSpeed",
+      "attackRange",
+      "position"
+    ]
+  },
+  "constants": {
+    "referencePm": 600,
+    "baseAttackIntervalSeconds": 1.45,
+    "defaultCritChance": 0.08,
+    "defaultCritDamageMultiplier": 1.5,
+    "minimumAttackSpeedMultiplier": 0.7,
+    "maximumAttackSpeedMultiplier": 1.2,
+    "balanceTolerance": 0.03
+  },
+  "attackPower": {
+    "PHYSICAL": "ad",
+    "MAGICAL": "ap",
+    "HYBRID": "(ad + ap) / 2",
+    "SUPPORT": "explicitBasicAttackPower"
+  },
+  "formula": {
+    "expectedCritMultiplier": "1 + critChance * (critDamageMultiplier - 1)",
+    "basicDps": "attackPower * attackSpeedMultiplier / baseAttackIntervalSeconds * expectedCritMultiplier",
+    "offenseIndex": "basicDps / role.referenceBasicDps",
+    "survivalIndex": "hp / role.referenceHp",
+    "statisticalPowerIndex": "role.offenseWeight * offenseIndex + role.survivalWeight * survivalIndex",
+    "pm": "round(referencePm * statisticalPowerIndex)"
+  },
+  "roleProfiles": {
+    "VANGUARDIA": {
+      "offenseWeight": 0.35,
+      "survivalWeight": 0.65,
+      "referenceBasicDps": 115,
+      "referenceHp": 3650
+    },
+    "DPS_FISICO": {
+      "offenseWeight": 0.65,
+      "survivalWeight": 0.35,
+      "referenceBasicDps": 155,
+      "referenceHp": 2650
+    },
+    "DPS_MAGICO": {
+      "offenseWeight": 0.75,
+      "survivalWeight": 0.25,
+      "referenceBasicDps": 200,
+      "referenceHp": 2100
+    },
+    "DPS_DEBUFFER": {
+      "offenseWeight": 0.55,
+      "survivalWeight": 0.45,
+      "referenceBasicDps": 125,
+      "referenceHp": 2550
+    },
+    "INVOCADOR": {
+      "offenseWeight": 0.5,
+      "survivalWeight": 0.5,
+      "referenceBasicDps": 95,
+      "referenceHp": 2700
+    },
+    "SOPORTE": {
+      "offenseWeight": 0.3,
+      "survivalWeight": 0.7,
+      "referenceBasicDps": 85,
+      "referenceHp": 2750
+    }
+  },
+  "rarityTargets": {
+    "basic": 1,
+    "epic": 1.12,
+    "legendary": 1.25,
+    "mythic": 1.4
+  },
+  "cardTypeTargets": {
+    "BASE": 1,
+    "DEFINITIVA": 1.04
+  },
+  "levelOneBands": {
+    "BASE": {
+      "basic": {
+        "minimumPm": 582,
+        "maximumPm": 629
+      },
+      "epic": {
+        "minimumPm": 630,
+        "maximumPm": 700
+      },
+      "legendary": {
+        "minimumPm": 701,
+        "maximumPm": 776
+      },
+      "mythic": {
+        "minimumPm": 777,
+        "maximumPm": 865
+      }
+    },
+    "DEFINITIVA": {
+      "basic": {
+        "minimumPm": 605,
+        "maximumPm": 664
+      },
+      "epic": {
+        "minimumPm": 665,
+        "maximumPm": 713
+      },
+      "legendary": {
+        "minimumPm": 714,
+        "maximumPm": 840
+      },
+      "mythic": {
+        "minimumPm": 841,
+        "maximumPm": 900
+      }
+    }
+  },
+  "rules": {
+    "rarityIsNotAppliedInsidePmFormula": true,
+    "rarityDefinesBalanceTargetOnly": true,
+    "rarityOrderingAppliesAtEqualProgression": true,
+    "rarityOrderingScope": "within_card_type",
+    "individualHeroTargetsAreAuthoritative": true,
+    "unknownRoleIsError": true,
+    "unknownScalingIsError": true,
+    "negativeStatIsError": true,
+    "invalidNumberIsError": true,
+    "rounding": "nearest_integer_half_up_for_non_negative_values",
+    "ultimateContribution": 0
+  },
+  "activationRequirements": [
+    "Add explicitBasicAttackPower for SUPPORT without changing current combat damage",
+    "Implement identical calculators in backend and Godot",
+    "Validate both implementations with shared golden test vectors",
+    "Audit all 37 cards at level 1 without equipment",
+    "Rebalance cards outside their rarity band before activation",
+    "Migrate campaign and server power thresholds",
+    "Keep a rollback path to the legacy PM formula"
+  ]
+}

@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { calculatePmV2Preview } from "./power-rating-v2/pm-calculator.js";
+import { PM_V2_RUNTIME_POLICY, selectRuntimePm } from "./power-rating-v2/pm-runtime-policy.js";
 
 export type CardCatalogType = "BASE" | "DEFINITIVA";
 export type CardBalanceRarity = "basic" | "epic" | "legendary" | "mythic";
@@ -143,12 +145,28 @@ export interface CardCombatStats {
   hp: number;
   vel: number;
   pm: number;
+  basicAttackPower?: number;
 }
 
 export interface CardFinalStats extends CardCombatStats {
   atk: number;
+  basic_attack_power?: number;
   attack_speed_multiplier: number;
   speed: number;
+  pm_legacy: number;
+  pm_v2: number;
+  pm_version: "legacy" | "v2";
+  pm_runtime_mode: "legacy" | "shadow" | "v2";
+}
+
+export interface SupportBasicAttackFormula {
+  adWeight: number;
+  apWeight: number;
+  hpWeight: number;
+  attackSpeedWeight: number;
+  weightedMultiplier: number;
+  outputMultiplier: number;
+  roundWeightedBeforeOutput: boolean;
 }
 
 interface CardDefinitionSkillPayload {
@@ -204,6 +222,7 @@ interface CardBalancePayload {
     velWeight: number;
     supportMultiplier: number;
   };
+  supportBasicAttackFormula: SupportBasicAttackFormula;
   definitions: CardBalanceDefinition[];
 }
 
@@ -252,10 +271,12 @@ const payload = JSON.parse(readFileSync(CARD_BALANCE_PATH, "utf-8")) as CardBala
 
 export const CARD_BALANCE_SCHEMA_VERSION = Number(payload.schemaVersion ?? 1) || 1;
 export const CARD_PM_FORMULA = payload.pmFormula;
+export const CARD_SUPPORT_BASIC_ATTACK_FORMULA = Object.freeze(payload.supportBasicAttackFormula);
 export const CARD_BALANCE_DEFINITIONS: ReadonlyArray<CardBalanceDefinition> = Object.freeze(
   finalizeDefinitions(resolveDerivedDefinitives(
     (Array.isArray(payload.definitions) ? payload.definitions : []).map((definition) => normalizeDefinition(definition)),
     payload.pmFormula,
+    payload.supportBasicAttackFormula,
   )),
 );
 
@@ -324,7 +345,7 @@ export function getCardAscensionMultiplier(ascension: number) {
 }
 
 export function calculateCardFinalStats(
-  definition: Pick<CardBalanceDefinition, "stats" | "scaling" | "cardType" | "rarity">,
+  definition: Pick<CardBalanceDefinition, "stats" | "scaling" | "role" | "cardType" | "rarity" | "crit_chance" | "crit_damage">,
   level: number,
   ascension: number,
   equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> = {},
@@ -343,14 +364,40 @@ export function calculateCardFinalStats(
   const ap = Math.floor(baseAp * (1 + growth.atkGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.ap ?? 0) || 0));
   const hp = Math.floor(baseHp * (1 + growth.hpGrowth * levelIndex) * ascMult) + Math.max(0, Math.floor(Number(equipmentBonus.hp ?? 0) || 0));
   const vel = baseVel;
-  const pm = calculatePm(ad, ap, hp, vel, String(definition.scaling ?? ""), CARD_PM_FORMULA);
+  const scaling = String(definition.scaling ?? "").trim().toUpperCase();
+  const legacyPm = calculatePm(ad, ap, hp, vel, scaling, CARD_PM_FORMULA);
+  const basicAttackPower = scaling === "SUPPORT"
+    ? calculateSupportBasicAttackPower(ad, ap, hp, vel)
+    : 0;
+  const v2Result = calculatePmV2Preview({
+    ad,
+    ap,
+    hp,
+    attackSpeedMultiplier: vel,
+    scaling,
+    role: definition.role,
+    rarity,
+    cardType,
+    critChance: definition.crit_chance,
+    critDamageMultiplier: definition.crit_damage,
+    ...(scaling === "SUPPORT" ? { explicitBasicAttackPower: basicAttackPower } : {}),
+  });
+  if (!v2Result.ok) {
+    throw new Error("Invalid canonical PM V2 stats: " + v2Result.errors.join(", "));
+  }
+  const pm = selectRuntimePm(legacyPm, v2Result.pm);
   return {
     ad,
     ap,
     hp,
     vel,
     pm,
-    atk: calculateAttackValue(ad, ap, pm, String(definition.scaling ?? "")),
+    pm_legacy: legacyPm,
+    pm_v2: v2Result.pm,
+    pm_version: PM_V2_RUNTIME_POLICY.mode === "v2" ? "v2" : "legacy",
+    pm_runtime_mode: PM_V2_RUNTIME_POLICY.mode,
+    ...(scaling === "SUPPORT" ? { basicAttackPower, basic_attack_power: basicAttackPower } : {}),
+    atk: calculateAttackValue(ad, ap, scaling, basicAttackPower),
     attack_speed_multiplier: vel,
     speed: vel,
   };
@@ -365,7 +412,7 @@ export function getCardFinalStats(
 ): CardFinalStats {
   const definition = getCardBalance(characterKey, cardType);
   if (definition == null) {
-    return { ad: 0, ap: 0, hp: 0, vel: 0, pm: 0, atk: 1, attack_speed_multiplier: 0, speed: 0 };
+    return { ad: 0, ap: 0, hp: 0, vel: 0, pm: 0, atk: 1, attack_speed_multiplier: 0, speed: 0, pm_legacy: 0, pm_v2: 0, pm_version: "legacy", pm_runtime_mode: PM_V2_RUNTIME_POLICY.mode };
   }
   return calculateCardFinalStats(definition, level, ascension, equipmentBonus);
 }
@@ -487,6 +534,17 @@ function distributeTierCost(total: number, stepCount: number, stepIndex: number)
 }
 
 function normalizeDefinition(definition: CardBalanceDefinition): CardBalanceDefinition {
+  const rawBasicAttackPower = Number(definition.stats?.basicAttackPower);
+  const stats: CardCombatStats = {
+    ad: Math.floor(Number(definition.stats?.ad ?? 0) || 0),
+    ap: Math.floor(Number(definition.stats?.ap ?? 0) || 0),
+    hp: Math.floor(Number(definition.stats?.hp ?? 0) || 0),
+    vel: Number(definition.stats?.vel ?? 0) || 0,
+    pm: Math.floor(Number(definition.stats?.pm ?? 0) || 0),
+  };
+  if (Number.isFinite(rawBasicAttackPower) && rawBasicAttackPower > 0) {
+    stats.basicAttackPower = Math.floor(rawBasicAttackPower);
+  }
   return {
     characterKey: normalizeCharacterKey(definition.characterKey),
     cardType: normalizeCardType(definition.cardType),
@@ -494,13 +552,7 @@ function normalizeDefinition(definition: CardBalanceDefinition): CardBalanceDefi
     role: String(definition.role ?? "").trim().toUpperCase(),
     damageType: String(definition.damageType ?? "").trim().toUpperCase(),
     scaling: String(definition.scaling ?? "").trim().toUpperCase(),
-    stats: {
-      ad: Math.floor(Number(definition.stats?.ad ?? 0) || 0),
-      ap: Math.floor(Number(definition.stats?.ap ?? 0) || 0),
-      hp: Math.floor(Number(definition.stats?.hp ?? 0) || 0),
-      vel: Number(definition.stats?.vel ?? 0) || 0,
-      pm: Math.floor(Number(definition.stats?.pm ?? 0) || 0),
-    },
+    stats,
     basicSkill: isRecord(definition.basicSkill) ? definition.basicSkill : {},
     ultimate: isRecord(definition.ultimate) ? definition.ultimate : {},
     sort_order: Number.isFinite(Number(definition.sort_order)) ? Number(definition.sort_order) : -1,
@@ -510,6 +562,7 @@ function normalizeDefinition(definition: CardBalanceDefinition): CardBalanceDefi
 function resolveDerivedDefinitives(
   definitions: CardBalanceDefinition[],
   pmFormula: CardBalancePayload["pmFormula"],
+  supportBasicAttackFormula: SupportBasicAttackFormula,
 ): CardBalanceDefinition[] {
   const baseByCharacter = new Map(
     definitions
@@ -536,13 +589,23 @@ function resolveDerivedDefinitives(
     }
 
     const bonus = DEFINITIVE_RARITY_BONUS[definition.rarity] ?? 2;
-    const derivedStats = {
+    const derivedScaling = String(base.scaling ?? definition.scaling ?? "").trim().toUpperCase();
+    const derivedStats: CardCombatStats = {
       ad: base.stats.ad + bonus,
       ap: base.stats.ap + bonus,
       hp: base.stats.hp + bonus,
       vel: base.stats.vel,
       pm: calculatePm(base.stats.ad + bonus, base.stats.ap + bonus, base.stats.hp + bonus, base.stats.vel, definition.scaling, pmFormula),
     };
+    if (derivedScaling === "SUPPORT") {
+      derivedStats.basicAttackPower = calculateSupportBasicAttackPower(
+        derivedStats.ad,
+        derivedStats.ap,
+        derivedStats.hp,
+        derivedStats.vel,
+        supportBasicAttackFormula,
+      );
+    }
 
     return {
       ...definition,
@@ -565,13 +628,19 @@ function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSor
   const attackRange = ROLE_ATTACK_RANGES[combatRangeRole] ?? ROLE_ATTACK_RANGES.DPS_FISICO;
   const desiredRange = ROLE_DESIRED_RANGES[combatRangeRole] ?? ROLE_DESIRED_RANGES.DPS_FISICO;
   const moveSpeed = ROLE_MOVE_SPEEDS[combatRangeRole] ?? ROLE_MOVE_SPEEDS.DPS_FISICO;
-  const stats = {
+  const stats: CardCombatStats = {
     ad: Math.floor(Number(definition.stats.ad ?? 0) || 0),
     ap: Math.floor(Number(definition.stats.ap ?? 0) || 0),
     hp: Math.floor(Number(definition.stats.hp ?? 0) || 0),
     vel: Number(definition.stats.vel ?? 0) || 0,
     pm: Math.floor(Number(definition.stats.pm ?? 0) || 0),
   };
+  const scaling = String(definition.scaling ?? "").trim().toUpperCase();
+  const explicitBasicAttackPower = Math.max(0, Math.floor(Number(definition.stats.basicAttackPower ?? 0) || 0));
+  const basicAttackPower = scaling === "SUPPORT"
+    ? explicitBasicAttackPower || calculateSupportBasicAttackPower(stats.ad, stats.ap, stats.hp, stats.vel)
+    : 0;
+  if (scaling === "SUPPORT") stats.basicAttackPower = basicAttackPower;
   const rarity = normalizeCardRarity(definition.rarity);
   const cardType = normalizeCardType(definition.cardType);
   const explicitSortOrder = Number(definition.sort_order);
@@ -591,7 +660,8 @@ function buildCanonicalDefinition(definition: CardBalanceDefinition, fallbackSor
     hp: stats.hp,
     vel: stats.vel,
     pm: stats.pm,
-    atk: calculateAttackValue(stats.ad, stats.ap, stats.pm, definition.scaling),
+    ...(scaling === "SUPPORT" ? { basicAttackPower, basic_attack_power: basicAttackPower } : {}),
+    atk: calculateAttackValue(stats.ad, stats.ap, scaling, basicAttackPower),
     attack_speed_multiplier: stats.vel,
     speed: stats.vel,
     attack_range: attackRange,
@@ -659,14 +729,30 @@ export function getCombatRangeRole(characterKey: string, role: string) {
     : String(role ?? "").trim().toUpperCase();
 }
 
-function calculateAttackValue(ad: number, ap: number, pm: number, scaling: string) {
+export function calculateSupportBasicAttackPower(
+  ad: number,
+  ap: number,
+  hp: number,
+  attackSpeedMultiplier: number,
+  formula: Readonly<SupportBasicAttackFormula> = CARD_SUPPORT_BASIC_ATTACK_FORMULA,
+) {
+  const weighted = ad * formula.adWeight
+    + ap * formula.apWeight
+    + hp * formula.hpWeight
+    + attackSpeedMultiplier * formula.attackSpeedWeight;
+  const scaled = weighted * formula.weightedMultiplier;
+  const outputBase = formula.roundWeightedBeforeOutput ? Math.round(scaled) : scaled;
+  return Math.max(1, Math.round(outputBase * formula.outputMultiplier));
+}
+
+function calculateAttackValue(ad: number, ap: number, scaling: string, basicAttackPower = 0) {
   switch (String(scaling ?? "").trim().toUpperCase()) {
     case "MAGICAL":
       return Math.max(1, ap);
     case "HYBRID":
       return Math.max(1, Math.round((ad + ap) * 0.5));
     case "SUPPORT":
-      return Math.max(1, Math.round(pm * 0.28));
+      return Math.max(1, Math.round(basicAttackPower));
     default:
       return Math.max(1, ad);
   }

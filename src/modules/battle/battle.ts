@@ -33,6 +33,7 @@ import {
   type CardCatalogType,
 } from "../cards/balance.js";
 import type { OwnedCharacter } from "../bootstrap/game-save.js";
+import { describeRuntimeThreshold } from "../cards/power-rating-v2/pm-threshold-policy.js";
 import {
   buildEquipmentMaterialId,
   buildEquipmentStats,
@@ -183,7 +184,8 @@ export async function startBattleDedicated(
   assertStageUnlocked(stageDefinitions, currentStage.stage_key, progress.current_stage ?? save.currentStage, progress.highest_stage ?? save.highestStage, "battle_start");
 
   const teamSnapshot = await buildBattleTeamSnapshot(supabase, context.userId, input.teamSlots);
-  const targetPower = resolveStageTargetPower(currentStage);
+  const targetThreshold = describeRuntimeThreshold(resolveStageTargetPower(currentStage));
+  const targetPower = targetThreshold.pm;
   const requiredPower = Math.max(1, Math.floor(targetPower * 0.55));
   if (targetPower > 0 && teamSnapshot.teamPower < requiredPower) {
     throw new HttpModuleError(409, "battle_team_power_too_low", "battle_start", "El equipo esta demasiado bajo para abrir esta batalla.");
@@ -217,6 +219,10 @@ export async function startBattleDedicated(
     teamHash: data.team_hash,
     teamPower: data.team_power,
     targetPower: data.target_power,
+    targetPowerLegacy: targetThreshold.pmLegacy,
+    targetPowerV2: targetThreshold.pmV2,
+    targetPowerVersion: targetThreshold.pmVersion,
+    pmRuntimeMode: targetThreshold.pmRuntimeMode,
     minDurationSeconds: data.min_duration_seconds,
     startedAt: data.started_at,
     expiresAt: data.expires_at,
