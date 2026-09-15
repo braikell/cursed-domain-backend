@@ -40,11 +40,8 @@ export const ARENA_COSMETICS_CATALOG: readonly ArenaCatalogEntry[] = Object.free
   Object.freeze({
     id: "arena_nexo_astral",
     displayName: "Nexo Astral de Amatista",
-    acquisitionType: "chapter" as const,
-    price: 0,
-    requirementId: "world_2_stage_17",
-    requirementTarget: 17,
-    requirementLabel: "Completa el capitulo 2",
+    acquisitionType: "gold" as const,
+    price: 500000,
     available: true,
   }),
   Object.freeze({
