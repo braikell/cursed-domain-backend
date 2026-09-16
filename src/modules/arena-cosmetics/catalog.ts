@@ -65,6 +65,13 @@ export const ARENA_COSMETICS_CATALOG: readonly ArenaCatalogEntry[] = Object.free
     price: 2200,
     available: true,
   }),
+  Object.freeze({
+    id: "arena_abismo_carmesi",
+    displayName: "Abismo Carmes?",
+    acquisitionType: "gems" as const,
+    price: 10000,
+    available: true,
+  }),
 ]);
 
 const CATALOG_BY_ID = new Map(ARENA_COSMETICS_CATALOG.map((entry) => [entry.id, entry]));
