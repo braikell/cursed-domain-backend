@@ -53,7 +53,7 @@ interface IdempotencyRow {
   response: unknown | null;
 }
 
-type InventoryMaterialKind = "equipment_material" | "card_element" | "card_fragment";
+type InventoryMaterialKind = "item_materials" | "card_element" | "card_fragment";
 
 const EQUIPMENT_DEFINITIONS_BY_KEY = new Map(EQUIPMENT_ITEMS.map((item) => [item.key, item]));
 
@@ -309,13 +309,13 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     isEquipped: Boolean(item.equippedToCharacterId),
   })).sort(compareEquipmentRows);
 
-  const equipmentMaterials = (["weapon", "helmet", "armor", "boots", "accessory"] as EquipmentSlot[]).map((slot) => ({
+  const itemMaterials = (["weapon", "helmet", "armor", "boots", "accessory"] as EquipmentSlot[]).map((slot) => ({
     materialId: buildEquipmentMaterialId(slot),
     slot,
-    kind: "equipment_material" as InventoryMaterialKind,
+    kind: "item_materials" as InventoryMaterialKind,
     quantity: Math.max(0, Math.floor(Number(save.fragments[buildEquipmentMaterialId(slot)]) || 0)),
   }));
-  const materialIds = new Set(equipmentMaterials.map((entry) => entry.materialId));
+  const materialIds = new Set(itemMaterials.map((entry) => entry.materialId));
   const extraMaterials = Object.entries(save.fragments)
     .filter(([materialId, quantity]) => !materialIds.has(materialId) && Math.max(0, Math.floor(Number(quantity) || 0)) > 0)
     .map(([materialId, quantity]) => {
@@ -334,14 +334,14 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     ok: true,
     gold: save.gold,
     items,
-    materials: [...equipmentMaterials, ...extraMaterials],
+    materials: [...itemMaterials, ...extraMaterials],
     heroes,
   };
 }
 
 function resolveInventoryMaterialKind(materialId: string): InventoryMaterialKind | null {
   const normalized = String(materialId ?? "").trim().toLowerCase();
-  if (normalized.startsWith("gear_mats:")) return "equipment_material";
+  if (normalized.startsWith("item_materials:")) return "item_materials";
   if (normalized.startsWith("element:")) return "card_element";
   if (normalized.startsWith("fragment:")) return "card_fragment";
   return null;

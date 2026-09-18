@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "contractId": "equipment-v2-universal-pm",
+  "status": "approved_not_live",
+  "formula": "cardPmWithoutEquipment + round((1500 * totalAdaptivePower + 138 * totalHp) / 1000)",
+  "weightsPerThousand": {
+    "adaptivePower": 1500,
+    "hp": 138
+  },
+  "rounding": "nearest_integer_after_aggregate",
+  "rules": {
+    "sameEquipmentPmForEveryRole": true,
+    "hybridAdaptivePowerCountedOnce": true,
+    "equipmentStatsStillApplyToCombat": true,
+    "cardPmWithoutEquipmentUsesExistingV2": true,
+    "noRoleOrRarityMultiplier": true,
+    "noLiveCatalogActivation": true
+  },
+  "goldenVectors": [
+    {"adaptivePower": 0, "hp": 0, "equipmentPm": 0},
+    {"adaptivePower": 51, "hp": 0, "equipmentPm": 77},
+    {"adaptivePower": 0, "hp": 535, "equipmentPm": 74},
+    {"adaptivePower": 66, "hp": 0, "equipmentPm": 99},
+    {"adaptivePower": 0, "hp": 690, "equipmentPm": 95},
+    {"adaptivePower": 83, "hp": 0, "equipmentPm": 125},
+    {"adaptivePower": 0, "hp": 940, "equipmentPm": 130},
+    {"adaptivePower": 102, "hp": 0, "equipmentPm": 153},
+    {"adaptivePower": 0, "hp": 1137, "equipmentPm": 157},
+    {"adaptivePower": 19, "hp": 53, "equipmentPm": 36}
+  ]
+}

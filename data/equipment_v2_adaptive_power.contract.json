@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "contractId": "equipment-v2-adaptive-power",
+  "status": "approved_not_live",
+  "sourceStat": "adaptivePower",
+  "scalingSource": "canonical_card_scaling",
+  "applicationOrder": "after_card_level_and_ascension_growth",
+  "conversion": {
+    "PHYSICAL": { "ad": 1, "ap": 0 },
+    "MAGICAL": { "ad": 0, "ap": 1 },
+    "HYBRID": { "ad": 1, "ap": 1 },
+    "SUPPORT": { "ad": 0, "ap": 1 }
+  },
+  "rules": {
+    "unknownScalingIsError": true,
+    "invalidOrNegativePowerIsError": true,
+    "hybridUsesAverageOfAdAndAp": true,
+    "supportBasicAttackIsRecalculatedAfterEquipment": true,
+    "noHeroBaseStatMutation": true,
+    "noRarityOrRoleMultiplier": true
+  },
+  "goldenVectors": [
+    { "scaling": "PHYSICAL", "adaptivePower": 19, "ad": 19, "ap": 0 },
+    { "scaling": "MAGICAL", "adaptivePower": 24, "ad": 0, "ap": 24 },
+    { "scaling": "HYBRID", "adaptivePower": 31, "ad": 31, "ap": 31 },
+    { "scaling": "SUPPORT", "adaptivePower": 38, "ad": 0, "ap": 38 },
+    { "scaling": "PHYSICAL", "adaptivePower": 0, "ad": 0, "ap": 0 },
+    { "scaling": "HYBRID", "adaptivePower": 102, "ad": 102, "ap": 102 }
+  ]
+}
