@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractId": "equipment-v2-adaptive-power",
-  "status": "approved_not_live",
+  "status": "active",
   "sourceStat": "adaptivePower",
   "scalingSource": "canonical_card_scaling",
   "applicationOrder": "after_card_level_and_ascension_growth",

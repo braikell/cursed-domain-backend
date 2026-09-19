@@ -1,4 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { getV2DismantleMaterials, getV2UpgradeCost } from "./v2-balance.js";
+import { buildV2InventoryItem, getV2Bundle } from "./v2-runtime.js";
+import { applyEquipmentV2Cutover } from "./v2-cutover.js";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -15,16 +17,9 @@ import type { EquipmentItem, GameSaveSnapshot } from "../bootstrap/game-save.js"
 import { createInitialGameSave, normalizeGameSave } from "../bootstrap/game-save.js";
 import {
   buildEquipmentMaterialId,
-  buildEquipmentStats,
-  canUpgradeToTier,
-  EQUIPMENT_DISMANTLE_YIELD_BY_RARITY,
-  EQUIPMENT_ITEMS,
-  EQUIPMENT_MAX_TIER_BY_RARITY,
-  getUpgradeCostForTier,
   normalizeEquipmentRarity,
   normalizeEquipmentRarityForDatabase,
   normalizeEquipmentSlotForDatabase,
-  type EquipmentDefinition,
   type EquipmentRarity,
   type EquipmentSlot,
 } from "./balance.js";
@@ -54,8 +49,6 @@ interface IdempotencyRow {
 }
 
 type InventoryMaterialKind = "item_materials" | "card_element" | "card_fragment";
-
-const EQUIPMENT_DEFINITIONS_BY_KEY = new Map(EQUIPMENT_ITEMS.map((item) => [item.key, item]));
 
 export async function getEquipmentDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
@@ -197,13 +190,13 @@ export async function upgradeItemDedicated(
   const rarity = normalizeEquipmentRarity(item.rarity);
   const currentTier = Math.max(1, Math.floor(item.tier ?? 1));
   const nextTier = currentTier + 1;
-  if (!canUpgradeToTier(rarity, nextTier)) {
-    throw new HttpModuleError(409, "equipment_max_tier_reached", "equipment_upgrade", "El item ya alcanzo su tier maximo.");
+  if (nextTier > 4) {
+    throw new HttpModuleError(409, "equipment_max_level_reached", "equipment_upgrade", "El item ya alcanzo su nivel maximo.");
   }
 
-  const cost = getUpgradeCostForTier(currentTier);
+  const cost = getV2UpgradeCost(getV2Bundle().rules, rarity, currentTier);
   if (cost == null) {
-    throw new HttpModuleError(400, "equipment_invalid_tier", "equipment_upgrade", "Tier actual invalido para mejorar.");
+    throw new HttpModuleError(400, "equipment_invalid_level", "equipment_upgrade", "Nivel actual invalido para mejorar.");
   }
 
   const materialId = buildEquipmentMaterialId(item.slot as EquipmentSlot);
@@ -214,14 +207,21 @@ export async function upgradeItemDedicated(
   if (save.gold < cost.gold) {
     throw new HttpModuleError(409, "equipment_not_enough_gold", "equipment_upgrade", "No hay suficiente oro para mejorar este item.");
   }
+  const gemCost = "gems" in cost ? cost.gems : 0;
+  if (save.gems < gemCost) {
+    throw new HttpModuleError(409, "equipment_not_enough_gems", "equipment_upgrade", "No hay suficientes gemas para mejorar este item.");
+  }
 
-  const definition = requireEquipmentDefinition(item.equipmentKey);
   save.fragments[materialId] = availableMaterials - cost.materials;
   if (save.fragments[materialId] <= 0) {
     delete save.fragments[materialId];
   }
   save.gold -= cost.gold;
-  save.inventory[itemIndex] = buildInventoryItem(definition, rarity, nextTier, item.id, item.equippedToCharacterId ?? null);
+  save.gems -= gemCost;
+  save.inventory[itemIndex] = {
+    ...buildV2InventoryItem(item.equipmentKey ?? "", rarity, nextTier, item.id),
+    equippedToCharacterId: item.equippedToCharacterId ?? null,
+  };
 
   syncCharacterEquipmentMaps(save);
   await persistEquipmentState(supabase, context.userId, save);
@@ -234,6 +234,8 @@ export async function upgradeItemDedicated(
     ok: true,
     action: "upgrade",
     itemId: input.itemId,
+    fromLevel: currentTier,
+    toLevel: nextTier,
     fromTier: currentTier,
     toTier: nextTier,
     cost,
@@ -271,7 +273,7 @@ export async function dismantleItemDedicated(
 
   const rarity = normalizeEquipmentRarity(item.rarity);
   const materialId = buildEquipmentMaterialId(item.slot as EquipmentSlot);
-  const gained = EQUIPMENT_DISMANTLE_YIELD_BY_RARITY[rarity];
+  const gained = getV2DismantleMaterials(getV2Bundle().rules, rarity);
   save.fragments[materialId] = Math.max(0, save.fragments[materialId] ?? 0) + gained;
   save.inventory.splice(itemIndex, 1);
 
@@ -296,12 +298,14 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
   const items = save.inventory.map((item) => ({
     id: item.id,
     equipmentKey: item.equipmentKey ?? "",
-    family: item.family ?? "",
+    adaptivePower: item.adaptivePower ?? 0,
     name: item.name,
     slot: item.slot,
     rarity: normalizeEquipmentRarity(item.rarity),
     tier: Math.max(1, Math.floor(item.tier ?? 1)),
-    maxTier: EQUIPMENT_MAX_TIER_BY_RARITY[normalizeEquipmentRarity(item.rarity)],
+    level: Math.max(1, Math.floor(item.tier ?? 1)),
+    maxTier: 4,
+    maxLevel: 4,
     ad: item.ad,
     hp: item.hp,
     ap: item.ap,
@@ -333,6 +337,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
   return {
     ok: true,
     gold: save.gold,
+    gems: save.gems,
     items,
     materials: [...itemMaterials, ...extraMaterials],
     heroes,
@@ -349,7 +354,7 @@ function resolveInventoryMaterialKind(materialId: string): InventoryMaterialKind
 
 async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: string) {
   const save = await loadPlayerSave(supabase, userId);
-  let changed = false;
+  let changed = applyEquipmentV2Cutover(save);
 
   const normalizedInventory = save.inventory
     .filter((item) => typeof item.equipmentKey === "string" && item.equipmentKey.trim().length > 0)
@@ -367,34 +372,10 @@ async function ensureEquipmentFoundation(supabase: SupabaseClient, userId: strin
 }
 
 function normalizeEquipmentInventoryItem(item: EquipmentItem): EquipmentItem {
-  const definition = requireEquipmentDefinition(item.equipmentKey);
   const rarity = normalizeEquipmentRarity(item.rarity);
-  const tier = Math.max(1, Math.min(EQUIPMENT_MAX_TIER_BY_RARITY[rarity], Math.floor(item.tier ?? 1)));
-  return buildInventoryItem(definition, rarity, tier, item.id, item.equippedToCharacterId ?? null);
-}
-
-function buildInventoryItem(
-  definition: EquipmentDefinition,
-  rarity: EquipmentRarity,
-  tier: number,
-  id: string = randomUUID(),
-  equippedToCharacterId: string | null = null,
-): EquipmentItem {
-  const stats = buildEquipmentStats(definition, rarity, tier);
   return {
-    id,
-    slot: definition.slot,
-    rarity,
-    name: definition.name,
-    equipmentKey: definition.key,
-    family: definition.family,
-    tier,
-    equippedToCharacterId,
-    ad: stats.ad,
-    hp: stats.hp,
-    ap: stats.ap,
-    atk: stats.ad,
-    def: stats.ap,
+    ...buildV2InventoryItem(item.equipmentKey ?? "", rarity, Math.max(1, Math.min(4, Math.floor(item.tier ?? 1))), item.id),
+    equippedToCharacterId: item.equippedToCharacterId ?? null,
   };
 }
 
@@ -431,15 +412,6 @@ function resolveTargetCharacterId(save: GameSaveSnapshot, targetCharacterId?: st
     throw new HttpModuleError(409, "equipment_no_owned_heroes", "equipment_equip", "No hay heroes base disponibles para equipar.");
   }
   return firstOwned;
-}
-
-function requireEquipmentDefinition(equipmentKey?: string) {
-  const key = String(equipmentKey ?? "").trim();
-  const definition = EQUIPMENT_DEFINITIONS_BY_KEY.get(key);
-  if (!definition) {
-    throw new HttpModuleError(500, "equipment_definition_missing", "equipment_status", `No existe definicion de equipamiento para ${key || "unknown"}.`);
-  }
-  return definition;
 }
 
 async function persistEquipmentState(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {
@@ -610,24 +582,20 @@ function compareEquipmentRows(
   left: {
     rarity: EquipmentRarity;
     slot: string;
-    family: string;
     tier: number;
     name: string;
   },
   right: {
     rarity: EquipmentRarity;
     slot: string;
-    family: string;
     tier: number;
     name: string;
   },
 ) {
   const rarityOrder = { mythic: 1, legendary: 2, epic: 3, basic: 4 };
-  const familyOrder = { espectral: 1, vacio: 2, maldito: 3 };
   return (
     (rarityOrder[left.rarity] - rarityOrder[right.rarity]) ||
     left.slot.localeCompare(right.slot) ||
-    ((familyOrder[left.family as keyof typeof familyOrder] ?? 99) - (familyOrder[right.family as keyof typeof familyOrder] ?? 99)) ||
     (right.tier - left.tier) ||
     left.name.localeCompare(right.name)
   );

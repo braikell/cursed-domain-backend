@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { CompleteTowerFloorInput, GodotAuthedRequestContext } from "../../contracts.js";
@@ -9,6 +10,11 @@ import {
   updateDailyMissionProgress,
 } from "../bootstrap/monetization-foundation.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
+import { createInitialGameSave, normalizeGameSave, type GameSaveSnapshot } from "../bootstrap/game-save.js";
+import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
+import { planTowerV2Reward } from "../equipment/v2-rewards.js";
+import { buildV2InventoryItem, getV2Bundle } from "../equipment/v2-runtime.js";
+import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 
 interface TowerFloorDefinitionRow {
   floor_number: number;
@@ -46,6 +52,12 @@ interface UserTowerFloorClearRow {
 interface IdempotencyRow {
   operation: string;
   response: unknown | null;
+}
+
+function utcWeekStart(now: Date): string {
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  return monday.toISOString().slice(0, 10);
 }
 
 export async function getTowerStatusDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
@@ -112,6 +124,62 @@ export async function completeTowerFloorDedicated(
       gems: rewardGems,
     },
   });
+  const equipmentItems: Array<Record<string, unknown>> = [];
+  let equipmentChoiceRequired = false;
+  if (floor.is_boss) {
+    const { catalog, rules } = getV2Bundle();
+    const { data: saveRow, error: saveError } = await supabase.from("player_saves")
+      .select("save").eq("user_id", context.userId).maybeSingle<{ save: GameSaveSnapshot }>();
+    if (saveError) throw new Error(saveError.message);
+    const save = normalizeGameSave(saveRow?.save ?? createInitialGameSave());
+    applyEquipmentV2Cutover(save);
+    const weeklyKey = utcWeekStart(new Date());
+    const planned = planTowerV2Reward(
+      floor.floor_number, isFirstClear, weeklyKey,
+      { weeklyRewardKey: save.equipmentV2Rewards.towerWeeklyRewardKey },
+      input.equipmentChoice ?? null,
+      randomInt(catalog.statsByItem.length),
+      rules, catalog,
+    );
+    equipmentChoiceRequired = planned.reason === "choice_required";
+    if (planned.item != null) {
+      const item = buildV2InventoryItem(planned.item.key, planned.item.rarity);
+      save.inventory.push(item);
+      save.equipmentV2Rewards.towerWeeklyRewardKey = planned.nextState.weeklyRewardKey;
+      const { error: saveRewardError } = await supabase.from("player_saves").upsert({
+        user_id: context.userId,
+        save,
+        save_version: save.schemaVersion,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      if (saveRewardError) throw new Error(saveRewardError.message);
+      const { error: inventoryError } = await supabase.from("user_inventory").insert({
+        user_id: context.userId,
+        id: item.id,
+        slot: normalizeEquipmentSlotForDatabase(item.slot),
+        rarity: normalizeEquipmentRarityForDatabase(item.rarity),
+        name: item.name,
+        atk: 0,
+        hp: item.hp,
+        def: 0,
+        equipment_key: item.equipmentKey,
+        equipment_tier: 1,
+        equipped_to_card_id: null,
+        updated_at: new Date().toISOString(),
+      });
+      if (inventoryError) throw new Error(inventoryError.message);
+      equipmentItems.push({
+        id: item.id,
+        equipmentKey: item.equipmentKey,
+        name: item.name,
+        slot: item.slot,
+        rarity: item.rarity,
+        level: 1,
+        adaptivePower: item.adaptivePower ?? 0,
+        hp: item.hp,
+      });
+    }
+  }
   const previousHighestFloor = progress.highest_floor;
   const highestFloor = Math.max(progress.highest_floor, floor.floor_number);
   const maxFloor = floors.reduce((max, entry) => Math.max(max, entry.floor_number), 0);
@@ -157,11 +225,12 @@ export async function completeTowerFloorDedicated(
     floorKey: floor.floor_key,
     isFirstClear,
     isBoss: floor.is_boss,
+    equipmentChoiceRequired,
     reward: {
       gold: rewardGold,
       gems: rewardGems,
       xp: rewardXp,
-      equipmentItems: [] as unknown[],
+      equipmentItems,
     },
     progressionReward,
     progression: {

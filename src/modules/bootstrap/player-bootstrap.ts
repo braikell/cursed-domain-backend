@@ -23,6 +23,7 @@ import {
 import { getCardBalance, normalizeCharacterKey } from "../cards/balance.js";
 import { normalizeCardMaterialId, pruneOwnedCardUnlockElements, syncOwnedCardFragmentMirrors } from "../cards/materials.js";
 import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
+import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 import { resolvePlayerLevelFromXp } from "../progression/player-progression.js";
 
 interface PlayerSaveRow {
@@ -247,6 +248,7 @@ async function ensurePlayerSave(
     markSaveTiming("ensure_monetization", stageStartedAt);
     stageStartedAt = performance.now();
     const canonicalSave = await hydrateCanonicalRuntimeState(service, userId, hydratedCardsSave);
+    await applyEquipmentV2CutoverAndCleanMirrors(service, userId, canonicalSave);
     markSaveTiming("hydrate_canonical", stageStartedAt);
     stageStartedAt = performance.now();
     const save = await hydrateSaveFormationFromServer(service, userId, canonicalSave);
@@ -288,6 +290,7 @@ async function ensurePlayerSave(
     const hydratedRetrySave = await hydrateDefinitiveCardsFromServer(service, userId, retrySave);
     const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
     const canonicalRetrySave = await hydrateCanonicalRuntimeState(service, userId, hydratedRetrySave);
+    await applyEquipmentV2CutoverAndCleanMirrors(service, userId, canonicalRetrySave);
     const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalRetrySave);
     await tryEnsureServerGameFoundation(service, userId, hydratedFormationSave);
     await persistCanonicalPlayerSave(service, userId, hydratedFormationSave);
@@ -303,6 +306,7 @@ async function ensurePlayerSave(
   await tryEnsureServerGameFoundation(service, userId, createdSave);
   const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
   const canonicalCreatedSave = await hydrateCanonicalRuntimeState(service, userId, createdSave);
+  await applyEquipmentV2CutoverAndCleanMirrors(service, userId, canonicalCreatedSave);
   const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalCreatedSave);
   await persistCanonicalPlayerSave(service, userId, hydratedFormationSave);
   return {
@@ -490,6 +494,20 @@ async function persistCanonicalPlayerSave(service: SupabaseClient, userId: strin
     { onConflict: "user_id" },
   );
   if (error) throw new Error(error.message);
+}
+
+async function applyEquipmentV2CutoverAndCleanMirrors(
+  service: SupabaseClient,
+  userId: string,
+  save: GameSaveSnapshot,
+) {
+  if (!applyEquipmentV2Cutover(save)) return;
+  const [{ error: inventoryError }, { error: materialsError }] = await Promise.all([
+    service.from("user_inventory").delete().eq("user_id", userId),
+    service.from("user_materials").delete().eq("user_id", userId).like("material_id", "gear_mats:%"),
+  ]);
+  if (inventoryError) throw new Error(inventoryError.message);
+  if (materialsError) throw new Error(materialsError.message);
 }
 
 async function cleanupPrunedMaterialRows(service: SupabaseClient, userId: string, materialIds: string[]) {

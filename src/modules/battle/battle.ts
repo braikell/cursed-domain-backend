@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -25,6 +25,7 @@ import {
   canCardGainXp,
   getCardLevelCapForAscension,
   getCardFinalStats,
+  getCardBalance,
   getCardMaxLevel,
   getCardStarsForLevel,
   getCardXpForNextLevel,
@@ -35,18 +36,14 @@ import {
 import type { OwnedCharacter } from "../bootstrap/game-save.js";
 import { describeRuntimeThreshold } from "../cards/power-rating-v2/pm-threshold-policy.js";
 import {
-  buildEquipmentMaterialId,
-  buildEquipmentStats,
-  EQUIPMENT_DISMANTLE_YIELD_BY_RARITY,
-  EQUIPMENT_ITEMS,
-  normalizeEquipmentRarity,
   normalizeEquipmentRarityForDatabase,
   normalizeEquipmentSlotForDatabase,
-  type EquipmentDefinition,
   type EquipmentRarity,
-  type EquipmentSlot,
 } from "../equipment/balance.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
+import { planCampaignV2Reward } from "../equipment/v2-rewards.js";
+import { buildV2CardEquipmentBonus, buildV2InventoryItem, getV2Bundle } from "../equipment/v2-runtime.js";
+import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -161,6 +158,7 @@ interface EquipmentRewardItem {
   ad: number;
   ap: number;
   hp: number;
+  adaptivePower?: number;
 }
 
 const BATTLE_SESSION_TTL_MINUTES = 15;
@@ -283,14 +281,49 @@ export async function completeBattleDedicated(
     progress.highest_stage ?? save.highestStage,
   );
   const reward = buildBattleReward(currentStage, stageFlow.isReplay);
-  const equipmentDrop = buildEquipmentDropForStage(currentStage.stage_key, stageFlow.isReplay);
-  if (equipmentDrop != null && isDuplicateEquipmentDrop(save, equipmentDrop.item)) {
-    const materialId = buildEquipmentMaterialId(equipmentDrop.item.slot as EquipmentSlot);
-    const gained = EQUIPMENT_DISMANTLE_YIELD_BY_RARITY[normalizeEquipmentRarity(equipmentDrop.item.rarity)];
-    save.fragments[materialId] = Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0)) + gained;
-    reward.materials += gained;
-    reward.materialId = materialId;
-  } else if (equipmentDrop != null) {
+  let equipmentDrop: { item: EquipmentItem; reward: EquipmentRewardItem } | null = null;
+  const { catalog, rules } = getV2Bundle();
+  const currentRewardState = save.equipmentV2Rewards;
+  const planned = planCampaignV2Reward({
+      stageKey: currentStage.stage_key,
+      isReplay: stageFlow.isReplay,
+      utcDate: new Date().toISOString().slice(0, 10),
+      state: {
+        utcDate: currentRewardState.campaignUtcDate,
+        replayWinsToday: currentRewardState.campaignReplayWinsToday,
+        replayItemsToday: currentRewardState.campaignReplayItemsToday,
+        mythicDryItems: currentRewardState.campaignMythicDryItems,
+      },
+      dropRoll: randomInt(10_000),
+      rarityRoll: randomInt(10_000),
+      itemRoll: randomInt(catalog.statsByItem.length),
+  }, rules, catalog);
+  save.equipmentV2Rewards = {
+    ...currentRewardState,
+    campaignUtcDate: planned.nextState.utcDate,
+    campaignReplayWinsToday: planned.nextState.replayWinsToday,
+    campaignReplayItemsToday: planned.nextState.replayItemsToday,
+    campaignMythicDryItems: planned.nextState.mythicDryItems,
+  };
+  if (planned.item != null) {
+    const item = buildV2InventoryItem(planned.item.key, planned.item.rarity);
+    equipmentDrop = {
+      item,
+      reward: {
+          id: item.id,
+          equipmentKey: planned.item.key,
+          name: item.name,
+          slot: item.slot,
+          rarity: planned.item.rarity,
+          tier: 1,
+          ad: 0,
+          ap: 0,
+          hp: item.hp,
+          adaptivePower: item.adaptivePower ?? 0,
+      },
+    };
+  }
+  if (equipmentDrop != null) {
     reward.equipmentItems.push(equipmentDrop.reward);
     save.inventory.push(equipmentDrop.item);
   }
@@ -731,100 +764,6 @@ function buildBattleReward(stage: StageDefinitionRow, isReplay: boolean): Battle
   };
 }
 
-function isDuplicateEquipmentDrop(save: GameSaveSnapshot, item: EquipmentItem) {
-  const itemRarity = normalizeEquipmentRarity(item.rarity);
-  return save.inventory.some((candidate) =>
-    candidate.equipmentKey === item.equipmentKey &&
-    normalizeEquipmentRarity(candidate.rarity) === itemRarity
-  );
-}
-
-function buildEquipmentDropForStage(stageKey: string, isReplay: boolean): { item: EquipmentItem; reward: EquipmentRewardItem } | null {
-  if (isReplay) return null;
-  const stageParts = parseStageKey(stageKey);
-  if (stageParts == null) return null;
-  if (!isEquipmentDropStage(stageParts.chapter, stageParts.stage)) return null;
-
-  const rarity = rollEquipmentRarityForChapter(stageParts.chapter, stableHash(`${stageKey}:rarity`));
-  const definition = pickEquipmentDefinition(stageParts.chapter, stageParts.stage);
-  const tier = Math.max(1, Math.min(4, 1 + Math.floor((stageParts.chapter - 1) / 4)));
-  const stats = buildEquipmentStats(definition, rarity, tier);
-  const item: EquipmentItem = {
-    id: randomUUID(),
-    slot: definition.slot,
-    rarity,
-    name: definition.name,
-    equipmentKey: definition.key,
-    family: definition.family,
-    tier,
-    equippedToCharacterId: null,
-    ad: stats.ad,
-    hp: stats.hp,
-    ap: stats.ap,
-    atk: stats.ad,
-    def: stats.ap,
-  };
-  return {
-    item,
-    reward: {
-      id: item.id,
-      equipmentKey: definition.key,
-      name: definition.name,
-      slot: definition.slot,
-      rarity,
-      tier,
-      ad: stats.ad,
-      ap: stats.ap,
-      hp: stats.hp,
-    },
-  };
-}
-
-function isEquipmentDropStage(chapter: number, stage: number) {
-  const dropCount = 2 + (stableHash(`chapter:${chapter}:drop_count`) % 2);
-  const selectedStages = new Set<number>();
-  let salt = 0;
-  while (selectedStages.size < dropCount && salt < 64) {
-    selectedStages.add((stableHash(`chapter:${chapter}:drop_stage:${salt}`) % 17) + 1);
-    salt += 1;
-  }
-  return selectedStages.has(stage);
-}
-
-function rollEquipmentRarityForChapter(chapter: number, hash: number): EquipmentRarity {
-  const roll = hash % 10_000;
-  const epicChance = Math.min(4200, 650 + chapter * 230);
-  const legendaryChance = Math.min(1800, Math.max(0, (chapter - 2) * 120));
-  const mythicChance = Math.min(450, Math.max(0, (chapter - 6) * 35));
-  if (roll < mythicChance) return "mythic";
-  if (roll < mythicChance + legendaryChance) return "legendary";
-  if (roll < mythicChance + legendaryChance + epicChance) return "epic";
-  return "basic";
-}
-
-function pickEquipmentDefinition(chapter: number, stage: number): EquipmentDefinition {
-  const index = stableHash(`equipment:${chapter}:${stage}`) % EQUIPMENT_ITEMS.length;
-  return EQUIPMENT_ITEMS[index]!;
-}
-
-function parseStageKey(stageKey: string): { chapter: number; stage: number } | null {
-  const match = /world_(\d+)_stage_(\d+)/i.exec(String(stageKey).trim());
-  if (!match) return null;
-  return {
-    chapter: Math.max(1, Number(match[1]) || 1),
-    stage: Math.max(1, Number(match[2]) || 1),
-  };
-}
-
-function stableHash(value: string) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 async function applyHeroBattleXp(
   supabase: SupabaseClient,
   userId: string,
@@ -929,7 +868,7 @@ async function applyHeroBattleXp(
       fromLevel,
       toLevel: level,
       finalXp: xp,
-      finalStats: getCardFinalStats(characterId, cardType, level, ascension, getEquipmentBonusForCharacter(save, characterId)),
+      finalStats: getCardFinalStats(characterId, cardType, level, ascension, getEquipmentBonusForCharacter(save, characterId, cardType)),
     });
   }
 
@@ -947,16 +886,11 @@ async function applyHeroBattleXp(
   };
 }
 
-function getEquipmentBonusForCharacter(save: GameSaveSnapshot, characterId: string) {
+function getEquipmentBonusForCharacter(save: GameSaveSnapshot, characterId: string, cardType: string) {
   const equipment = save.characters[characterId]?.equipment ?? {};
-  return Object.values(equipment).reduce(
-    (bonus, item) => ({
-      ad: bonus.ad + Math.max(0, Math.floor(Number(item?.ad ?? item?.atk ?? 0) || 0)),
-      ap: bonus.ap + Math.max(0, Math.floor(Number(item?.ap ?? item?.def ?? 0) || 0)),
-      hp: bonus.hp + Math.max(0, Math.floor(Number(item?.hp ?? 0) || 0)),
-    }),
-    { ad: 0, ap: 0, hp: 0 },
-  );
+  const scaling = getCardBalance(characterId, cardType)?.scaling;
+  if (scaling == null) throw new Error("Missing canonical card scaling for equipment V2");
+  return buildV2CardEquipmentBonus(Object.values(equipment).filter((item): item is EquipmentItem => item != null), scaling);
 }
 
 function resolveStageFlow(
@@ -972,7 +906,9 @@ function resolveStageFlow(
   const clearedIndex = orderedKeys.indexOf(normalizedClearedStageId);
   const priorCurrentIndex = orderedKeys.indexOf(normalizedPriorCurrentStage);
   const priorHighestIndex = orderedKeys.indexOf(normalizedPriorHighestStage);
-  const isReplay = priorCurrentIndex >= 0 && clearedIndex >= 0 && clearedIndex < priorCurrentIndex;
+  const isReplay = priorCurrentIndex >= 0 && clearedIndex >= 0
+    && (clearedIndex < priorCurrentIndex
+      || (clearedIndex === orderedKeys.length - 1 && priorHighestIndex === clearedIndex));
 
   if (isReplay) {
     const safeCurrentStage = priorCurrentIndex >= 0 ? orderedKeys[priorCurrentIndex] : normalizedClearedStageId;
@@ -1025,7 +961,9 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
     .eq("user_id", userId)
     .maybeSingle<PlayerSaveRow>();
   if (error) throw new Error(error.message);
-  return normalizeGameSave(data?.save ?? createInitialGameSave());
+  const save = normalizeGameSave(data?.save ?? createInitialGameSave());
+  applyEquipmentV2Cutover(save);
+  return save;
 }
 
 async function loadPlayerProgressRow(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {

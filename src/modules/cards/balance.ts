@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { calculatePmV2Preview } from "./power-rating-v2/pm-calculator.js";
 import { PM_V2_RUNTIME_POLICY, selectRuntimePm } from "./power-rating-v2/pm-runtime-policy.js";
+import { calculateEquipmentV2PmBonus } from "../equipment/equipment-pm-v2.js";
 
 export type CardCatalogType = "BASE" | "DEFINITIVA";
 export type CardBalanceRarity = "basic" | "epic" | "legendary" | "mythic";
@@ -348,7 +349,7 @@ export function calculateCardFinalStats(
   definition: Pick<CardBalanceDefinition, "stats" | "scaling" | "role" | "cardType" | "rarity" | "crit_chance" | "crit_damage">,
   level: number,
   ascension: number,
-  equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> = {},
+  equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> & { adaptivePower?: number; equipmentV2?: boolean } = {},
 ): CardFinalStats {
   const cardType = normalizeCardType(definition.cardType);
   const rarity = normalizeCardRarity(definition.rarity);
@@ -385,7 +386,14 @@ export function calculateCardFinalStats(
   if (!v2Result.ok) {
     throw new Error("Invalid canonical PM V2 stats: " + v2Result.errors.join(", "));
   }
-  const pm = selectRuntimePm(legacyPm, v2Result.pm);
+  const v2Pm = equipmentBonus.equipmentV2
+    ? calculateCardFinalStats(definition, level, ascension).pm_v2
+      + calculateEquipmentV2PmBonus({
+        adaptivePower: Math.max(0, Math.floor(equipmentBonus.adaptivePower ?? 0)),
+        hp: Math.max(0, Math.floor(equipmentBonus.hp ?? 0)),
+      })
+    : v2Result.pm;
+  const pm = selectRuntimePm(legacyPm, v2Pm);
   return {
     ad,
     ap,
@@ -393,7 +401,7 @@ export function calculateCardFinalStats(
     vel,
     pm,
     pm_legacy: legacyPm,
-    pm_v2: v2Result.pm,
+    pm_v2: v2Pm,
     pm_version: PM_V2_RUNTIME_POLICY.mode === "v2" ? "v2" : "legacy",
     pm_runtime_mode: PM_V2_RUNTIME_POLICY.mode,
     ...(scaling === "SUPPORT" ? { basicAttackPower, basic_attack_power: basicAttackPower } : {}),
@@ -408,7 +416,7 @@ export function getCardFinalStats(
   cardType: string,
   level: number,
   ascension: number,
-  equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> = {},
+  equipmentBonus: Partial<Pick<CardFinalStats, "ad" | "ap" | "hp">> & { adaptivePower?: number; equipmentV2?: boolean } = {},
 ): CardFinalStats {
   const definition = getCardBalance(characterKey, cardType);
   if (definition == null) {

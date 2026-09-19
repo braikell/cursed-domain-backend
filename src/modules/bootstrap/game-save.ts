@@ -13,7 +13,7 @@ export interface EquipmentItem {
   rarity: string;
   name: string;
   equipmentKey?: string;
-  family?: string;
+  adaptivePower?: number;
   tier?: number;
   equippedToCharacterId?: string | null;
   ad: number;
@@ -72,6 +72,15 @@ export interface ArenaCosmeticsState {
   equippedArenaId: string;
 }
 
+export interface EquipmentV2RewardState {
+  campaignUtcDate: string;
+  campaignReplayWinsToday: number;
+  campaignReplayItemsToday: number;
+  campaignMythicDryItems: number;
+  towerWeeklyRewardKey: string;
+  afkMaterialCursor: number;
+}
+
 export interface GameSaveSnapshot {
   schemaVersion: typeof GAME_SAVE_SCHEMA_VERSION;
   gold: number;
@@ -97,6 +106,8 @@ export interface GameSaveSnapshot {
   totalBattlesWon: number;
   cardModelVersion: 1;
   arenaCosmetics: ArenaCosmeticsState;
+  equipmentV2Rewards: EquipmentV2RewardState;
+  equipmentV2CutoverVersion: number;
 }
 
 export function normalizeStageKey(value: unknown, fallback = "world_1_stage_1"): string {
@@ -170,6 +181,15 @@ export function createInitialGameSave(now = Date.now()): GameSaveSnapshot {
       ownedArenaIds: [DEFAULT_ARENA_ID],
       equippedArenaId: DEFAULT_ARENA_ID,
     },
+    equipmentV2Rewards: {
+      campaignUtcDate: "",
+      campaignReplayWinsToday: 0,
+      campaignReplayItemsToday: 0,
+      campaignMythicDryItems: 0,
+      towerWeeklyRewardKey: "",
+      afkMaterialCursor: 0,
+    },
+    equipmentV2CutoverVersion: 0,
   };
 }
 
@@ -203,6 +223,21 @@ export function normalizeGameSave(source: unknown): GameSaveSnapshot {
     schemaVersion: GAME_SAVE_SCHEMA_VERSION,
     cardModelVersion: 1,
     arenaCosmetics: normalizeArenaCosmeticsState(save.arenaCosmetics),
+    equipmentV2Rewards: normalizeEquipmentV2RewardState(save.equipmentV2Rewards),
+    equipmentV2CutoverVersion: Math.max(0, Math.floor(Number(save.equipmentV2CutoverVersion) || 0)),
+  };
+}
+
+function normalizeEquipmentV2RewardState(source: unknown): EquipmentV2RewardState {
+  const raw = source != null && typeof source === "object" ? source as Partial<EquipmentV2RewardState> : {};
+  const count = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : 0;
+  return {
+    campaignUtcDate: typeof raw.campaignUtcDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.campaignUtcDate) ? raw.campaignUtcDate : "",
+    campaignReplayWinsToday: count(raw.campaignReplayWinsToday),
+    campaignReplayItemsToday: count(raw.campaignReplayItemsToday),
+    campaignMythicDryItems: count(raw.campaignMythicDryItems),
+    towerWeeklyRewardKey: typeof raw.towerWeeklyRewardKey === "string" ? raw.towerWeeklyRewardKey.slice(0, 32) : "",
+    afkMaterialCursor: count(raw.afkMaterialCursor) % 5,
   };
 }
 
@@ -248,10 +283,11 @@ function normalizeEquipmentItem(item: EquipmentItem): EquipmentItem {
   const ad = Number((item as Partial<EquipmentItem>).ad ?? (item as Partial<EquipmentItem>).atk ?? 0);
   const ap = Number((item as Partial<EquipmentItem>).ap ?? (item as Partial<EquipmentItem>).def ?? 0);
   const hp = Number((item as Partial<EquipmentItem>).hp ?? 0);
+  const adaptivePower = Number((item as Partial<EquipmentItem>).adaptivePower ?? 0);
   return {
     ...item,
     equipmentKey: typeof item.equipmentKey === "string" ? item.equipmentKey : undefined,
-    family: typeof item.family === "string" ? item.family : undefined,
+    adaptivePower: Number.isSafeInteger(adaptivePower) && adaptivePower >= 0 ? adaptivePower : 0,
     tier: Math.max(1, Math.floor(Number(item.tier ?? 1) || 1)),
     equippedToCharacterId: typeof item.equippedToCharacterId === "string" ? item.equippedToCharacterId : null,
     ad: Number.isFinite(ad) ? Math.floor(ad) : 0,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractId": "equipment-v2-universal-pm",
-  "status": "approved_not_live",
+  "status": "active",
   "formula": "cardPmWithoutEquipment + round((1500 * totalAdaptivePower + 138 * totalHp) / 1000)",
   "weightsPerThousand": {
     "adaptivePower": 1500,
@@ -14,7 +14,7 @@
     "equipmentStatsStillApplyToCombat": true,
     "cardPmWithoutEquipmentUsesExistingV2": true,
     "noRoleOrRarityMultiplier": true,
-    "noLiveCatalogActivation": true
+    "noLiveCatalogActivation": false
   },
   "goldenVectors": [
     {"adaptivePower": 0, "hp": 0, "equipmentPm": 0},

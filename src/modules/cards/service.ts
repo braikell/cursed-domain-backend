@@ -29,6 +29,8 @@ import {
 } from "./materials.js";
 import type { GameSaveSnapshot, OwnedCharacter, OwnedDefinitiveCard } from "../bootstrap/game-save.js";
 import { createInitialGameSave, normalizeGameSave } from "../bootstrap/game-save.js";
+import { buildV2CardEquipmentBonus } from "../equipment/v2-runtime.js";
+import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 import {
   ensureBootstrapMonetizationFoundation,
   ensureDailyMissionSnapshotState,
@@ -164,7 +166,7 @@ export async function upgradeCardDedicated(
     stoppedReason: upgradePlan.stoppedReason,
     currentLevelCap,
     cost: upgradePlan.cost,
-    finalStats: getCardFinalStats(identity.characterKey, identity.cardType, nextLevel, currentAscension, getEquipmentBonusForCharacter(save, identity.characterId, identity.characterKey)),
+    finalStats: getCardFinalStats(identity.characterKey, identity.cardType, nextLevel, currentAscension, getEquipmentBonusForCharacter(save, identity.characterId, identity.characterKey, identity.cardType)),
     save,
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
@@ -311,7 +313,7 @@ export async function ascendCardDedicated(
     toAscension: targetAscension,
     newLevelCap: getCardLevelCapForAscension(identity.cardType, identity.rarity, targetAscension),
     cost,
-    finalStats: getCardFinalStats(identity.characterKey, identity.cardType, currentLevel, targetAscension, getEquipmentBonusForCharacter(save, identity.characterId, identity.characterKey)),
+    finalStats: getCardFinalStats(identity.characterKey, identity.cardType, currentLevel, targetAscension, getEquipmentBonusForCharacter(save, identity.characterId, identity.characterKey, identity.cardType)),
     save,
   };
   await completeIdempotentOperation(supabase, context.userId, input.requestId, response);
@@ -326,6 +328,7 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
     .maybeSingle<PlayerSaveRow>();
   if (error) throw new Error(error.message);
   const save = normalizeGameSave(data?.save ?? createInitialGameSave());
+  applyEquipmentV2Cutover(save);
   await mergeUserMaterialStacks(supabase, userId, save);
   pruneOwnedCardUnlockElements(save);
   syncOwnedCardFragmentMirrors(save);
@@ -377,17 +380,12 @@ function resolveCardIdentity(row: UserCardRow): CardIdentity {
   };
 }
 
-function getEquipmentBonusForCharacter(save: GameSaveSnapshot, characterId: string, characterKey: string) {
+function getEquipmentBonusForCharacter(save: GameSaveSnapshot, characterId: string, characterKey: string, cardType: string) {
   const character = save.characters[characterId] ?? save.characters[characterKey];
   const equipment = character?.equipment ?? {};
-  return Object.values(equipment).reduce(
-    (bonus, item) => ({
-      ad: bonus.ad + Math.max(0, Math.floor(Number(item?.ad ?? item?.atk ?? 0) || 0)),
-      ap: bonus.ap + Math.max(0, Math.floor(Number(item?.ap ?? item?.def ?? 0) || 0)),
-      hp: bonus.hp + Math.max(0, Math.floor(Number(item?.hp ?? 0) || 0)),
-    }),
-    { ad: 0, ap: 0, hp: 0 },
-  );
+  const scaling = getCardBalance(characterKey, cardType)?.scaling;
+  if (scaling == null) throw new Error("Missing canonical card scaling for equipment V2");
+  return buildV2CardEquipmentBonus(Object.values(equipment).filter((item): item is NonNullable<typeof item> => item != null), scaling);
 }
 
 function normalizeCardRarity(raw: string): CardBalanceRarity {

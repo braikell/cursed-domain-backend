@@ -12,6 +12,8 @@ import { createServiceSupabaseClient } from "../../supabase.js";
 import { buildEquipmentMaterialId } from "../equipment/balance.js";
 import { normalizeStageKey } from "../bootstrap/game-save.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
+import { distributeAfkV2Materials } from "../equipment/v2-rewards.js";
+import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 
 const AFK_GOLD_PER_HOUR = 200;
 const AFK_GEMS_PER_HOUR = 1;
@@ -53,6 +55,7 @@ interface AfkRewardPreview {
   xp: number;
   materials: number;
   materialId: string;
+  materialStacks?: Array<{ materialId: string; quantity: number }>;
   hours: number;
   cappedHours: number;
   premiumMultiplier: number;
@@ -77,6 +80,11 @@ export async function getAfkStatusDedicated(context: GodotAuthedRequestContext):
   const serverNow = new Date();
   const lastClaimedAt = afkState.last_claimed_at ? new Date(afkState.last_claimed_at) : serverNow;
   const reward = buildAfkRewardPreview(lastClaimedAt, serverNow, origin.materialId);
+  reward.materialStacks = distributeAfkV2Materials(
+    reward.materials,
+    { materialCursor: save.equipmentV2Rewards.afkMaterialCursor },
+  ).stacks;
+  reward.materialId = "";
 
   return {
     ok: true,
@@ -117,6 +125,12 @@ export async function claimAfkDedicated(
   const now = new Date();
   const lastClaimedAt = afkState.last_claimed_at ? new Date(afkState.last_claimed_at) : now;
   const reward = buildAfkRewardPreview(lastClaimedAt, now, origin.materialId);
+  const v2Materials = distributeAfkV2Materials(
+    reward.materials,
+    { materialCursor: saveBefore.equipmentV2Rewards.afkMaterialCursor },
+  );
+  reward.materialStacks = v2Materials.stacks;
+  reward.materialId = "";
   const nowIso = now.toISOString();
   const progressionReward = await grantPlayerXpReward(supabase, {
     userId: context.userId,
@@ -135,8 +149,8 @@ export async function claimAfkDedicated(
   const nextXp = progressionReward.xpAfter;
   const nextPlayerLevel = progressionReward.levelAfter;
   const nextFragments = { ...saveBefore.fragments };
-  if (reward.materials > 0) {
-    nextFragments[reward.materialId] = Math.max(0, Math.floor(nextFragments[reward.materialId] ?? 0)) + reward.materials;
+  for (const stack of v2Materials.stacks) {
+    nextFragments[stack.materialId] = Math.max(0, Math.floor(nextFragments[stack.materialId] ?? 0)) + stack.quantity;
   }
 
   const { error: afkError } = await supabase
@@ -151,8 +165,8 @@ export async function claimAfkDedicated(
     .eq("user_id", context.userId);
   if (afkError) throw new Error(afkError.message);
 
-  if (reward.materials > 0) {
-    await upsertUserMaterialQuantity(supabase, context.userId, reward.materialId, nextFragments[reward.materialId] ?? reward.materials, nowIso);
+  for (const stack of v2Materials.stacks) {
+    await upsertUserMaterialQuantity(supabase, context.userId, stack.materialId, nextFragments[stack.materialId] ?? stack.quantity, nowIso);
   }
 
   await updateDailyMissionProgress(supabase, context.userId, config, "claim_afk", 1);
@@ -164,6 +178,10 @@ export async function claimAfkDedicated(
     playerLevel: nextPlayerLevel,
     fragments: nextFragments,
     lastAfkAt: now.getTime(),
+    equipmentV2Rewards: {
+      ...saveBefore.equipmentV2Rewards,
+      afkMaterialCursor: v2Materials.nextState.materialCursor,
+    },
   });
 
   const response = {
@@ -232,7 +250,7 @@ function roundAfkHours(value: number) {
 async function updateLegacyPlayerSaveMirror(
   supabase: SupabaseClient,
   userId: string,
-  patch: Pick<GameSaveSnapshot, "gold" | "gems" | "xp" | "playerLevel" | "fragments" | "lastAfkAt">,
+  patch: Pick<GameSaveSnapshot, "gold" | "gems" | "xp" | "playerLevel" | "fragments" | "lastAfkAt" | "equipmentV2Rewards">,
 ) {
   const { data, error } = await supabase
     .from("player_saves")
@@ -250,6 +268,7 @@ async function updateLegacyPlayerSaveMirror(
     playerLevel: patch.playerLevel,
     fragments: patch.fragments,
     lastAfkAt: patch.lastAfkAt,
+    equipmentV2Rewards: patch.equipmentV2Rewards,
   };
 
   const { error: upsertError } = await supabase.from("player_saves").upsert(
@@ -273,7 +292,9 @@ async function loadPlayerSave(supabase: SupabaseClient, userId: string) {
     .eq("user_id", userId)
     .maybeSingle<PlayerSaveRow>();
   if (error) throw new Error(error.message);
-  return data?.save ? normalizeGameSave(data.save) : createInitialGameSave();
+  const save = data?.save ? normalizeGameSave(data.save) : createInitialGameSave();
+  applyEquipmentV2Cutover(save);
+  return save;
 }
 
 async function loadPlayerProgressRow(supabase: SupabaseClient, userId: string, save: GameSaveSnapshot) {
