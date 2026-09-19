@@ -59,10 +59,6 @@ const completeTowerFloorInputSchema = z.object({
   floorNumber: z.number().int().positive().max(5000),
   result: z.enum(["win", "loss"]),
   requestId: z.string().min(8).max(80),
-  equipmentChoice: z.object({
-    slot: z.enum(["weapon", "helmet", "armor", "accessory", "boots"]),
-    archetype: z.enum(["offense", "defense"]),
-  }).optional(),
 });
 
 const pvpUpsertDefenseInputSchema = z.object({

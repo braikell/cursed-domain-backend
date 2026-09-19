@@ -122,10 +122,6 @@ export interface CompleteTowerFloorInput {
   floorNumber: number;
   result: "win" | "loss";
   requestId: string;
-  equipmentChoice?: {
-    slot: "weapon" | "helmet" | "armor" | "accessory" | "boots";
-    archetype: "offense" | "defense";
-  };
 }
 
 export interface EquipItemInput {

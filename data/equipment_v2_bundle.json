@@ -561,11 +561,8 @@
         100
       ],
       "grantReservedRewardNow": false,
-      "weeklyRepeatBossItemLimit": 1,
-      "weeklyRepeatChoice": [
-        "slot",
-        "archetype"
-      ],
+      "rewardSelection": "uniform_random_catalog",
+      "repeatBossRewards": false,
       "rarityDependsOnFloor": true
     },
     "afk": {

@@ -1,13 +1,10 @@
-import type { V2Archetype, V2Catalog, V2Rarity, V2Slot } from "./v2-balance.js";
+import type { V2Catalog, V2Rarity, V2Slot } from "./v2-balance.js";
 
 export interface CampaignV2RewardState {
   utcDate: string;
   replayWinsToday: number;
   replayItemsToday: number;
   mythicDryItems: number;
-}
-export interface TowerV2RewardState {
-  weeklyRewardKey: string;
 }
 export interface AfkV2RewardState {
   materialCursor: number;
@@ -24,8 +21,8 @@ export interface CampaignV2Rules {
     guaranteedBossRewards: Record<V2Rarity, number[]>;
     reservedForFutureDefinitive: number[];
     grantReservedRewardNow: boolean;
-    weeklyRepeatBossItemLimit: number;
-    weeklyRepeatChoice: string[];
+    rewardSelection: "uniform_random_catalog";
+    repeatBossRewards: false;
   };
 }
 export interface CampaignV2RewardInput {
@@ -93,7 +90,7 @@ function rarityForChapter(chapter: number, roll: number, rules: CampaignV2Rules)
   throw new Error("Invalid V2 rarity chances");
 }
 
-function bossRarity(floor: number, rules: CampaignV2Rules): V2Rarity | null {
+export function towerBossRewardRarity(floor: number, rules: CampaignV2Rules): V2Rarity | null {
   for (const rarity of RARITIES) {
     if (rules.tower.guaranteedBossRewards[rarity].includes(floor)) return rarity;
   }
@@ -154,31 +151,24 @@ export function towerRarityFloor(floor: number): V2Rarity {
 export function planTowerV2Reward(
   floor: number,
   firstClear: boolean,
-  weeklyKey: string,
-  state: TowerV2RewardState,
-  choice: { slot: V2Slot; archetype: V2Archetype } | null,
   itemRoll: number,
   rules: CampaignV2Rules,
   catalog: V2Catalog,
-): { item: PlannedV2Item | null; nextState: TowerV2RewardState; reason: string } {
+): { item: PlannedV2Item | null; reason: string } {
   requireRoll(itemRoll, catalog.statsByItem.length);
   if (!Number.isSafeInteger(floor) || floor < 1) throw new RangeError("Invalid tower floor");
-  if (floor % rules.tower.bossFirstClearItemEveryFloors !== 0) return { item: null, nextState: state, reason: "not_boss" };
+  if (floor % rules.tower.bossFirstClearItemEveryFloors !== 0) return { item: null, reason: "not_boss" };
+  if (!firstClear) return { item: null, reason: "already_claimed" };
   if (rules.tower.reservedForFutureDefinitive.includes(floor) && !rules.tower.grantReservedRewardNow) {
-    return { item: null, nextState: state, reason: "future_definitive_reserved" };
+    return { item: null, reason: "future_definitive_reserved" };
   }
-  const guaranteedRarity = bossRarity(floor, rules);
-  if (guaranteedRarity == null) return { item: null, nextState: state, reason: "boss_reward_not_configured" };
-  if (!firstClear && state.weeklyRewardKey === weeklyKey) return { item: null, nextState: state, reason: "weekly_claimed" };
-  if (!firstClear && choice == null) return { item: null, nextState: state, reason: "choice_required" };
-  const pool = choice == null ? catalog.statsByItem : catalog.statsByItem.filter((entry) =>
-    entry.slot === choice.slot && entry.archetype === choice.archetype);
-  if (pool.length === 0) throw new RangeError("Invalid tower equipment choice");
-  const definition = pool[itemRoll % pool.length]!;
+  const guaranteedRarity = towerBossRewardRarity(floor, rules);
+  if (guaranteedRarity == null) return { item: null, reason: "boss_reward_not_configured" };
+  const definition = catalog.statsByItem[itemRoll];
+  if (definition == null) throw new Error("Missing V2 item definition");
   return {
     item: { key: definition.key, rarity: guaranteedRarity, level: 1, source: "tower" },
-    nextState: firstClear ? state : { weeklyRewardKey: weeklyKey },
-    reason: firstClear ? "boss_first_clear" : "weekly_boss",
+    reason: "boss_first_clear_random",
   };
 }
 

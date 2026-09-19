@@ -15,7 +15,6 @@ export function applyEquipmentV2Cutover(save: GameSaveSnapshot, enabled = true):
     campaignReplayWinsToday: 0,
     campaignReplayItemsToday: 0,
     campaignMythicDryItems: 0,
-    towerWeeklyRewardKey: "",
     afkMaterialCursor: 0,
   };
   save.equipmentV2CutoverVersion = EQUIPMENT_V2_CUTOVER_VERSION;

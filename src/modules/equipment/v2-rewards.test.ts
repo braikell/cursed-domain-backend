@@ -19,17 +19,17 @@ const campaign = (stageKey: string, isReplay: boolean, state = emptyState, dropR
 describe("equipment V2 reward planning", () => {
   it("guarantees the approved Tower bosses and reserves 95/100", () => {
     const samples = [
-      [5, "basic"],
-      [30, "epic"],
-      [55, "legendary"],
-      [80, "mythic"],
+      [5, "basic"], [10, "basic"], [15, "basic"], [20, "basic"], [25, "basic"],
+      [30, "epic"], [35, "epic"], [40, "epic"], [45, "epic"], [50, "epic"],
+      [55, "legendary"], [60, "legendary"], [65, "legendary"], [70, "legendary"], [75, "legendary"],
+      [80, "mythic"], [85, "mythic"], [90, "mythic"],
     ] as const;
     for (const [floor, rarity] of samples) {
-      expect(planTowerV2Reward(floor, true, "2026-W38", { weeklyRewardKey: "" }, null, 0, rules, catalog).item)
+      expect(planTowerV2Reward(floor, true, 0, rules, catalog).item)
         .toMatchObject({ rarity, level: 1 });
     }
-    expect(planTowerV2Reward(95, true, "2026-W38", { weeklyRewardKey: "" }, null, 0, rules, catalog).reason).toBe("future_definitive_reserved");
-    expect(planTowerV2Reward(100, true, "2026-W38", { weeklyRewardKey: "" }, null, 0, rules, catalog).reason).toBe("future_definitive_reserved");
+    expect(planTowerV2Reward(95, true, 0, rules, catalog).reason).toBe("future_definitive_reserved");
+    expect(planTowerV2Reward(100, true, 0, rules, catalog).reason).toBe("future_definitive_reserved");
   });
 
   it("guarantees the first replay item daily, caps at three and applies the 20 percent roll", () => {
@@ -51,18 +51,20 @@ describe("equipment V2 reward planning", () => {
     expect(result.nextState.mythicDryItems).toBe(0);
   });
 
-  it("requires a choice on weekly Tower repeats and limits them to one", () => {
+  it("grants a random catalog item only on the first boss clear", () => {
     expect(towerRarityFloor(5)).toBe("basic");
     expect(towerRarityFloor(30)).toBe("epic");
     expect(towerRarityFloor(55)).toBe("legendary");
     expect(towerRarityFloor(80)).toBe("mythic");
-    const state = { weeklyRewardKey: "" };
-    expect(planTowerV2Reward(5, false, "2026-W38", state, null, 0, rules, catalog).reason).toBe("choice_required");
-    const choice = { slot: "weapon" as const, archetype: "offense" as const };
-    const reward = planTowerV2Reward(80, false, "2026-W38", state, choice, 0, rules, catalog);
-    expect(reward.item).toMatchObject({ key: "weapon_filo_de_la_ruptura", rarity: "mythic", level: 1 });
-    expect(planTowerV2Reward(80, false, "2026-W38", reward.nextState, choice, 0, rules, catalog).reason).toBe("weekly_claimed");
-    expect(planTowerV2Reward(80, true, "2026-W38", state, null, 0, rules, catalog).item).not.toBeNull();
+    expect(planTowerV2Reward(5, false, 0, rules, catalog).reason).toBe("already_claimed");
+    const selectedKeys = new Set<string>();
+    for (let roll = 0; roll < catalog.statsByItem.length; roll++) {
+      const reward = planTowerV2Reward(80, true, roll, rules, catalog);
+      expect(reward.item).toMatchObject({ key: catalog.statsByItem[roll]?.key, rarity: "mythic", level: 1 });
+      selectedKeys.add(reward.item?.key ?? "");
+    }
+    expect(selectedKeys.size).toBe(10);
+    expect(planTowerV2Reward(81, true, 0, rules, catalog).reason).toBe("not_boss");
   });
 
   it("distributes AFK materials fairly across all five item slots", () => {

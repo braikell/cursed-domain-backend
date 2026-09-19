@@ -12,9 +12,10 @@ import {
 import { grantPlayerXpReward } from "../progression/player-progression.js";
 import { createInitialGameSave, normalizeGameSave, type GameSaveSnapshot } from "../bootstrap/game-save.js";
 import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
-import { planTowerV2Reward } from "../equipment/v2-rewards.js";
+import { planTowerV2Reward, towerBossRewardRarity } from "../equipment/v2-rewards.js";
 import { buildV2InventoryItem, getV2Bundle } from "../equipment/v2-runtime.js";
 import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
+import { ensureTowerProgressCutoverForUser } from "./tower-progress-cutover.js";
 
 interface TowerFloorDefinitionRow {
   floor_number: number;
@@ -28,7 +29,6 @@ interface TowerFloorDefinitionRow {
   reward_gold: number;
   reward_gems: number;
   reward_xp: number;
-  reward_equipment_guaranteed: boolean;
   replay_gold: number;
   replay_gems: number;
   replay_xp: number;
@@ -54,14 +54,9 @@ interface IdempotencyRow {
   response: unknown | null;
 }
 
-function utcWeekStart(now: Date): string {
-  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-  return monday.toISOString().slice(0, 10);
-}
-
 export async function getTowerStatusDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
+  await ensureTowerProgressCutoverForUser(supabase, context.userId);
   await ensureBootstrapMonetizationFoundation(supabase, context.userId);
   const [floors, progress, clears] = await Promise.all([
     loadTowerFloors(supabase),
@@ -77,7 +72,8 @@ export async function completeTowerFloorDedicated(
   input: CompleteTowerFloorInput,
 ): Promise<unknown> {
   const supabase = createServiceSupabaseClient();
-  const operation = `complete_tower_floor_v1:${input.floorNumber}:${input.result}`;
+  await ensureTowerProgressCutoverForUser(supabase, context.userId);
+  const operation = `complete_tower_floor_v2_random:${input.floorNumber}:${input.result}`;
   const replay = await beginIdempotentOperation(supabase, context.userId, operation, input.requestId);
   if (replay.status === "replayed") {
     if (replay.response == null) {
@@ -125,7 +121,6 @@ export async function completeTowerFloorDedicated(
     },
   });
   const equipmentItems: Array<Record<string, unknown>> = [];
-  let equipmentChoiceRequired = false;
   if (floor.is_boss) {
     const { catalog, rules } = getV2Bundle();
     const { data: saveRow, error: saveError } = await supabase.from("player_saves")
@@ -133,19 +128,14 @@ export async function completeTowerFloorDedicated(
     if (saveError) throw new Error(saveError.message);
     const save = normalizeGameSave(saveRow?.save ?? createInitialGameSave());
     applyEquipmentV2Cutover(save);
-    const weeklyKey = utcWeekStart(new Date());
     const planned = planTowerV2Reward(
-      floor.floor_number, isFirstClear, weeklyKey,
-      { weeklyRewardKey: save.equipmentV2Rewards.towerWeeklyRewardKey },
-      input.equipmentChoice ?? null,
+      floor.floor_number, isFirstClear,
       randomInt(catalog.statsByItem.length),
       rules, catalog,
     );
-    equipmentChoiceRequired = planned.reason === "choice_required";
     if (planned.item != null) {
       const item = buildV2InventoryItem(planned.item.key, planned.item.rarity);
       save.inventory.push(item);
-      save.equipmentV2Rewards.towerWeeklyRewardKey = planned.nextState.weeklyRewardKey;
       const { error: saveRewardError } = await supabase.from("player_saves").upsert({
         user_id: context.userId,
         save,
@@ -225,7 +215,6 @@ export async function completeTowerFloorDedicated(
     floorKey: floor.floor_key,
     isFirstClear,
     isBoss: floor.is_boss,
-    equipmentChoiceRequired,
     reward: {
       gold: rewardGold,
       gems: rewardGems,
@@ -300,7 +289,6 @@ async function loadTowerFloors(supabase: SupabaseClient) {
       "reward_gold",
       "reward_gems",
       "reward_xp",
-      "reward_equipment_guaranteed",
       "replay_gold",
       "replay_gems",
       "replay_xp",
@@ -368,6 +356,7 @@ function buildTowerStatusResponse(
   progress: UserTowerProgressRow,
   clears: UserTowerFloorClearRow[],
 ) {
+  const { rules } = getV2Bundle();
   const clearsByFloor = new Map(clears.map((row) => [row.floor_number, row] as const));
   const maxFloor = floors.reduce((max, floor) => Math.max(max, floor.floor_number), 0);
   const unlockedFloor = Math.max(1, progress.highest_floor + 1);
@@ -379,6 +368,9 @@ function buildTowerStatusResponse(
     totalClears: progress.total_clears,
     floors: floors.map((floor) => {
       const clear = clearsByFloor.get(floor.floor_number);
+      const reservedForFuture = rules.tower.reservedForFutureDefinitive.includes(floor.floor_number)
+        && !rules.tower.grantReservedRewardNow;
+      const equipmentRarity = reservedForFuture ? null : towerBossRewardRarity(floor.floor_number, rules);
       return {
         floorNumber: floor.floor_number,
         floorKey: floor.floor_key,
@@ -391,7 +383,9 @@ function buildTowerStatusResponse(
         rewardGold: floor.reward_gold,
         rewardGems: floor.reward_gems,
         rewardXp: floor.reward_xp,
-        rewardEquipmentGuaranteed: floor.reward_equipment_guaranteed,
+        rewardEquipmentGuaranteed: equipmentRarity != null,
+        rewardEquipmentRarity: equipmentRarity,
+        rewardEquipmentRandom: equipmentRarity != null,
         replayGold: floor.replay_gold,
         replayGems: floor.replay_gems,
         replayXp: floor.replay_xp,

@@ -1,5 +1,6 @@
 export const GAME_SAVE_SCHEMA_VERSION = 4;
 export const DEFAULT_ARENA_ID = "arena_default";
+export const TOWER_PROGRESS_CUTOVER_VERSION = 1;
 export const MAX_TEAM_SIZE = 3;
 export const DEFAULT_UNLOCKED_TEAM_SLOTS = 3;
 export const FORMATION_GRID_SLOT_COUNT = 9;
@@ -77,7 +78,6 @@ export interface EquipmentV2RewardState {
   campaignReplayWinsToday: number;
   campaignReplayItemsToday: number;
   campaignMythicDryItems: number;
-  towerWeeklyRewardKey: string;
   afkMaterialCursor: number;
 }
 
@@ -108,6 +108,7 @@ export interface GameSaveSnapshot {
   arenaCosmetics: ArenaCosmeticsState;
   equipmentV2Rewards: EquipmentV2RewardState;
   equipmentV2CutoverVersion: number;
+  towerProgressCutoverVersion: number;
 }
 
 export function normalizeStageKey(value: unknown, fallback = "world_1_stage_1"): string {
@@ -186,10 +187,10 @@ export function createInitialGameSave(now = Date.now()): GameSaveSnapshot {
       campaignReplayWinsToday: 0,
       campaignReplayItemsToday: 0,
       campaignMythicDryItems: 0,
-      towerWeeklyRewardKey: "",
       afkMaterialCursor: 0,
     },
     equipmentV2CutoverVersion: 0,
+    towerProgressCutoverVersion: TOWER_PROGRESS_CUTOVER_VERSION,
   };
 }
 
@@ -225,6 +226,7 @@ export function normalizeGameSave(source: unknown): GameSaveSnapshot {
     arenaCosmetics: normalizeArenaCosmeticsState(save.arenaCosmetics),
     equipmentV2Rewards: normalizeEquipmentV2RewardState(save.equipmentV2Rewards),
     equipmentV2CutoverVersion: Math.max(0, Math.floor(Number(save.equipmentV2CutoverVersion) || 0)),
+    towerProgressCutoverVersion: Math.max(0, Math.floor(Number(save.towerProgressCutoverVersion) || 0)),
   };
 }
 
@@ -236,7 +238,6 @@ function normalizeEquipmentV2RewardState(source: unknown): EquipmentV2RewardStat
     campaignReplayWinsToday: count(raw.campaignReplayWinsToday),
     campaignReplayItemsToday: count(raw.campaignReplayItemsToday),
     campaignMythicDryItems: count(raw.campaignMythicDryItems),
-    towerWeeklyRewardKey: typeof raw.towerWeeklyRewardKey === "string" ? raw.towerWeeklyRewardKey.slice(0, 32) : "",
     afkMaterialCursor: count(raw.afkMaterialCursor) % 5,
   };
 }

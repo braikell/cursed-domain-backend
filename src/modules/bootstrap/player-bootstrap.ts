@@ -25,6 +25,7 @@ import { normalizeCardMaterialId, pruneOwnedCardUnlockElements, syncOwnedCardFra
 import { normalizeEquipmentRarityForDatabase, normalizeEquipmentSlotForDatabase } from "../equipment/balance.js";
 import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 import { resolvePlayerLevelFromXp } from "../progression/player-progression.js";
+import { applyTowerProgressCutover } from "../tower/tower-progress-cutover.js";
 
 interface PlayerSaveRow {
   save: GameSaveSnapshot;
@@ -248,6 +249,7 @@ async function ensurePlayerSave(
     markSaveTiming("ensure_monetization", stageStartedAt);
     stageStartedAt = performance.now();
     const canonicalSave = await hydrateCanonicalRuntimeState(service, userId, hydratedCardsSave);
+    await applyTowerProgressCutover(service, userId, canonicalSave);
     await applyEquipmentV2CutoverAndCleanMirrors(service, userId, canonicalSave);
     markSaveTiming("hydrate_canonical", stageStartedAt);
     stageStartedAt = performance.now();
@@ -290,6 +292,7 @@ async function ensurePlayerSave(
     const hydratedRetrySave = await hydrateDefinitiveCardsFromServer(service, userId, retrySave);
     const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
     const canonicalRetrySave = await hydrateCanonicalRuntimeState(service, userId, hydratedRetrySave);
+    await applyTowerProgressCutover(service, userId, canonicalRetrySave);
     await applyEquipmentV2CutoverAndCleanMirrors(service, userId, canonicalRetrySave);
     const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalRetrySave);
     await tryEnsureServerGameFoundation(service, userId, hydratedFormationSave);
@@ -306,6 +309,7 @@ async function ensurePlayerSave(
   await tryEnsureServerGameFoundation(service, userId, createdSave);
   const monetizationConfig = await tryEnsureBootstrapMonetizationFoundation(service, userId);
   const canonicalCreatedSave = await hydrateCanonicalRuntimeState(service, userId, createdSave);
+  await applyTowerProgressCutover(service, userId, canonicalCreatedSave);
   await applyEquipmentV2CutoverAndCleanMirrors(service, userId, canonicalCreatedSave);
   const hydratedFormationSave = await hydrateSaveFormationFromServer(service, userId, canonicalCreatedSave);
   await persistCanonicalPlayerSave(service, userId, hydratedFormationSave);
