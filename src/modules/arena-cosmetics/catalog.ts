@@ -86,6 +86,13 @@ export const ARENA_COSMETICS_CATALOG: readonly ArenaCatalogEntry[] = Object.free
     price: 1600,
     available: true,
   }),
+  Object.freeze({
+    id: "arena_ciudad_invierno",
+    displayName: "Ciudad del Invierno",
+    acquisitionType: "gems" as const,
+    price: 2200,
+    available: true,
+  }),
 ]);
 
 const CATALOG_BY_ID = new Map(ARENA_COSMETICS_CATALOG.map((entry) => [entry.id, entry]));
