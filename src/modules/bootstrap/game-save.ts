@@ -1,3 +1,4 @@
+import { normalizeMaterialRemainders, type MaterialRemainders } from "../afk/material-rewards.js";
 export const GAME_SAVE_SCHEMA_VERSION = 4;
 export const DEFAULT_ARENA_ID = "arena_default";
 export const TOWER_PROGRESS_CUTOVER_VERSION = 1;
@@ -79,10 +80,12 @@ export interface EquipmentV2RewardState {
   campaignReplayItemsToday: number;
   campaignMythicDryItems: number;
   afkMaterialCursor: number;
+  afkMaterialRemainders?: MaterialRemainders;
 }
 
 export interface GameSaveSnapshot {
   schemaVersion: typeof GAME_SAVE_SCHEMA_VERSION;
+  itemMaterialModel?: "rarity_v1";
   gold: number;
   gems: number;
   xp: number;
@@ -152,6 +155,7 @@ export function compareStageKeys(a: unknown, b: unknown): number {
 export function createInitialGameSave(now = Date.now()): GameSaveSnapshot {
   return {
     schemaVersion: GAME_SAVE_SCHEMA_VERSION,
+    itemMaterialModel: "rarity_v1",
     gold: TEST_INITIAL_GOLD,
     gems: TEST_INITIAL_GEMS,
     xp: 0,
@@ -222,6 +226,7 @@ export function normalizeGameSave(source: unknown): GameSaveSnapshot {
     definitiveCards: typeof save.definitiveCards === "object" && save.definitiveCards != null ? (save.definitiveCards as Record<string, OwnedDefinitiveCard>) : {},
     missions: Array.isArray(save.missions) ? (save.missions as MissionEntry[]) : fallback.missions,
     schemaVersion: GAME_SAVE_SCHEMA_VERSION,
+    itemMaterialModel: "rarity_v1",
     cardModelVersion: 1,
     arenaCosmetics: normalizeArenaCosmeticsState(save.arenaCosmetics),
     equipmentV2Rewards: normalizeEquipmentV2RewardState(save.equipmentV2Rewards),
@@ -239,6 +244,7 @@ function normalizeEquipmentV2RewardState(source: unknown): EquipmentV2RewardStat
     campaignReplayItemsToday: count(raw.campaignReplayItemsToday),
     campaignMythicDryItems: count(raw.campaignMythicDryItems),
     afkMaterialCursor: count(raw.afkMaterialCursor) % 5,
+    afkMaterialRemainders: normalizeMaterialRemainders(raw.afkMaterialRemainders),
   };
 }
 

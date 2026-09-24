@@ -1,4 +1,4 @@
-import type { V2Catalog, V2Rarity, V2Slot } from "./v2-balance.js";
+import type { V2Catalog, V2Rarity } from "./v2-balance.js";
 
 export interface CampaignV2RewardState {
   utcDate: string;
@@ -6,10 +6,8 @@ export interface CampaignV2RewardState {
   replayItemsToday: number;
   mythicDryItems: number;
 }
-export interface AfkV2RewardState {
-  materialCursor: number;
-}
 export interface CampaignV2Rules {
+  afk: { materialPeriodHours: number; materialCaps: { basic: number; epic: number }; materialPremiumMultiplier: number };
   campaign: {
     firstClearGuaranteedItemStagesPerChapter: { minimum: number; maximum: number };
     replay: { firstItemOfDayGuaranteed: boolean; subsequentWinItemChanceBasisPoints: number; dailyItemLimit: number };
@@ -42,7 +40,6 @@ export interface PlannedV2Item {
 }
 
 const RARITIES: V2Rarity[] = ["basic", "epic", "legendary", "mythic"];
-const SLOTS: V2Slot[] = ["weapon", "helmet", "armor", "accessory", "boots"];
 
 function requireRoll(value: number, max: number): void {
   if (!Number.isSafeInteger(value) || value < 0 || value >= max) throw new RangeError("Invalid equipment reward roll");
@@ -172,16 +169,3 @@ export function planTowerV2Reward(
   };
 }
 
-export function distributeAfkV2Materials(quantity: number, state: AfkV2RewardState): {
-  stacks: Array<{ materialId: string; quantity: number }>;
-  nextState: AfkV2RewardState;
-} {
-  if (!Number.isSafeInteger(quantity) || quantity < 0) throw new RangeError("Invalid AFK material quantity");
-  const cursor = Math.max(0, Math.floor(state.materialCursor || 0));
-  const counts = SLOTS.map(() => 0);
-  for (let index = 0; index < quantity; index++) counts[(cursor + index) % SLOTS.length]!++;
-  return {
-    stacks: SLOTS.flatMap((slot, index) => counts[index]! > 0 ? [{ materialId: `item_materials:${slot}`, quantity: counts[index]! }] : []),
-    nextState: { materialCursor: (cursor + quantity) % SLOTS.length },
-  };
-}

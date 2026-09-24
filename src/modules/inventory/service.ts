@@ -16,7 +16,7 @@ export async function getInventoryHubDedicated(context: GodotAuthedRequestContex
     ok: true as const,
     schemaVersion: 2,
     sections: {
-      equipment: { items: equipment.items ?? [], materials: equipment.materials ?? [], heroes: equipment.heroes ?? [] },
+      equipment: { materialModel: equipment.materialModel ?? "slot", items: equipment.items ?? [], materials: equipment.materials ?? [], heroes: equipment.heroes ?? [] },
       resources: { materials: equipment.materials ?? [] },
       consumables: { items: [] },
       collections: { arenas: { arenaCosmetics: arenas.arenaCosmetics ?? {}, catalog: arenas.catalog ?? [] } },

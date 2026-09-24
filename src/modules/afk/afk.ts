@@ -9,16 +9,14 @@ import {
   updateDailyMissionProgress,
 } from "../bootstrap/monetization-foundation.js";
 import { createServiceSupabaseClient } from "../../supabase.js";
-import { buildEquipmentMaterialId } from "../equipment/balance.js";
+import { planAfkMaterials } from "./material-rewards.js";
 import { normalizeStageKey } from "../bootstrap/game-save.js";
 import { grantPlayerXpReward } from "../progression/player-progression.js";
-import { distributeAfkV2Materials } from "../equipment/v2-rewards.js";
 import { applyEquipmentV2Cutover } from "../equipment/v2-cutover.js";
 
 const AFK_GOLD_PER_HOUR = 200;
 const AFK_GEMS_PER_HOUR = 1;
 const AFK_XP_PER_HOUR = 32;
-const AFK_MATERIALS_PER_HOUR = 1;
 const AFK_MAX_HOURS = 72;
 const AFK_PREMIUM_BONUS_MULTIPLIER = 1.5;
 const AFK_PREMIUM_ENABLED = false;
@@ -80,10 +78,9 @@ export async function getAfkStatusDedicated(context: GodotAuthedRequestContext):
   const serverNow = new Date();
   const lastClaimedAt = afkState.last_claimed_at ? new Date(afkState.last_claimed_at) : serverNow;
   const reward = buildAfkRewardPreview(lastClaimedAt, serverNow, origin.materialId);
-  reward.materialStacks = distributeAfkV2Materials(
-    reward.materials,
-    { materialCursor: save.equipmentV2Rewards.afkMaterialCursor },
-  ).stacks;
+  const materialPlan = planAfkMaterials(serverNow.getTime() - lastClaimedAt.getTime(), save.equipmentV2Rewards.afkMaterialRemainders);
+  reward.materialStacks = materialPlan.stacks;
+  reward.materials = materialPlan.total;
   reward.materialId = "";
 
   return {
@@ -125,10 +122,8 @@ export async function claimAfkDedicated(
   const now = new Date();
   const lastClaimedAt = afkState.last_claimed_at ? new Date(afkState.last_claimed_at) : now;
   const reward = buildAfkRewardPreview(lastClaimedAt, now, origin.materialId);
-  const v2Materials = distributeAfkV2Materials(
-    reward.materials,
-    { materialCursor: saveBefore.equipmentV2Rewards.afkMaterialCursor },
-  );
+  const v2Materials = planAfkMaterials(now.getTime() - lastClaimedAt.getTime(), saveBefore.equipmentV2Rewards.afkMaterialRemainders);
+  reward.materials = v2Materials.total;
   reward.materialStacks = v2Materials.stacks;
   reward.materialId = "";
   const nowIso = now.toISOString();
@@ -180,7 +175,7 @@ export async function claimAfkDedicated(
     lastAfkAt: now.getTime(),
     equipmentV2Rewards: {
       ...saveBefore.equipmentV2Rewards,
-      afkMaterialCursor: v2Materials.nextState.materialCursor,
+      afkMaterialRemainders: v2Materials.nextRemainders,
     },
   });
 
@@ -234,7 +229,7 @@ function buildAfkRewardPreview(lastClaimedAt: Date, serverNow: Date, materialId:
     gold: Math.max(0, Math.floor(rewardHours * AFK_GOLD_PER_HOUR)),
     gems: Math.max(0, Math.floor(rewardHours * AFK_GEMS_PER_HOUR)),
     xp: Math.max(0, Math.floor(rewardHours * AFK_XP_PER_HOUR)),
-    materials: Math.max(0, Math.floor(rewardHours * AFK_MATERIALS_PER_HOUR)),
+    materials: 0,
     materialId,
     hours: roundAfkHours(elapsedHours),
     cappedHours: roundAfkHours(cappedHours),
@@ -352,9 +347,8 @@ function resolveAfkStageName(chapter: number) {
   return "Santuario de la Caida";
 }
 
-function resolveAfkMaterialId(chapter: number) {
-  const slots = ["weapon", "helmet", "armor", "boots", "accessory"] as const;
-  return buildEquipmentMaterialId(slots[(Math.max(1, chapter) - 1) % slots.length]);
+function resolveAfkMaterialId(_chapter: number) {
+  return "";
 }
 
 async function beginIdempotentOperation(

@@ -292,7 +292,7 @@
       "adaptivePower": "res://backend/godot-backend/data/equipment_v2_adaptive_power.contract.json",
       "equipmentPm": "res://backend/godot-backend/data/equipment_v2_pm.contract.json"
     },
-    "materialIdPattern": "item_materials:<slot>",
+    "materialIdPattern": "item_materials:<rarity>",
     "itemLevels": {
       "minimum": 1,
       "allocationRule": "one_point_per_item_then_largest_remainder_proportional_to_level1",
@@ -568,9 +568,21 @@
     "afk": {
       "grantsItems": false,
       "grantsItemMaterials": true,
-      "materialDistributionRule": "round_robin_five_slots_persistent_cursor"
+      "materialDistributionRule": "proportional_rarity_with_integer_carry",
+      "materialPeriodHours": 72,
+      "materialCaps": {
+        "basic": 5,
+        "epic": 3
+      },
+      "materialPremiumMultiplier": 1
     },
     "pendingDesignDecisions": [],
-    "activationAllowed": true
+    "activationAllowed": true,
+    "materialRarities": [
+      "basic",
+      "epic",
+      "legendary",
+      "mythic"
+    ]
   }
 }

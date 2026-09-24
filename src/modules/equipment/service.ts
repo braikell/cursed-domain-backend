@@ -1,3 +1,4 @@
+import { ITEM_MATERIAL_RARITIES, ITEM_MATERIAL_MODEL, rarityMaterialId, planMaterialDebit } from "./item-materials.js";
 import { getV2DismantleMaterials, getV2UpgradeCost } from "./v2-balance.js";
 import { buildV2InventoryItem, getV2Bundle } from "./v2-runtime.js";
 import { applyEquipmentV2Cutover } from "./v2-cutover.js";
@@ -16,7 +17,6 @@ import { createServiceSupabaseClient } from "../../supabase.js";
 import type { EquipmentItem, GameSaveSnapshot } from "../bootstrap/game-save.js";
 import { createInitialGameSave, normalizeGameSave } from "../bootstrap/game-save.js";
 import {
-  buildEquipmentMaterialId,
   normalizeEquipmentRarity,
   normalizeEquipmentRarityForDatabase,
   normalizeEquipmentSlotForDatabase,
@@ -199,9 +199,8 @@ export async function upgradeItemDedicated(
     throw new HttpModuleError(400, "equipment_invalid_level", "equipment_upgrade", "Nivel actual invalido para mejorar.");
   }
 
-  const materialId = buildEquipmentMaterialId(item.slot as EquipmentSlot);
-  const availableMaterials = Math.max(0, Math.floor(Number(save.fragments[materialId]) || 0));
-  if (availableMaterials < cost.materials) {
+  const materialDebit = planMaterialDebit(save.fragments, rarity, cost.materials);
+  if (materialDebit == null) {
     throw new HttpModuleError(409, "equipment_not_enough_materials", "equipment_upgrade", "No hay suficientes materiales para mejorar este item.");
   }
   if (save.gold < cost.gold) {
@@ -212,9 +211,9 @@ export async function upgradeItemDedicated(
     throw new HttpModuleError(409, "equipment_not_enough_gems", "equipment_upgrade", "No hay suficientes gemas para mejorar este item.");
   }
 
-  save.fragments[materialId] = availableMaterials - cost.materials;
-  if (save.fragments[materialId] <= 0) {
-    delete save.fragments[materialId];
+  for (const [id, amount] of Object.entries(materialDebit)) {
+    save.fragments[id] -= amount;
+    if (save.fragments[id] <= 0) delete save.fragments[id];
   }
   save.gold -= cost.gold;
   save.gems -= gemCost;
@@ -272,7 +271,7 @@ export async function dismantleItemDedicated(
   }
 
   const rarity = normalizeEquipmentRarity(item.rarity);
-  const materialId = buildEquipmentMaterialId(item.slot as EquipmentSlot);
+  const materialId = rarityMaterialId(rarity);
   const gained = getV2DismantleMaterials(getV2Bundle().rules, rarity);
   save.fragments[materialId] = Math.max(0, save.fragments[materialId] ?? 0) + gained;
   save.inventory.splice(itemIndex, 1);
@@ -313,11 +312,12 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     isEquipped: Boolean(item.equippedToCharacterId),
   })).sort(compareEquipmentRows);
 
-  const itemMaterials = (["weapon", "helmet", "armor", "boots", "accessory"] as EquipmentSlot[]).map((slot) => ({
-    materialId: buildEquipmentMaterialId(slot),
-    slot,
+  const itemMaterials = ITEM_MATERIAL_RARITIES.map((rarity) => ({
+    materialId: rarityMaterialId(rarity),
+    rarity,
+    slot: "",
     kind: "item_materials" as InventoryMaterialKind,
-    quantity: Math.max(0, Math.floor(Number(save.fragments[buildEquipmentMaterialId(slot)]) || 0)),
+    quantity: Math.max(0, Math.floor(Number(save.fragments[rarityMaterialId(rarity)]) || 0)),
   }));
   const materialIds = new Set(itemMaterials.map((entry) => entry.materialId));
   const extraMaterials = Object.entries(save.fragments)
@@ -339,6 +339,7 @@ async function buildEquipmentResponse(supabase: SupabaseClient, userId: string, 
     gold: save.gold,
     gems: save.gems,
     items,
+    materialModel: ITEM_MATERIAL_MODEL,
     materials: [...itemMaterials, ...extraMaterials],
     heroes,
   };
