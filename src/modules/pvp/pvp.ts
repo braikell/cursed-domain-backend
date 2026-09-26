@@ -12,6 +12,8 @@ import { grantPlayerXpReward } from "../progression/player-progression.js";
 import { getBootstrapMonetizationConfig, updateDailyMissionProgress } from "../bootstrap/monetization-foundation.js";
 import { PM_V2_RUNTIME_POLICY } from "../cards/power-rating-v2/pm-runtime-policy.js";
 
+import { parsePvpBrowse, loadPvpBrowsePage, type PvpBrowseInput } from "./pvp-browse.js";
+
 type PvpLeague = "bronze" | "silver" | "gold";
 
 interface PvpProfileRow {
@@ -50,8 +52,6 @@ interface PvpMatchRow {
 }
 
 const DEFAULT_RATING = 1000;
-const MATCHMAKING_LIMIT = 20;
-const LEADERBOARD_LIMIT = 5;
 const DAILY_SCORING_LIMIT = 30;
 const PVP_WIN_XP_REWARD = 25;
 const DAILY_SAME_DEFENDER_LIMIT = 5;
@@ -60,20 +60,41 @@ const MATCH_TTL_MINUTES = 20;
 const PVP_PROFILE_SELECT =
   "user_id,display_name,league,rating,current_season_id,season_rating,season_best_rating,wins,losses,defense_power,defense_snapshot,defense_updated_at,updated_at";
 
-export async function getPvpStatusDedicated(context: GodotAuthedRequestContext): Promise<unknown> {
+export async function getPvpStatusDedicated(context: GodotAuthedRequestContext, input: PvpBrowseInput = {}): Promise<unknown> {
+  parsePvpBrowse(input);
   const supabase = createServiceSupabaseClient();
+  if (input.page === "changes") {
+    let query = supabase.from("user_pvp_profiles").select("user_id").neq("user_id", context.userId)
+      .gt("defense_power", 0).gt("defense_updated_at", input.since!)
+      .eq("defense_snapshot->>pmVersion", PM_V2_RUNTIME_POLICY.mode === "v2" ? "v2" : "legacy");
+    if (input.league) query = query.eq("league", input.league);
+    const { data, error } = await query.limit(1);
+    if (error) throw new Error(error.message);
+    return { ok: true, hasNewRivals: (data?.length ?? 0) > 0 };
+  }
+  const browseVersion = new Date().toISOString();
+  if (input.page) {
+    const ranking = input.page === "ranking";
+    const result = await loadPvpBrowsePage(supabase, context.userId, PVP_PROFILE_SELECT, input, ranking);
+    return { ok: true, items: result.items.map((row) => toClientRival(row as PvpProfileRow, context.userId)), page: result.page };
+  }
   const self = await ensurePvpProfile(supabase, context.userId);
-  const [rivals, leaderboard] = await Promise.all([
-    loadRivals(supabase, context.userId, self),
-    loadLeaderboard(supabase),
+  const [rivalPage, rankPage] = await Promise.all([
+    loadPvpBrowsePage(supabase, context.userId, PVP_PROFILE_SELECT, { ...input, search: "" }),
+    loadPvpBrowsePage(supabase, context.userId, PVP_PROFILE_SELECT, input, true),
   ]);
+  const rivals = rivalPage.items as PvpProfileRow[];
+  const leaderboard = rankPage.items as PvpProfileRow[];
 
   return {
     ok: true as const,
     profile: toClientProfile(self),
     rivals: rivals.map((rival) => toClientRival(rival, context.userId)),
-    leaderboard: leaderboard.map(toClientProfile),
+    leaderboard: leaderboard.map((row) => toClientRival(row, context.userId)),
     leagues: buildLeagueDefinitions(),
+    browseVersion,
+    rivalsPage: rivalPage.page,
+    rankingPage: rankPage.page,
   };
 }
 
@@ -294,36 +315,6 @@ async function loadPvpProfile(supabase: SupabaseClient, userId: string) {
     .maybeSingle<PvpProfileRow>();
   if (error) throw new Error(error.message);
   return data;
-}
-
-async function loadRivals(supabase: SupabaseClient, userId: string, self: PvpProfileRow) {
-  const { data, error } = await supabase
-    .from("user_pvp_profiles")
-    .select(PVP_PROFILE_SELECT)
-    .gt("defense_power", 0)
-    .order("rating", { ascending: false })
-    .order("defense_power", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .limit(MATCHMAKING_LIMIT * 5)
-    .returns<PvpProfileRow[]>();
-  if (error) throw new Error(error.message);
-  const rows = (data ?? [])
-    .filter((row) => isCurrentPmDefenseSnapshot(row.defense_snapshot))
-    .slice(0, MATCHMAKING_LIMIT);
-  if (rows.some((row) => row.user_id === userId) || self.defense_power <= 0 || !isCurrentPmDefenseSnapshot(self.defense_snapshot)) return rows;
-  return [self, ...rows].slice(0, MATCHMAKING_LIMIT);
-}
-
-async function loadLeaderboard(supabase: SupabaseClient) {
-  const { data, error } = await supabase
-    .from("user_pvp_profiles")
-    .select(PVP_PROFILE_SELECT)
-    .gt("defense_power", 0)
-    .order("rating", { ascending: false })
-    .limit(LEADERBOARD_LIMIT * 5)
-    .returns<PvpProfileRow[]>();
-  if (error) throw new Error(error.message);
-  return (data ?? []).filter((row) => isCurrentPmDefenseSnapshot(row.defense_snapshot)).slice(0, LEADERBOARD_LIMIT);
 }
 
 async function expireOldStartedMatches(supabase: SupabaseClient, userId: string) {

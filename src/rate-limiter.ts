@@ -16,6 +16,7 @@ const RATE_LIMIT_CONFIGS: Partial<Record<BackendModuleName, RateLimitConfig>> = 
   summons: { max: 20, windowMs: 60_000 },
   battle_start: { max: 30, windowMs: 60_000 },
   battle_resolve: { max: 30, windowMs: 60_000 },
+  pvp_status: { max: 90, windowMs: 60_000 },
   pvp_start_match: { max: 20, windowMs: 60_000 },
   pvp_complete_match: { max: 20, windowMs: 60_000 },
   pvp_upsert_defense: { max: 20, windowMs: 60_000 },

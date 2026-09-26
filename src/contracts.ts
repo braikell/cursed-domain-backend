@@ -216,12 +216,14 @@ export interface SocialRemoveFriendInput {
 }
 
 export interface CompleteIncursionInput {
+  /** v2 reports completed waves, v1 reports the wave entered. */
+  rulesVersion?: 1 | 2;
   waveReached: number;
   kills: number;
   requestId: string;
   incursionSessionId: string;
   survivalTime?: number;
-  resultType?: "defeat" | "extraction" | "victory";
+  resultType?: "defeat" | "extraction" | "victory" | "abandoned";
 }
 
 export interface StartIncursionInput {

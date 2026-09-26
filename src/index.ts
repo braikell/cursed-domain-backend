@@ -128,8 +128,8 @@ class BootstrapImplementedDomainService extends NotImplementedGodotDomainService
     return await completeTowerFloorDedicated(_context, _input);
   }
 
-  override async getPvpStatus(_context: GodotAuthedRequestContext): Promise<unknown> {
-    return await getPvpStatusDedicated(_context);
+  override async getPvpStatus(_context: GodotAuthedRequestContext, input?: import("./modules/pvp/pvp-browse.js").PvpBrowseInput): Promise<unknown> {
+    return await getPvpStatusDedicated(_context, input);
   }
 
   override async upsertPvpDefense(_context: GodotAuthedRequestContext, _input: PvpUpsertDefenseInput): Promise<unknown> {

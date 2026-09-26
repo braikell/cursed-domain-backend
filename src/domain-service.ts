@@ -47,7 +47,7 @@ export interface GodotDomainService {
   completeBattle(context: GodotAuthedRequestContext, input: CompleteBattleInput): Promise<unknown>;
   getTowerStatus(context: GodotAuthedRequestContext): Promise<unknown>;
   completeTowerFloor(context: GodotAuthedRequestContext, input: CompleteTowerFloorInput): Promise<unknown>;
-  getPvpStatus(context: GodotAuthedRequestContext): Promise<unknown>;
+  getPvpStatus(context: GodotAuthedRequestContext, input?: import("./modules/pvp/pvp-browse.js").PvpBrowseInput): Promise<unknown>;
   upsertPvpDefense(context: GodotAuthedRequestContext, input: PvpUpsertDefenseInput): Promise<unknown>;
   startPvpMatch(context: GodotAuthedRequestContext, input: PvpStartMatchInput): Promise<unknown>;
   completePvpMatch(context: GodotAuthedRequestContext, input: PvpCompleteMatchInput): Promise<unknown>;

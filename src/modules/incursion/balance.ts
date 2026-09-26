@@ -74,7 +74,8 @@ export const INCURSION_WAVE_REWARDS: readonly IncursionReward[] = [
   { gold: 1298000, gems: 3100, xp: 1920 },
 ];
 
-export function calculateIncursionRewards(waveReached: number, resultType: "defeat" | "extraction" | "victory" = "extraction"): IncursionReward {
+export function calculateIncursionRewards(waveReached: number, resultType: "defeat" | "extraction" | "victory" | "abandoned" = "extraction"): IncursionReward {
+  if (resultType === "abandoned") return { gold: 0, gems: 0, xp: 0 };
   if (resultType === "defeat") {
     return { ...INCURSION_DEFEAT_REWARD };
   }

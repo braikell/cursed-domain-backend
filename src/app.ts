@@ -119,12 +119,13 @@ const ultimateUsedInputSchema = z.object({
 });
 
 const completeIncursionInputSchema = z.object({
+  rulesVersion: z.union([z.literal(1), z.literal(2)]).optional(),
   waveReached: z.number().int().min(0).max(21),
   kills: z.number().int().min(0).max(99999),
   requestId: z.string().min(8).max(80),
   incursionSessionId: z.string().uuid(),
   survivalTime: z.number().min(0).max(1800).optional(),
-  resultType: z.enum(["defeat", "extraction", "victory"]).optional().default("defeat"),
+  resultType: z.enum(["defeat", "extraction", "victory", "abandoned"]).optional().default("defeat"),
 });
 
 const startIncursionInputSchema = z.object({
@@ -415,7 +416,8 @@ export function createApp(domainService: GodotDomainService) {
   app.get("/api/godot/pvp/status", async (context) =>
     withModule(context, "pvp_status", async () => {
       const authed = await requireAuthedGodotUser(context, "pvp_status");
-      const response = await domainService.getPvpStatus(authed);
+      applyRateLimit(context, authed.userId, "pvp_status");
+      const response = await domainService.getPvpStatus(authed, { page: context.req.query("page"), cursor: context.req.query("cursor"), league: context.req.query("league"), search: context.req.query("search"), since: context.req.query("since") });
       return context.json(response);
     }),
   );
