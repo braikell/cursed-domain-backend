@@ -13,6 +13,10 @@ export interface RateLimitResult {
 }
 
 const RATE_LIMIT_CONFIGS: Partial<Record<BackendModuleName, RateLimitConfig>> = {
+  cosmetics_status: { max: 90, windowMs: 60_000 },
+  cosmetics_purchase: { max: 20, windowMs: 60_000 },
+  cosmetics_equip: { max: 30, windowMs: 60_000 },
+  cosmetics_unequip: { max: 30, windowMs: 60_000 },
   summons: { max: 20, windowMs: 60_000 },
   battle_start: { max: 30, windowMs: 60_000 },
   battle_resolve: { max: 30, windowMs: 60_000 },

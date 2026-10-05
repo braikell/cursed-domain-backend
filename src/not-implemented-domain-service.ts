@@ -1,4 +1,5 @@
 import type {
+  CosmeticMutationInput,
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
@@ -81,6 +82,13 @@ function notImplemented(
 }
 
 export class NotImplementedGodotDomainService implements GodotDomainService {
+  async getCosmetics(_context: GodotAuthedRequestContext): Promise<unknown> {
+    throw new HttpModuleError(503,"cosmetics_unavailable","cosmetics_status","Decorativos no disponibles.");
+  }
+  async mutateCosmetics(_context: GodotAuthedRequestContext, action: "purchase" | "equip" | "unequip", _input: CosmeticMutationInput): Promise<unknown> {
+    throw new HttpModuleError(503,"cosmetics_unavailable", action === "purchase" ? "cosmetics_purchase" : action === "equip" ? "cosmetics_equip" : "cosmetics_unequip","Decorativos no disponibles.");
+  }
+
   async bootstrap(_context: GodotAuthedRequestContext): Promise<BootstrapResponse> {
     return notImplemented("bootstrap", "Bootstrap extraction not implemented yet.");
   }

@@ -18,7 +18,9 @@
     "apply:pm-v2-specializations": "tsx ../godot-backend-tools/pm-hero-specialization-apply-cli.ts --write",
     "activate:pm-v2": "tsx ../godot-backend-tools/pm-v2-cutover-apply-cli.ts --write",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:cosmetics-sql": "node ../../tools/avatar_frames_sql_test.mjs",
+    "check:cosmetics-readiness": "node scripts/check-cosmetics-readiness.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.1",
@@ -31,6 +33,7 @@
     "@types/node": "^22.10.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@electric-sql/pglite": "0.5.8"
   }
 }

@@ -10,6 +10,17 @@ import { checkRateLimit } from "./rate-limiter.js";
 import { resolveRequestId } from "./request-id.js";
 import { logger } from "./safe-logger.js";
 
+const cosmeticMutationSchema = z.object({
+ cosmeticId: z.string().regex(/^[a-z0-9_]{1,64}$/),
+ category: z.literal("frame").optional(),
+ requestId: z.string().regex(/^[a-zA-Z0-9_-]{8,80}$/),
+}).strict();
+const cosmeticPurchaseSchema = cosmeticMutationSchema.extend({offerVersion:z.string().regex(/^[0-9a-f]{32}$/)});
+const cosmeticUnequipSchema = z.object({
+ category: z.literal("frame"),
+ requestId: z.string().regex(/^[a-zA-Z0-9_-]{8,80}$/),
+}).strict();
+
 const purchasePackInputSchema = z.object({
   packId: z.enum(["basicPack", "epicPack", "legendaryPack", "mythicPack"]),
   purchaseCurrency: z.enum(["gold", "gems", "free_token"]),
@@ -564,6 +575,26 @@ export function createApp(domainService: GodotDomainService) {
       return context.json(await domainService.getInventoryHub(authed));
     }),
   );
+
+  app.get("/api/godot/cosmetics", async context =>
+    withModule(context,"cosmetics_status",async () => {
+      const authed = await requireAuthedGodotUser(context,"cosmetics_status");
+      applyRateLimit(context,authed.userId,"cosmetics_status");
+      return context.json(await domainService.getCosmetics(authed));
+    }),
+  );
+  for (const action of ["purchase","equip","unequip"] as const) {
+    const module = ("cosmetics_" + action) as BackendModuleName;
+    app.post("/api/godot/cosmetics/" + action, async context =>
+      withModule(context,module,async () => {
+        const authed = await requireAuthedGodotUser(context,module);
+        applyRateLimit(context,authed.userId,module);
+        const parsed = (action === "unequip" ? cosmeticUnequipSchema : action === "purchase" ? cosmeticPurchaseSchema : cosmeticMutationSchema).safeParse(await context.req.json().catch(() => null));
+        if (!parsed.success) throw new HttpModuleError(400,"invalid_request_payload",module,"Solicitud inválida.");
+        return context.json(await domainService.mutateCosmetics(authed,action,parsed.data));
+      }),
+    );
+  }
 
   app.get("/api/godot/arena-cosmetics", async (context) =>
     withModule(context, "arena_cosmetics_status", async () => {

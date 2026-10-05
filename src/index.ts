@@ -27,8 +27,10 @@ import {
   upgradeItemDedicated,
 } from "./modules/equipment/service.js";
 import { claimArenaDedicated, equipArenaDedicated, getArenaCosmeticsDedicated, purchaseArenaDedicated } from "./modules/arena-cosmetics/service.js";
+import { getCosmeticsDedicated, mutateCosmeticsDedicated } from "./modules/cosmetics/service.js";
 import { getInventoryHubDedicated } from "./modules/inventory/service.js";
 import type {
+  CosmeticMutationInput,
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
@@ -60,6 +62,9 @@ import type {
 } from "./contracts.js";
 
 class BootstrapImplementedDomainService extends NotImplementedGodotDomainService {
+  override async getCosmetics(context: GodotAuthedRequestContext) { return getCosmeticsDedicated(context); }
+  override async mutateCosmetics(context: GodotAuthedRequestContext, action: "purchase" | "equip" | "unequip", input: CosmeticMutationInput) { return mutateCosmeticsDedicated(context,action,input); }
+
   override async bootstrap(context: GodotAuthedRequestContext): Promise<BootstrapResponse> {
     return await bootstrapPlayer(context.accessToken, context.userId);
   }

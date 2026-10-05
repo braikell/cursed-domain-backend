@@ -24,6 +24,10 @@ export type BackendModuleName =
   | "equipment_upgrade"
   | "equipment_dismantle"
   | "inventory_status"
+  | "cosmetics_status"
+  | "cosmetics_purchase"
+  | "cosmetics_equip"
+  | "cosmetics_unequip"
   | "arena_cosmetics_status"
   | "arena_cosmetics_equip"
   | "arena_cosmetics_purchase"
@@ -230,3 +234,5 @@ export interface StartIncursionInput {
   currency: "gold" | "gems";
   requestId: string;
 }
+
+export interface CosmeticMutationInput { cosmeticId?: string; category?: "frame"; offerVersion?: string; requestId: string; }

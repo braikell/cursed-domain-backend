@@ -1,4 +1,5 @@
 import type { GodotAuthedRequestContext } from "../../contracts.js";
+import { getCosmeticsDedicated } from "../cosmetics/service.js";
 import { getArenaCosmeticsDedicated } from "../arena-cosmetics/service.js";
 import { getEquipmentDedicated } from "../equipment/service.js";
 
@@ -9,6 +10,7 @@ export async function getInventoryHubDedicated(context: GodotAuthedRequestContex
   // Equipment may normalize legacy saves, so resolve it before reading cosmetics.
   const equipmentRaw = await getEquipmentDedicated(context);
   const arenasRaw = await getArenaCosmeticsDedicated(context);
+  const cosmetics = await getCosmeticsDedicated(context, true);
   const equipment = equipmentRaw as Snapshot;
   const arenas = arenasRaw as Snapshot;
   const balances = (arenas.balances ?? { gold: equipment.gold ?? 0 }) as Snapshot;
@@ -19,7 +21,7 @@ export async function getInventoryHubDedicated(context: GodotAuthedRequestContex
       equipment: { materialModel: equipment.materialModel ?? "slot", items: equipment.items ?? [], materials: equipment.materials ?? [], heroes: equipment.heroes ?? [] },
       resources: { materials: equipment.materials ?? [] },
       consumables: { items: [] },
-      collections: { arenas: { arenaCosmetics: arenas.arenaCosmetics ?? {}, catalog: arenas.catalog ?? [] } },
+      collections: { cosmetics, arenas: { arenaCosmetics: arenas.arenaCosmetics ?? {}, catalog: arenas.catalog ?? [] } },
     },
     balances,
   };

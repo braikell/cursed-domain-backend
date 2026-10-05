@@ -12,6 +12,8 @@ import { grantPlayerXpReward } from "../progression/player-progression.js";
 import { getBootstrapMonetizationConfig, updateDailyMissionProgress } from "../bootstrap/monetization-foundation.js";
 import { PM_V2_RUNTIME_POLICY } from "../cards/power-rating-v2/pm-runtime-policy.js";
 
+import { publicFrameIdentities } from "../cosmetics/service.js";
+
 import { parsePvpBrowse, loadPvpBrowsePage, type PvpBrowseInput } from "./pvp-browse.js";
 
 type PvpLeague = "bronze" | "silver" | "gold";
@@ -76,7 +78,8 @@ export async function getPvpStatusDedicated(context: GodotAuthedRequestContext, 
   if (input.page) {
     const ranking = input.page === "ranking";
     const result = await loadPvpBrowsePage(supabase, context.userId, PVP_PROFILE_SELECT, input, ranking);
-    return { ok: true, items: result.items.map((row) => toClientRival(row as PvpProfileRow, context.userId)), page: result.page };
+    const frames = await publicFrameIdentities(supabase, result.items.map(row => String(row.user_id)));
+    return { ok: true, items: result.items.map(row => ({...toClientRival(row as PvpProfileRow, context.userId), cosmetics: frames.get(String(row.user_id)) ?? {frameId:""}})), page: result.page };
   }
   const self = await ensurePvpProfile(supabase, context.userId);
   const [rivalPage, rankPage] = await Promise.all([
@@ -85,12 +88,14 @@ export async function getPvpStatusDedicated(context: GodotAuthedRequestContext, 
   ]);
   const rivals = rivalPage.items as PvpProfileRow[];
   const leaderboard = rankPage.items as PvpProfileRow[];
+  const frames = await publicFrameIdentities(supabase,[self.user_id,...rivals.map(r => r.user_id),...leaderboard.map(r => r.user_id)]);
+  const identity = (row: PvpProfileRow) => (frames.get(row.user_id) ?? {frameId:""});
 
   return {
     ok: true as const,
-    profile: toClientProfile(self),
-    rivals: rivals.map((rival) => toClientRival(rival, context.userId)),
-    leaderboard: leaderboard.map((row) => toClientRival(row, context.userId)),
+    profile: {...toClientProfile(self), cosmetics: identity(self)},
+    rivals: rivals.map(rival => ({...toClientRival(rival,context.userId),cosmetics:identity(rival)})),
+    leaderboard: leaderboard.map(row => ({...toClientRival(row,context.userId),cosmetics:identity(row)})),
     leagues: buildLeagueDefinitions(),
     browseVersion,
     rivalsPage: rivalPage.page,
