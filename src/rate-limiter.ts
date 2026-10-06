@@ -13,6 +13,8 @@ export interface RateLimitResult {
 }
 
 const RATE_LIMIT_CONFIGS: Partial<Record<BackendModuleName, RateLimitConfig>> = {
+  profile_avatar_status: { max: 90, windowMs: 60_000 },
+  profile_avatar_save: { max: 20, windowMs: 60_000 },
   cosmetics_status: { max: 90, windowMs: 60_000 },
   cosmetics_purchase: { max: 20, windowMs: 60_000 },
   cosmetics_equip: { max: 30, windowMs: 60_000 },

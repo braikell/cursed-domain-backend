@@ -10,6 +10,8 @@ import { checkRateLimit } from "./rate-limiter.js";
 import { resolveRequestId } from "./request-id.js";
 import { logger } from "./safe-logger.js";
 
+const profileAvatarSchema = z.object({avatarCardId:z.string().uuid(),expectedAvatarCardId:z.string().min(1).max(512).nullable()}).strict();
+
 const cosmeticMutationSchema = z.object({
  cosmeticId: z.string().regex(/^[a-z0-9_]{1,64}$/),
  category: z.literal("frame").optional(),
@@ -575,6 +577,19 @@ export function createApp(domainService: GodotDomainService) {
       return context.json(await domainService.getInventoryHub(authed));
     }),
   );
+
+  app.get("/api/godot/profile/avatar", async context => withModule(context,"profile_avatar_status",async () => {
+    const authed=await requireAuthedGodotUser(context,"profile_avatar_status");
+    applyRateLimit(context,authed.userId,"profile_avatar_status");
+    return context.json(await domainService.getProfileAvatar(authed));
+  }));
+  app.post("/api/godot/profile/avatar", async context => withModule(context,"profile_avatar_save",async () => {
+    const authed=await requireAuthedGodotUser(context,"profile_avatar_save");
+    applyRateLimit(context,authed.userId,"profile_avatar_save");
+    const parsed=profileAvatarSchema.safeParse(await context.req.json().catch(()=>null));
+    if (!parsed.success) throw new HttpModuleError(400,"invalid_request_payload","profile_avatar_save","Selecciona una carta válida.");
+    return context.json(await domainService.setProfileAvatar(authed,parsed.data));
+  }));
 
   app.get("/api/godot/cosmetics", async context =>
     withModule(context,"cosmetics_status",async () => {

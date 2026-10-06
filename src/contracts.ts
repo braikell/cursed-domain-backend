@@ -1,5 +1,7 @@
 export type BackendModuleName =
   | "bootstrap"
+  | "profile_avatar_status"
+  | "profile_avatar_save"
   | "summons"
   | "pity_status"
   | "afk_status"
@@ -66,6 +68,8 @@ export interface AuthUserProfile {
   email: string | null;
   user_metadata?: Record<string, unknown> | null;
 }
+
+export interface ProfileAvatarInput { avatarCardId: string; expectedAvatarCardId: string | null; }
 
 export interface BootstrapResponse {
   ok: true;

@@ -1,5 +1,6 @@
 import type {
   CosmeticMutationInput,
+  ProfileAvatarInput,
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
@@ -82,6 +83,9 @@ function notImplemented(
 }
 
 export class NotImplementedGodotDomainService implements GodotDomainService {
+  async getProfileAvatar(_context: GodotAuthedRequestContext): Promise<unknown> { throw new HttpModuleError(501,"not_implemented","profile_avatar_status","Not implemented"); }
+  async setProfileAvatar(_context: GodotAuthedRequestContext,_input: ProfileAvatarInput): Promise<unknown> { throw new HttpModuleError(501,"not_implemented","profile_avatar_save","Not implemented"); }
+
   async getCosmetics(_context: GodotAuthedRequestContext): Promise<unknown> {
     throw new HttpModuleError(503,"cosmetics_unavailable","cosmetics_status","Decorativos no disponibles.");
   }

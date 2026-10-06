@@ -1,5 +1,6 @@
 import type {
   CosmeticMutationInput,
+  ProfileAvatarInput,
   AscendCardInput,
   BootstrapResponse,
   ClaimAfkInput,
@@ -65,6 +66,8 @@ export interface GodotDomainService {
   unequipItem(context: GodotAuthedRequestContext, input: UnequipItemInput): Promise<unknown>;
   upgradeItem(context: GodotAuthedRequestContext, input: UpgradeItemInput): Promise<unknown>;
   dismantleItem(context: GodotAuthedRequestContext, input: DismantleItemInput): Promise<unknown>;
+  getProfileAvatar(context: GodotAuthedRequestContext): Promise<unknown>;
+  setProfileAvatar(context: GodotAuthedRequestContext, input: ProfileAvatarInput): Promise<unknown>;
   getCosmetics(context: GodotAuthedRequestContext): Promise<unknown>;
   mutateCosmetics(context: GodotAuthedRequestContext, action: "purchase" | "equip" | "unequip", input: CosmeticMutationInput): Promise<unknown>;
   getArenaCosmetics(context: GodotAuthedRequestContext): Promise<unknown>;

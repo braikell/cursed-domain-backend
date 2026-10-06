@@ -20,7 +20,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cosmetics-sql": "node ../../tools/avatar_frames_sql_test.mjs",
-    "check:cosmetics-readiness": "node scripts/check-cosmetics-readiness.mjs"
+    "check:cosmetics-readiness": "node scripts/check-cosmetics-readiness.mjs",
+    "test:profile-avatar-sql": "node ../../tools/profile_avatar_sql_test.mjs",
+    "check:profile-avatar-readiness": "node scripts/check-profile-avatar-readiness.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.1",
